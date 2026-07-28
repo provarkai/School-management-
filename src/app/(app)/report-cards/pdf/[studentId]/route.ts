@@ -1,0 +1,64 @@
+import { renderToBuffer } from "@react-pdf/renderer";
+import { requireUser } from "@/lib/current-user";
+import { createClient } from "@/lib/supabase/server";
+import { ReportCardDocument } from "@/lib/pdf/ReportCardDocument";
+import type { Term } from "@/lib/types";
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ studentId: string }> }
+) {
+  const { studentId } = await params;
+  const { school } = await requireUser();
+  const supabase = await createClient();
+
+  const { data: student } = await supabase
+    .from("students")
+    .select("full_name, class_id")
+    .eq("id", studentId)
+    .single();
+
+  if (!student || !school) {
+    return new Response("Student not found", { status: 404 });
+  }
+
+  const { data: klass } = student.class_id
+    ? await supabase.from("classes").select("name").eq("id", student.class_id).single()
+    : { data: null };
+
+  const term = school.current_term as Term;
+
+  const { data: results } = await supabase
+    .from("results")
+    .select("subject, ca_score, exam_score, total, grade")
+    .eq("student_id", studentId)
+    .eq("session", school.current_session)
+    .eq("term", term)
+    .order("subject");
+
+  const buffer = await renderToBuffer(
+    ReportCardDocument({
+      school: {
+        name: school.name,
+        address: school.address,
+        current_session: school.current_session,
+      },
+      student: { full_name: student.full_name, className: klass?.name ?? "—" },
+      term,
+      results: (results ?? []).map((r) => ({
+        subject: r.subject,
+        ca_score: Number(r.ca_score),
+        exam_score: Number(r.exam_score),
+        total: Number(r.total),
+        grade: r.grade,
+      })),
+    })
+  );
+
+  return new Response(new Uint8Array(buffer), {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="${student.full_name.replace(/\s+/g, "_")}_report_card.pdf"`,
+    },
+  });
+}
