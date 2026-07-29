@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
-import { RecordPaymentForm, SendReminderButton, SetAmountForm } from "./FeeForms";
+import { PaymentLinkButton, RecordPaymentForm, SendReminderButton, SetAmountForm } from "./FeeForms";
 
 export default async function StudentFeePage({
   params,
@@ -70,11 +70,20 @@ export default async function StudentFeePage({
           <h2 className="mb-3 text-sm font-semibold text-zinc-900">Reminder</h2>
           <p className="mb-3 text-sm text-zinc-500">
             Sends a templated WhatsApp/SMS message to the parent with the outstanding
-            balance.
+            balance and a link to pay online.
           </p>
           <SendReminderButton studentId={id} />
         </section>
       </div>
+
+      <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+        <h2 className="mb-3 text-sm font-semibold text-zinc-900">Online payment link</h2>
+        <p className="mb-3 text-sm text-zinc-500">
+          Generate a Paystack checkout link for this term&apos;s balance — share it any way
+          you like. Payments auto-record here once confirmed.
+        </p>
+        <PaymentLinkButton studentId={id} />
+      </section>
 
       <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-zinc-900">Record a payment</h2>

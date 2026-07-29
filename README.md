@@ -2,8 +2,9 @@
 
 Fee tracking, attendance, report cards, and SMS/WhatsApp reminders for
 Nigerian private schools. Built per the lean MVP spec: Proprietor/Admin and
-Teacher roles only (Bursar merged into Admin, Parent portal deferred to
-Phase 2).
+Teacher roles only (Bursar merged into Admin). Most of Phase 2 — a full
+parent portal, online payments, multi-campus management, and timetabling —
+has since been pulled forward too (see "Beyond the MVP spec" below).
 
 ## Stack
 
@@ -13,6 +14,8 @@ Phase 2).
 - **PDF report cards:** `@react-pdf/renderer`
 - **SMS/WhatsApp reminders:** [Termii](https://termii.com) (Nigerian-focused;
   runs in a "mock" console-log mode until an API key is configured)
+- **Online payments:** [Paystack](https://paystack.com) checkout + webhook
+  (runs in a mock instant-success mode until a secret key is configured)
 - **Hosting:** Vercel (app) + Supabase (backend)
 
 ## Getting started
@@ -65,9 +68,25 @@ in your environment. See `src/lib/termii.ts` — it's a thin wrapper around the
 Termii SMS API; swap in the WhatsApp Business API endpoint there if/when you
 want WhatsApp delivery specifically rather than Termii's generic channel.
 
+## Enabling real online payments
+
+Payment links (parent portal "Pay now" and staff-generated links) run in
+mock mode — clicking "pay" immediately simulates a successful charge, so the
+whole flow is testable end-to-end without a real payment provider. To accept
+real payments:
+
+1. Create a [Paystack](https://paystack.com) account and grab your secret key.
+2. Set `PAYSTACK_SECRET_KEY=...` in your environment.
+3. In the Paystack dashboard, add `https://<your-domain>/api/paystack/webhook`
+   as a webhook endpoint, subscribed to the `charge.success` event — this is
+   what actually reconciles a payment against the right fee record;
+   `/pay/callback` (the page a payer lands on after checkout) also verifies
+   the transaction as a fast-path, but the webhook is the source of truth if
+   the payer closes their browser before that redirect completes.
+
 ## Beyond the MVP spec
 
-A few Phase-2 items from the original spec got pulled forward:
+Most of Phase 2 from the original spec has been pulled forward:
 
 - **Automated weekly fee reminders** — a Vercel Cron job (`vercel.json`,
   `src/app/api/cron/weekly-fee-reminders/route.ts`) sends reminders to every
@@ -78,29 +97,47 @@ A few Phase-2 items from the original spec got pulled forward:
   (amount + narration + date) and the app suggests candidate students by
   name/amount match; confirming records the payment. Manual entry, not a
   bank webhook — a semi-automated stopgap for reconciliation.
-- **Parent read-only view** — each student gets an unguessable share link
-  (`/p/[token]`, no login) showing fee balance, attendance, and results.
-  Copy it from a student's detail page. This is a link-sharing stand-in for
-  a full parent portal/account system, which is still out of scope.
+- **Online fee payments (Paystack)** — parents pay their child's balance
+  online (a "Pay now" button in the parent portal, or a payment link a
+  proprietor generates and sends any way they like — including embedded in
+  the SMS/WhatsApp reminder). A Paystack webhook (`/api/paystack/webhook`)
+  auto-reconciles the charge against the right fee record the moment it
+  succeeds, no manual entry needed. Runs in mock mode (simulated instant
+  success) until `PAYSTACK_SECRET_KEY` is set — see `src/lib/paystack.ts`.
+- **Full parent portal** — real parent accounts (`/parent/login`), separate
+  from staff logins, auto-linked to their children by matching login email
+  against a `students.parent_email` set from the student's detail page. Each
+  child gets a dashboard with fees (+ Pay now), attendance, and results. The
+  original read-only share link (`/p/[token]`, no login) still exists
+  alongside it for schools that don't want parents creating accounts.
+- **Multi-campus/branch management** (`/campuses`) — proprietors can define
+  campuses and assign classes/teachers to one; dashboard, students, and
+  classes views gain a campus filter. Schools with no campuses defined see
+  no change.
+- **Timetabling** (`/timetable`) — proprietors set up the school's daily
+  period structure once, then build a per-class weekly subject+teacher grid
+  with automatic double-booking detection for teachers. Each class gets a
+  print-friendly page and a public read-only share link (`/t/[token]`).
 - **Class position/ranking** — computed at report-card render time from
   `results`, shown on the score-entry page and both PDF routes.
 - **CSV export** — "Export CSV" on the Fees and Attendance History pages,
   respecting whatever filters are active.
-- **AI Assistant** (`/assistant`) — a tool-using chat, routed through
-  [OpenRouter](https://openrouter.ai) to a Claude model (`src/lib/ai/`),
-  that answers questions about students, fees, attendance, and results by
-  querying the database through the signed-in user's own RLS-scoped access
-  (a teacher's assistant can't see fee data a teacher can't see, because
-  the query returns nothing — not because the assistant special-cases the
-  role). Needs `OPENROUTER_API_KEY`; runs in a mock/explain-yourself mode
-  without it. Model defaults to `anthropic/claude-haiku-4.5`, overridable
-  via `OPENROUTER_MODEL`.
+- **AI Assistant** (`/assistant`, embedded on the dashboard) — a tool-using
+  chat, routed through [OpenRouter](https://openrouter.ai) to a Claude model
+  (`src/lib/ai/`), that answers questions about students, fees, attendance,
+  and results by querying the database through the signed-in user's own
+  RLS-scoped access (a teacher's assistant can't see fee data a teacher
+  can't see, because the query returns nothing — not because the assistant
+  special-cases the role). Needs `OPENROUTER_API_KEY`; runs in a
+  mock/explain-yourself mode without it. Model defaults to
+  `anthropic/claude-haiku-4.5`, overridable via `OPENROUTER_MODEL`.
 
 ## What's still out of scope
 
-Full parent-facing accounts/portal (only the read-only share link above
-exists), timetabling, multi-campus management, fully-automated bank
-reconciliation (matching is suggested, not automatic), native mobile app.
+Fully-automated bank statement reconciliation (transfer matching above is
+suggested, not automatic — that needs a Nigerian account-aggregation service
+like Mono or Okra, which requires business KYC credentials this project
+doesn't have), and a native mobile app.
 
 ## Project structure
 
@@ -109,10 +146,17 @@ supabase/migrations/   SQL schema, RLS policies, triggers, views
 supabase/seed.sql      Demo data for local development
 src/lib/supabase/      Browser/server/proxy Supabase clients
 src/lib/termii.ts      SMS/WhatsApp reminder sending
+src/lib/paystack.ts    Paystack checkout/verify/webhook-signature wrapper
+src/lib/payments.ts    Shared payment-intent create + idempotent reconcile
 src/lib/pdf/           Report card PDF template (@react-pdf/renderer)
-src/app/(app)/         Authenticated app screens (dashboard, students,
-                        classes, fees, attendance, report-cards, reminders,
-                        staff) sharing a role-aware nav layout
-src/app/login/         Sign in / sign up
-src/app/onboarding/     First-run "create your school" flow
+src/app/(app)/         Authenticated staff app screens (dashboard, students,
+                        classes, campuses, fees, attendance, report-cards,
+                        timetable, reminders, staff) sharing a role-aware
+                        nav layout
+src/app/login/         Staff sign in / sign up
+src/app/parent/        Parent portal (separate login, dashboard, per-child view)
+src/app/onboarding/    First-run "create your school" flow
+src/app/p/[token]/     Public read-only student share link
+src/app/t/[token]/     Public read-only class timetable share link
+src/app/pay/callback/  Post-checkout landing page (payment verification)
 ```

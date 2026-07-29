@@ -4,8 +4,14 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC_PATHS = ["/login", "/signup", "/parent/login"];
 
 export async function updateSession(request: NextRequest) {
-  // Public, tokenized views — no auth required or checked.
-  if (request.nextUrl.pathname.startsWith("/p/") || request.nextUrl.pathname.startsWith("/t/")) {
+  // Public, tokenized views and API routes — no cookie-based auth to check;
+  // API routes authenticate themselves (webhook signatures, bearer secrets).
+  if (
+    request.nextUrl.pathname.startsWith("/p/") ||
+    request.nextUrl.pathname.startsWith("/t/") ||
+    request.nextUrl.pathname.startsWith("/pay/") ||
+    request.nextUrl.pathname.startsWith("/api/")
+  ) {
     return NextResponse.next({ request });
   }
 

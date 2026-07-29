@@ -4,6 +4,7 @@ import { requireParent } from "@/lib/current-parent";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import { TERM_LABELS, type Term } from "@/lib/types";
+import { PayNowButton } from "./PayNowButton";
 
 export default async function ParentChildPage({
   params,
@@ -92,6 +93,11 @@ export default async function ParentChildPage({
           </div>
         ) : (
           <p className="text-sm text-zinc-400">No fee record for this term yet.</p>
+        )}
+        {fee && Number(fee.balance) > 0 && (
+          <div className="mt-4">
+            <PayNowButton studentId={child.id} label={`Pay ${naira(Number(fee.balance))} now`} />
+          </div>
         )}
       </section>
 

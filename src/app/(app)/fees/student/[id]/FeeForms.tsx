@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
+  generatePaymentLink,
   recordPayment,
   sendFeeReminder,
   setFeeAmount,
   type FeeActionState,
+  type PaymentLinkState,
 } from "../../actions";
 
 const initialState: FeeActionState = {};
@@ -113,6 +115,57 @@ export function RecordPaymentForm({ studentId }: { studentId: string }) {
       >
         {pending ? "Recording…" : "Record payment"}
       </button>
+    </form>
+  );
+}
+
+const initialPaymentLinkState: PaymentLinkState = {};
+
+export function PaymentLinkButton({ studentId }: { studentId: string }) {
+  const action = generatePaymentLink.bind(null, studentId);
+  const [state, formAction, pending] = useActionState(action, initialPaymentLinkState);
+  const [copied, setCopied] = useState(false);
+
+  async function copy(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard API unavailable — the link is still visible to select manually
+    }
+  }
+
+  return (
+    <form action={formAction}>
+      {state.error && (
+        <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
+      )}
+      {state.url ? (
+        <div className="space-y-2">
+          {state.mocked && (
+            <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Mock mode — set PAYSTACK_SECRET_KEY to accept real payments.
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => copy(state.url!)}
+            className="w-full truncate rounded-md border border-zinc-300 bg-white px-4 py-2 text-left text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
+            title={state.url}
+          >
+            {copied ? "Copied!" : "Copy payment link"}
+          </button>
+        </div>
+      ) : (
+        <button
+          type="submit"
+          disabled={pending}
+          className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
+        >
+          {pending ? "Generating…" : "Generate payment link"}
+        </button>
+      )}
     </form>
   );
 }

@@ -2,8 +2,9 @@ export type Role = "proprietor" | "teacher";
 export type Term = "1" | "2" | "3";
 export type StudentStatus = "active" | "withdrawn";
 export type AttendanceStatus = "present" | "absent" | "late";
-export type PaymentMethod = "cash" | "transfer";
+export type PaymentMethod = "cash" | "transfer" | "paystack";
 export type FeeStatus = "paid" | "partial" | "owing";
+export type PaymentIntentStatus = "pending" | "success" | "failed";
 
 export interface School {
   id: string;
@@ -128,6 +129,21 @@ export interface ResultRecord {
   grade: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface PaymentIntent {
+  id: string;
+  school_id: string;
+  fee_record_id: string;
+  student_id: string;
+  reference: string;
+  amount: number;
+  status: PaymentIntentStatus;
+  authorization_url: string | null;
+  fee_payment_id: string | null;
+  initiated_by: string | null;
+  created_at: string;
+  verified_at: string | null;
 }
 
 export interface PeriodSlot {
