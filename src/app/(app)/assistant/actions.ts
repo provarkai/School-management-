@@ -1,9 +1,8 @@
 "use server";
 
-import type Anthropic from "@anthropic-ai/sdk";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
-import { createAnthropicClient, isAiConfigured, ASSISTANT_MODEL } from "@/lib/ai/client";
+import { callOpenRouter, isAiConfigured, type OpenRouterMessage } from "@/lib/ai/client";
 import { ASSISTANT_TOOLS, runAssistantTool } from "@/lib/ai/tools";
 import { TERM_LABELS, type Term } from "@/lib/types";
 
@@ -28,12 +27,11 @@ export async function askAssistant(
   if (!isAiConfigured()) {
     return {
       reply:
-        "The AI Assistant needs an ANTHROPIC_API_KEY configured on the server before it can answer questions. Ask whoever deployed the app to set it.",
+        "The AI Assistant needs an OPENROUTER_API_KEY configured on the server before it can answer questions. Ask whoever deployed the app to set it.",
     };
   }
 
   const supabase = await createClient();
-  const client = createAnthropicClient();
 
   const term = (user.school?.current_term ?? "1") as Term;
   const systemPrompt = `You are the AI Assistant inside a school management app, helping ${
@@ -42,52 +40,37 @@ export async function askAssistant(
 
 Answer questions about students, fees, attendance, and results using the provided tools — never guess or make up numbers. If a tool returns no data or an access-related empty result, say so plainly rather than inventing an answer. You can draft (but never send) fee reminder messages when asked. Keep answers short and direct; use a list only when enumerating multiple students. You cannot take actions outside these tools — you cannot record payments, mark attendance, or send messages yourself.`;
 
-  const messages: Anthropic.MessageParam[] = [
-    ...history.map((h) => ({ role: h.role, content: h.content })),
+  const messages: OpenRouterMessage[] = [
+    { role: "system", content: systemPrompt },
+    ...history.map((h) => ({ role: h.role, content: h.content }) as OpenRouterMessage),
     { role: "user", content: message },
   ];
 
   try {
     for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
-      const response = await client.messages.create({
-        model: ASSISTANT_MODEL,
-        max_tokens: 2048,
-        system: systemPrompt,
-        tools: ASSISTANT_TOOLS,
-        output_config: { effort: "low" },
-        messages,
-      });
+      const response = await callOpenRouter(messages, ASSISTANT_TOOLS);
+      const choice = response.choices[0];
+      if (!choice) return { reply: "The AI Assistant didn't return a response." };
 
-      if (response.stop_reason === "refusal") {
-        return { reply: "I can't help with that request." };
-      }
+      const msg = choice.message;
 
-      if (response.stop_reason === "tool_use") {
-        messages.push({ role: "assistant", content: response.content });
+      if (choice.finish_reason === "tool_calls" && msg.tool_calls?.length) {
+        messages.push({ role: "assistant", content: msg.content ?? null, tool_calls: msg.tool_calls });
 
-        const toolResults: Anthropic.ToolResultBlockParam[] = [];
-        for (const block of response.content) {
-          if (block.type === "tool_use") {
-            const result = await runAssistantTool(
-              block.name,
-              block.input as Record<string, unknown>,
-              supabase,
-              user
-            );
-            toolResults.push({ type: "tool_result", tool_use_id: block.id, content: result });
+        for (const call of msg.tool_calls) {
+          let input: Record<string, unknown> = {};
+          try {
+            input = JSON.parse(call.function.arguments || "{}");
+          } catch {
+            // malformed args — pass an empty object through, tool will report what's missing
           }
+          const result = await runAssistantTool(call.function.name, input, supabase, user);
+          messages.push({ role: "tool", tool_call_id: call.id, content: result });
         }
-        messages.push({ role: "user", content: toolResults });
         continue;
       }
 
-      const text = response.content
-        .filter((b): b is Anthropic.TextBlock => b.type === "text")
-        .map((b) => b.text)
-        .join("\n")
-        .trim();
-
-      return { reply: text || "I don't have a response for that." };
+      return { reply: (msg.content ?? "").trim() || "I don't have a response for that." };
     }
 
     return { reply: "That took more steps than expected — try asking a more specific question." };

@@ -86,13 +86,15 @@ A few Phase-2 items from the original spec got pulled forward:
   `results`, shown on the score-entry page and both PDF routes.
 - **CSV export** — "Export CSV" on the Fees and Attendance History pages,
   respecting whatever filters are active.
-- **AI Assistant** (`/assistant`) — a tool-using chat backed by the Claude
-  API (`src/lib/ai/`) that answers questions about students, fees,
-  attendance, and results by querying the database through the signed-in
-  user's own RLS-scoped access (a teacher's assistant can't see fee data a
-  teacher can't see, because the query returns nothing — not because the
-  assistant special-cases the role). Needs `ANTHROPIC_API_KEY`; runs in a
-  mock/explain-yourself mode without it.
+- **AI Assistant** (`/assistant`) — a tool-using chat, routed through
+  [OpenRouter](https://openrouter.ai) to a Claude model (`src/lib/ai/`),
+  that answers questions about students, fees, attendance, and results by
+  querying the database through the signed-in user's own RLS-scoped access
+  (a teacher's assistant can't see fee data a teacher can't see, because
+  the query returns nothing — not because the assistant special-cases the
+  role). Needs `OPENROUTER_API_KEY`; runs in a mock/explain-yourself mode
+  without it. Model defaults to `anthropic/claude-haiku-4.5`, overridable
+  via `OPENROUTER_MODEL`.
 
 ## What's still out of scope
 

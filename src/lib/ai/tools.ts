@@ -1,6 +1,6 @@
-import type Anthropic from "@anthropic-ai/sdk";
 import type { createClient } from "@/lib/supabase/server";
 import type { CurrentUser } from "@/lib/current-user";
+import type { OpenRouterTool } from "@/lib/ai/client";
 import { naira } from "@/lib/format";
 import { feeReminderTemplate } from "@/lib/termii";
 import { TERM_LABELS, type Term } from "@/lib/types";
@@ -13,54 +13,66 @@ type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
  * isn't allowed to see, because the query itself returns nothing, not
  * because we special-cased the role here.
  */
-export const ASSISTANT_TOOLS: Anthropic.Tool[] = [
+export const ASSISTANT_TOOLS: OpenRouterTool[] = [
   {
-    name: "get_school_summary",
-    description:
-      "Get overall school stats for the current term: total active students, fees expected vs collected, and today's attendance rate. Use this for broad questions like 'how are we doing this term'.",
-    input_schema: { type: "object", properties: {}, required: [] },
+    type: "function",
+    function: {
+      name: "get_school_summary",
+      description:
+        "Get overall school stats for the current term: total active students, fees expected vs collected, and today's attendance rate. Use this for broad questions like 'how are we doing this term'.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
   },
   {
-    name: "find_students",
-    description:
-      "Search for students by name and/or class, optionally filtered by fee status. Returns each match's class and (for proprietors) fee balance.",
-    input_schema: {
-      type: "object",
-      properties: {
-        name: { type: "string", description: "Full or partial student name" },
-        class_name: { type: "string", description: "Class name, e.g. JSS1 or SSS2" },
-        fee_status: {
-          type: "string",
-          enum: ["owing", "partial", "paid"],
-          description: "Filter by this term's fee status",
+    type: "function",
+    function: {
+      name: "find_students",
+      description:
+        "Search for students by name and/or class, optionally filtered by fee status. Returns each match's class and (for proprietors) fee balance.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Full or partial student name" },
+          class_name: { type: "string", description: "Class name, e.g. JSS1 or SSS2" },
+          fee_status: {
+            type: "string",
+            enum: ["owing", "partial", "paid"],
+            description: "Filter by this term's fee status",
+          },
         },
+        required: [],
       },
-      required: [],
     },
   },
   {
-    name: "get_attendance_summary",
-    description:
-      "Get attendance stats (present/absent/late counts) over the last N days, optionally for one class. Use for questions about attendance trends or chronic absentees.",
-    input_schema: {
-      type: "object",
-      properties: {
-        class_name: { type: "string", description: "Class name, e.g. JSS1" },
-        days: { type: "integer", description: "How many days back to look (default 7)" },
+    type: "function",
+    function: {
+      name: "get_attendance_summary",
+      description:
+        "Get attendance stats (present/absent/late counts) over the last N days, optionally for one class. Use for questions about attendance trends or chronic absentees.",
+      parameters: {
+        type: "object",
+        properties: {
+          class_name: { type: "string", description: "Class name, e.g. JSS1" },
+          days: { type: "integer", description: "How many days back to look (default 7)" },
+        },
+        required: [],
       },
-      required: [],
     },
   },
   {
-    name: "draft_reminder_message",
-    description:
-      "Draft (but do not send) the templated fee reminder message for one student, based on their current balance. Use when the user asks you to write or preview a reminder.",
-    input_schema: {
-      type: "object",
-      properties: {
-        student_name: { type: "string", description: "Full or partial student name" },
+    type: "function",
+    function: {
+      name: "draft_reminder_message",
+      description:
+        "Draft (but do not send) the templated fee reminder message for one student, based on their current balance. Use when the user asks you to write or preview a reminder.",
+      parameters: {
+        type: "object",
+        properties: {
+          student_name: { type: "string", description: "Full or partial student name" },
+        },
+        required: ["student_name"],
       },
-      required: ["student_name"],
     },
   },
 ];
