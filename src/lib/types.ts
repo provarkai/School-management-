@@ -260,6 +260,18 @@ export interface PayrollEntry {
   created_at: string;
 }
 
+export interface Assignment {
+  id: string;
+  school_id: string;
+  class_id: string;
+  subject: string | null;
+  title: string;
+  description: string | null;
+  due_date: string;
+  created_by: string | null;
+  created_at: string;
+}
+
 export interface PaymentIntent {
   id: string;
   school_id: string;

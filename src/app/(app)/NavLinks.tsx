@@ -17,6 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/classes", label: "Classes", roles: ["proprietor"] },
   { href: "/fees", label: "Fees", roles: ["proprietor"] },
   { href: "/attendance", label: "Attendance", roles: ["proprietor", "teacher"] },
+  { href: "/assignments", label: "Assignments", roles: ["proprietor", "teacher"] },
   { href: "/report-cards", label: "Report cards", roles: ["proprietor", "teacher"] },
   { href: "/timetable", label: "Timetable", roles: ["proprietor", "teacher"] },
   { href: "/calendar", label: "Calendar", roles: ["proprietor", "teacher", "staff"] },

@@ -30,7 +30,8 @@ export default async function ParentChildPage({
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const [{ data: fees }, { data: attendance }, { data: results }, { data: events }] = await Promise.all([
+  const [{ data: fees }, { data: attendance }, { data: results }, { data: events }, { data: assignments }] =
+    await Promise.all([
     supabase
       .from("fee_summary")
       .select("fee_type_id, fee_type_name, amount_expected, amount_paid, balance, status")
@@ -56,6 +57,15 @@ export default async function ParentChildPage({
       .gte("start_date", today)
       .order("start_date")
       .limit(5),
+    child.class_id
+      ? supabase
+          .from("assignments")
+          .select("id, subject, title, due_date")
+          .eq("class_id", child.class_id)
+          .gte("due_date", today)
+          .order("due_date")
+          .limit(10)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const attendanceRows = attendance ?? [];
@@ -157,6 +167,23 @@ export default async function ParentChildPage({
           </table>
         )}
       </section>
+
+      {(assignments ?? []).length > 0 && (
+        <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold text-zinc-900">Upcoming assignments</h2>
+          <ul className="space-y-2">
+            {(assignments ?? []).map((a) => (
+              <li key={a.id} className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="text-zinc-900">
+                  {a.title}
+                  {a.subject ? ` (${a.subject})` : ""}
+                </span>
+                <span className="shrink-0 text-xs text-zinc-400">Due {a.due_date}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {(events ?? []).length > 0 && (
         <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
