@@ -228,6 +228,38 @@ export interface StudentDocument {
   created_at: string;
 }
 
+export type PayrollRunStatus = "draft" | "paid";
+
+export interface StaffSalary {
+  id: string;
+  school_id: string;
+  staff_id: string;
+  monthly_salary: number;
+  updated_at: string;
+}
+
+export interface PayrollRun {
+  id: string;
+  school_id: string;
+  period: string;
+  status: PayrollRunStatus;
+  created_by: string | null;
+  created_at: string;
+  paid_at: string | null;
+}
+
+export interface PayrollEntry {
+  id: string;
+  school_id: string;
+  payroll_run_id: string;
+  staff_id: string;
+  base_salary: number;
+  deductions: number;
+  deduction_reason: string | null;
+  net_pay: number;
+  created_at: string;
+}
+
 export interface PaymentIntent {
   id: string;
   school_id: string;
