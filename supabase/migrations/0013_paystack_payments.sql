@@ -31,10 +31,12 @@ alter table public.payment_intents enable row level security;
 
 -- Staff can see their school's payment intents (proprietor manages fees;
 -- teachers have no fee access elsewhere either, so keep this proprietor-only).
+drop policy if exists "payment_intents_select_proprietor" on public.payment_intents;
 create policy "payment_intents_select_proprietor" on public.payment_intents
   for select using (school_id = public.current_school_id() and public.current_role() = 'proprietor');
 
 -- Parents can see intents for their own linked children (to show payment status).
+drop policy if exists "payment_intents_select_linked_parent" on public.payment_intents;
 create policy "payment_intents_select_linked_parent" on public.payment_intents
   for select using (public.is_linked_parent(student_id));
 
