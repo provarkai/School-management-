@@ -28,16 +28,18 @@ function Message({ state }: { state: FeeActionState }) {
 
 export function SetAmountForm({
   studentId,
+  feeTypeId,
   currentAmount,
 }: {
   studentId: string;
+  feeTypeId: string;
   currentAmount: number;
 }) {
-  const [state, action, pending] = useActionState(setFeeAmount, initialState);
+  const action = setFeeAmount.bind(null, studentId, feeTypeId);
+  const [state, formAction, pending] = useActionState(action, initialState);
 
   return (
-    <form action={action} className="space-y-3">
-      <input type="hidden" name="student_id" value={studentId} />
+    <form action={formAction} className="space-y-3">
       <Message state={state} />
       <label className="block text-sm font-medium text-zinc-700">
         Amount expected this term
@@ -62,12 +64,18 @@ export function SetAmountForm({
   );
 }
 
-export function RecordPaymentForm({ studentId }: { studentId: string }) {
-  const [state, action, pending] = useActionState(recordPayment, initialState);
+export function RecordPaymentForm({
+  studentId,
+  feeTypeId,
+}: {
+  studentId: string;
+  feeTypeId: string;
+}) {
+  const action = recordPayment.bind(null, studentId, feeTypeId);
+  const [state, formAction, pending] = useActionState(action, initialState);
 
   return (
-    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <input type="hidden" name="student_id" value={studentId} />
+    <form action={formAction} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div className="sm:col-span-2">
         <Message state={state} />
       </div>
@@ -121,8 +129,14 @@ export function RecordPaymentForm({ studentId }: { studentId: string }) {
 
 const initialPaymentLinkState: PaymentLinkState = {};
 
-export function PaymentLinkButton({ studentId }: { studentId: string }) {
-  const action = generatePaymentLink.bind(null, studentId);
+export function PaymentLinkButton({
+  studentId,
+  feeTypeId,
+}: {
+  studentId: string;
+  feeTypeId: string;
+}) {
+  const action = generatePaymentLink.bind(null, studentId, feeTypeId);
   const [state, formAction, pending] = useActionState(action, initialPaymentLinkState);
   const [copied, setCopied] = useState(false);
 

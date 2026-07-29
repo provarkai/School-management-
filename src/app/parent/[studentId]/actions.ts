@@ -12,6 +12,7 @@ export interface PayFeesState {
 
 export async function payFees(
   studentId: string,
+  feeTypeId: string,
   _prevState: PayFeesState,
   _formData: FormData
 ): Promise<PayFeesState> {
@@ -34,6 +35,7 @@ export async function payFees(
     .from("fee_summary")
     .select("fee_record_id, balance")
     .eq("student_id", studentId)
+    .eq("fee_type_id", feeTypeId)
     .eq("session", school?.current_session ?? "")
     .eq("term", school?.current_term ?? "1")
     .maybeSingle();

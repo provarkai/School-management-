@@ -34,14 +34,13 @@ export default async function ParentViewPage({
   const session = school?.current_session ?? "";
   const term = (school?.current_term ?? "1") as Term;
 
-  const [{ data: fee }, { data: attendance }, { data: results }] = await Promise.all([
+  const [{ data: fees }, { data: attendance }, { data: results }] = await Promise.all([
     supabase
       .from("fee_summary")
-      .select("amount_expected, amount_paid, balance, status")
+      .select("fee_type_id, fee_type_name, amount_expected, amount_paid, balance, status")
       .eq("student_id", student.id)
       .eq("session", session)
-      .eq("term", term)
-      .maybeSingle(),
+      .eq("term", term),
     supabase
       .from("attendance")
       .select("status")
@@ -74,27 +73,32 @@ export default async function ParentViewPage({
         </p>
       </div>
 
-      <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-900">School fees</h2>
-        {fee ? (
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div>
-              <p className="text-xs text-zinc-400">Expected</p>
-              <p className="font-semibold text-zinc-900">{naira(Number(fee.amount_expected))}</p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-400">Paid</p>
-              <p className="font-semibold text-zinc-900">{naira(Number(fee.amount_paid))}</p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-400">Balance</p>
-              <p className={`font-semibold ${Number(fee.balance) > 0 ? "text-red-600" : "text-emerald-600"}`}>
-                {naira(Number(fee.balance))}
-              </p>
-            </div>
-          </div>
-        ) : (
+      <section className="space-y-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-zinc-900">School fees</h2>
+        {(fees ?? []).length === 0 ? (
           <p className="text-sm text-zinc-400">No fee record for this term yet.</p>
+        ) : (
+          (fees ?? []).map((fee) => (
+            <div key={fee.fee_type_id} className="border-t border-zinc-100 pt-4 first:border-t-0 first:pt-0">
+              <p className="mb-2 text-sm font-medium text-zinc-700">{fee.fee_type_name}</p>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <p className="text-xs text-zinc-400">Expected</p>
+                  <p className="font-semibold text-zinc-900">{naira(Number(fee.amount_expected))}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-zinc-400">Paid</p>
+                  <p className="font-semibold text-zinc-900">{naira(Number(fee.amount_paid))}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-zinc-400">Balance</p>
+                  <p className={`font-semibold ${Number(fee.balance) > 0 ? "text-red-600" : "text-emerald-600"}`}>
+                    {naira(Number(fee.balance))}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))
         )}
       </section>
 

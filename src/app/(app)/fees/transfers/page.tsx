@@ -47,30 +47,35 @@ export default async function TransfersPage() {
   const session = school?.current_session ?? "";
   const term = school?.current_term ?? "1";
 
-  const [{ data: alerts }, { data: students }, { data: fees }, { data: recent }] = await Promise.all([
-    supabase
-      .from("bank_transfer_alerts")
-      .select("id, amount, narration, transfer_date")
-      .eq("school_id", profile.school_id ?? "")
-      .eq("status", "unmatched")
-      .order("transfer_date", { ascending: false }),
-    supabase.from("students").select("id, full_name, parent_name").eq("status", "active"),
-    supabase
-      .from("fee_summary")
-      .select("student_id, balance")
-      .eq("school_id", profile.school_id ?? "")
-      .eq("session", session)
-      .eq("term", term),
-    supabase
-      .from("bank_transfer_alerts")
-      .select("id, amount, narration, transfer_date, status")
-      .eq("school_id", profile.school_id ?? "")
-      .neq("status", "unmatched")
-      .order("transfer_date", { ascending: false })
-      .limit(10),
-  ]);
+  const [{ data: alerts }, { data: students }, { data: fees }, { data: recent }, { data: feeTypes }] =
+    await Promise.all([
+      supabase
+        .from("bank_transfer_alerts")
+        .select("id, amount, narration, transfer_date")
+        .eq("school_id", profile.school_id ?? "")
+        .eq("status", "unmatched")
+        .order("transfer_date", { ascending: false }),
+      supabase.from("students").select("id, full_name, parent_name").eq("status", "active"),
+      supabase
+        .from("fee_summary")
+        .select("student_id, balance")
+        .eq("school_id", profile.school_id ?? "")
+        .eq("session", session)
+        .eq("term", term),
+      supabase
+        .from("bank_transfer_alerts")
+        .select("id, amount, narration, transfer_date, status")
+        .eq("school_id", profile.school_id ?? "")
+        .neq("status", "unmatched")
+        .order("transfer_date", { ascending: false })
+        .limit(10),
+      supabase.from("fee_types").select("id, name").eq("school_id", profile.school_id ?? "").order("name"),
+    ]);
 
-  const balanceByStudent = new Map((fees ?? []).map((f) => [f.student_id, Number(f.balance)]));
+  const balanceByStudent = new Map<string, number>();
+  for (const f of fees ?? []) {
+    balanceByStudent.set(f.student_id, (balanceByStudent.get(f.student_id) ?? 0) + Number(f.balance));
+  }
   const candidates: StudentCandidate[] = (students ?? []).map((s) => ({
     id: s.id,
     full_name: s.full_name,
@@ -121,7 +126,7 @@ export default async function TransfersPage() {
                         {s.full_name}{" "}
                         <span className="text-zinc-400">({naira(s.balance)} owing)</span>
                       </span>
-                      <MatchButton alertId={alert.id} studentId={s.id} />
+                      <MatchButton alertId={alert.id} studentId={s.id} feeTypes={feeTypes ?? []} />
                     </div>
                   ))}
                 </div>

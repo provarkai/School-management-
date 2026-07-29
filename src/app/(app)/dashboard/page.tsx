@@ -73,6 +73,45 @@ export default async function DashboardPage({
     );
   }
 
+  if (profile.role === "staff") {
+    const { data: notices } = await supabase
+      .from("staff_notices")
+      .select("id, title, body, created_at")
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900">Welcome, {profile.name}</h1>
+          <p className="text-sm text-zinc-500">{profile.job_title ?? "Staff"}</p>
+        </div>
+
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+              Latest notices
+            </h2>
+            <Link href="/notices" className="text-sm font-medium text-zinc-600 hover:text-zinc-900">
+              View all →
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {(notices ?? []).map((n) => (
+              <div key={n.id} className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+                <p className="font-semibold text-zinc-900">{n.title}</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-600">{n.body}</p>
+              </div>
+            ))}
+            {(notices ?? []).length === 0 && (
+              <p className="text-sm text-zinc-400">No notices yet.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const { data: campuses } = await supabase
     .from("campuses")
     .select("id, name")

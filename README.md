@@ -50,10 +50,16 @@ has since been pulled forward too (see "Beyond the MVP spec" below).
 - **Teacher** — scoped to their own class(es) only: mark attendance, enter
   CA/exam scores, view their students. No fee access (bursar duties are
   folded into the proprietor role for this MVP, per the spec).
+- **Non-teaching staff** (bursar, front desk, security, cleaners, etc.) — a
+  login with a free-text job title and no class/fee/student access by
+  default; sees the dashboard, staff notices, and their own profile.
 
-A proprietor adds teachers from **Staff** — this creates a real Supabase Auth
+A proprietor adds staff from **Staff** — this creates a real Supabase Auth
 account for them (via the service role key) with a generated temporary
-password, and assigns them to a class from **Classes**.
+password, picks Teacher or Non-teaching staff, and (for teachers) assigns
+them to a class from **Classes**. Every account — proprietor, teacher, staff,
+and parent — has a **My Profile** page to edit their own name/phone and
+change their password.
 
 ## Enabling real SMS/WhatsApp sending
 
@@ -118,6 +124,20 @@ Most of Phase 2 from the original spec has been pulled forward:
   period structure once, then build a per-class weekly subject+teacher grid
   with automatic double-booking detection for teachers. Each class gets a
   print-friendly page and a public read-only share link (`/t/[token]`).
+- **Multiple fee types** (`/fees`) — schools charge for more than tuition, so
+  a proprietor defines fee types (PTA levy, exam fee, feeding, transport,
+  etc. — every school starts with a default "School Fees" type) and each
+  student can owe several independent balances per term. A "set fee for a
+  whole class" form applies one amount to every active student in a class at
+  once instead of one-by-one. Reminders, payment links, and the parent
+  portal all break balances down per fee type.
+- **Non-teaching staff + notices** — staff accounts aren't limited to
+  teachers (see "How the roles work"), and a proprietor can post notices
+  (`/notices`) to all staff, teachers only, or non-teaching staff only, with
+  an option to also blast it as SMS.
+- **General (non-fee) reminders** (`/reminders`) — besides the fee-balance
+  reminder, a free-text announcement can go out to all parents or one class
+  — school closures, events, PTA meetings.
 - **Class position/ranking** — computed at report-card render time from
   `results`, shown on the score-entry page and both PDF routes.
 - **CSV export** — "Export CSV" on the Fees and Attendance History pages,
@@ -151,8 +171,8 @@ src/lib/payments.ts    Shared payment-intent create + idempotent reconcile
 src/lib/pdf/           Report card PDF template (@react-pdf/renderer)
 src/app/(app)/         Authenticated staff app screens (dashboard, students,
                         classes, campuses, fees, attendance, report-cards,
-                        timetable, reminders, staff) sharing a role-aware
-                        nav layout
+                        timetable, reminders, notices, staff, profile)
+                        sharing a role-aware nav layout
 src/app/login/         Staff sign in / sign up
 src/app/parent/        Parent portal (separate login, dashboard, per-child view)
 src/app/onboarding/    First-run "create your school" flow

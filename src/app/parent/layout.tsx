@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireParent } from "@/lib/current-parent";
 import { parentSignOut } from "./actions";
 
@@ -15,14 +16,22 @@ export default async function ParentLayout({
           <p className="text-sm font-bold text-zinc-900">Parent Portal</p>
           <p className="text-xs text-zinc-400">{parent.name}</p>
         </div>
-        <form action={parentSignOut}>
-          <button
-            type="submit"
+        <div className="flex items-center gap-2">
+          <Link
+            href="/parent/profile"
             className="rounded-md border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
           >
-            Sign out
-          </button>
-        </form>
+            My Profile
+          </Link>
+          <form action={parentSignOut}>
+            <button
+              type="submit"
+              className="rounded-md border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+            >
+              Sign out
+            </button>
+          </form>
+        </div>
       </header>
       <main className="flex-1 p-3 sm:p-4 md:p-8">{children}</main>
     </div>

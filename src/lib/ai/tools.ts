@@ -148,19 +148,28 @@ export async function runAssistantTool(
 
       const { data: fees } = await supabase
         .from("fee_summary")
-        .select("student_id, balance, status")
+        .select("student_id, balance, amount_paid")
         .in("student_id", students.map((s) => s.id))
         .eq("session", session)
         .eq("term", term);
-      const feeByStudent = new Map((fees ?? []).map((f) => [f.student_id, f]));
+
+      const balanceByStudent = new Map<string, number>();
+      const paidByStudent = new Map<string, number>();
+      for (const f of fees ?? []) {
+        balanceByStudent.set(f.student_id, (balanceByStudent.get(f.student_id) ?? 0) + Number(f.balance));
+        paidByStudent.set(f.student_id, (paidByStudent.get(f.student_id) ?? 0) + Number(f.amount_paid));
+      }
 
       let results = students.map((s) => {
-        const fee = feeByStudent.get(s.id);
+        const hasFeeRecord = balanceByStudent.has(s.id);
+        const balance = balanceByStudent.get(s.id) ?? 0;
+        const paid = paidByStudent.get(s.id) ?? 0;
+        const status = !hasFeeRecord ? null : balance <= 0 ? "paid" : paid > 0 ? "partial" : "owing";
         return {
           name: s.full_name,
           class: s.class_id ? classNameById.get(s.class_id) ?? null : null,
-          fee_status: fee?.status ?? "not visible or not set",
-          fee_balance: fee ? naira(Number(fee.balance)) : null,
+          fee_status: status ?? "not visible or not set",
+          fee_balance: hasFeeRecord ? naira(balance) : null,
         };
       });
 
@@ -231,15 +240,14 @@ export async function runAssistantTool(
         .maybeSingle();
       if (!student) return JSON.stringify({ error: `No student found matching "${name}".` });
 
-      const { data: fee } = await supabase
+      const { data: fees } = await supabase
         .from("fee_summary")
         .select("balance")
         .eq("student_id", student.id)
         .eq("session", session)
-        .eq("term", term)
-        .maybeSingle();
+        .eq("term", term);
 
-      const balance = Number(fee?.balance ?? 0);
+      const balance = (fees ?? []).reduce((sum, f) => sum + Number(f.balance), 0);
       if (balance <= 0) {
         return JSON.stringify({ note: `${student.full_name} has no outstanding balance this term.` });
       }

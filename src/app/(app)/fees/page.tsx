@@ -3,6 +3,8 @@ import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import type { FeeStatus } from "@/lib/types";
+import { FeeTypesManager } from "./FeeTypesManager";
+import { SetClassFeeForm } from "./SetClassFeeForm";
 
 const STATUS_STYLES: Record<FeeStatus | "unset", string> = {
   paid: "bg-emerald-100 text-emerald-700",
@@ -14,17 +16,22 @@ const STATUS_STYLES: Record<FeeStatus | "unset", string> = {
 export default async function FeesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ class?: string; status?: string }>;
+  searchParams: Promise<{ class?: string; status?: string; type?: string }>;
 }) {
   const { profile, school } = await requireProprietor();
-  const { class: classFilter, status: statusFilter } = await searchParams;
+  const { class: classFilter, status: statusFilter, type: typeParam } = await searchParams;
   const supabase = await createClient();
 
   const session = school?.current_session ?? "";
   const term = school?.current_term ?? "1";
 
-  const [{ data: classes }, studentsQuery, { data: feeSummaries }] = await Promise.all([
+  const [{ data: classes }, { data: feeTypes }, studentsQuery] = await Promise.all([
     supabase.from("classes").select("id, name").order("name"),
+    supabase
+      .from("fee_types")
+      .select("id, name")
+      .eq("school_id", profile.school_id ?? "")
+      .order("name"),
     (async () => {
       let query = supabase
         .from("students")
@@ -34,17 +41,48 @@ export default async function FeesPage({
       if (classFilter) query = query.eq("class_id", classFilter);
       return query;
     })(),
-    supabase
-      .from("fee_summary")
-      .select("student_id, amount_expected, amount_paid, balance, status")
-      .eq("school_id", profile.school_id ?? "")
-      .eq("session", session)
-      .eq("term", term),
   ]);
+
+  const typeFilter = typeParam === "all" ? null : typeParam || feeTypes?.[0]?.id || null;
+
+  let feeSummaryQuery = supabase
+    .from("fee_summary")
+    .select("student_id, fee_type_id, amount_expected, amount_paid, balance, status")
+    .eq("school_id", profile.school_id ?? "")
+    .eq("session", session)
+    .eq("term", term);
+  if (typeFilter) feeSummaryQuery = feeSummaryQuery.eq("fee_type_id", typeFilter);
+
+  const { data: feeSummaries } = await feeSummaryQuery;
 
   const { data: students } = studentsQuery;
   const classNameById = new Map((classes ?? []).map((c) => [c.id, c.name]));
-  const feeByStudent = new Map((feeSummaries ?? []).map((f) => [f.student_id, f]));
+
+  // typeFilter set: one row per student (that fee type). No filter ("all"):
+  // combine every fee type into a single expected/paid/balance total per
+  // student, with status derived from the combined balance.
+  const feeByStudent = new Map<
+    string,
+    { amount_expected: number; amount_paid: number; balance: number; status: FeeStatus }
+  >();
+  for (const f of feeSummaries ?? []) {
+    const existing = feeByStudent.get(f.student_id);
+    if (!existing) {
+      feeByStudent.set(f.student_id, {
+        amount_expected: Number(f.amount_expected),
+        amount_paid: Number(f.amount_paid),
+        balance: Number(f.balance),
+        status: f.status as FeeStatus,
+      });
+    } else {
+      existing.amount_expected += Number(f.amount_expected);
+      existing.amount_paid += Number(f.amount_paid);
+      existing.balance += Number(f.balance);
+    }
+  }
+  for (const fee of feeByStudent.values()) {
+    fee.status = fee.balance <= 0 ? "paid" : fee.amount_paid > 0 ? "partial" : "owing";
+  }
 
   const rows = (students ?? [])
     .map((s) => ({ student: s, fee: feeByStudent.get(s.id) }))
@@ -52,12 +90,20 @@ export default async function FeesPage({
 
   const totals = rows.reduce(
     (acc, r) => {
-      acc.expected += Number(r.fee?.amount_expected ?? 0);
-      acc.paid += Number(r.fee?.amount_paid ?? 0);
+      acc.expected += r.fee?.amount_expected ?? 0;
+      acc.paid += r.fee?.amount_paid ?? 0;
       return acc;
     },
     { expected: 0, paid: 0 }
   );
+
+  const query = (overrides: Record<string, string | undefined>) => {
+    const params = new URLSearchParams();
+    const merged = { class: classFilter, status: statusFilter, type: typeParam, ...overrides };
+    for (const [k, v] of Object.entries(merged)) if (v) params.set(k, v);
+    const qs = params.toString();
+    return qs ? `/fees?${qs}` : "/fees";
+  };
 
   return (
     <div className="space-y-6">
@@ -74,6 +120,7 @@ export default async function FeesPage({
             href={`/fees/export?${new URLSearchParams({
               ...(classFilter ? { class: classFilter } : {}),
               ...(statusFilter ? { status: statusFilter } : {}),
+              ...(typeFilter ? { type: typeFilter } : {}),
             }).toString()}`}
             className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
           >
@@ -88,32 +135,40 @@ export default async function FeesPage({
         </div>
       </div>
 
+      <FeeTypesManager feeTypes={feeTypes ?? []} />
+      <SetClassFeeForm classes={classes ?? []} feeTypes={feeTypes ?? []} />
+
+      {(feeTypes ?? []).length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+            Fee type:
+          </span>
+          <FilterLink label="All (combined)" href={query({ type: "all" })} active={typeParam === "all"} />
+          {(feeTypes ?? []).map((t) => (
+            <FilterLink
+              key={t.id}
+              label={t.name}
+              href={query({ type: t.id })}
+              active={typeFilter === t.id && typeParam !== "all"}
+            />
+          ))}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <FilterLink label="All classes" href="/fees" active={!classFilter && !statusFilter} />
+        <FilterLink label="All classes" href={query({ class: undefined })} active={!classFilter} />
         {(classes ?? []).map((c) => (
           <FilterLink
             key={c.id}
             label={c.name}
-            href={`/fees?class=${c.id}`}
+            href={query({ class: c.id })}
             active={classFilter === c.id}
           />
         ))}
         <span className="mx-1 text-zinc-300">|</span>
-        <FilterLink
-          label="Owing"
-          href={`/fees?status=owing${classFilter ? `&class=${classFilter}` : ""}`}
-          active={statusFilter === "owing"}
-        />
-        <FilterLink
-          label="Partial"
-          href={`/fees?status=partial${classFilter ? `&class=${classFilter}` : ""}`}
-          active={statusFilter === "partial"}
-        />
-        <FilterLink
-          label="Paid"
-          href={`/fees?status=paid${classFilter ? `&class=${classFilter}` : ""}`}
-          active={statusFilter === "paid"}
-        />
+        <FilterLink label="Owing" href={query({ status: "owing" })} active={statusFilter === "owing"} />
+        <FilterLink label="Partial" href={query({ status: "partial" })} active={statusFilter === "partial"} />
+        <FilterLink label="Paid" href={query({ status: "paid" })} active={statusFilter === "paid"} />
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
@@ -139,13 +194,13 @@ export default async function FeesPage({
                     {student.class_id ? classNameById.get(student.class_id) ?? "—" : "—"}
                   </td>
                   <td className="px-4 py-2 text-right text-zinc-500">
-                    {fee ? naira(Number(fee.amount_expected)) : "—"}
+                    {fee ? naira(fee.amount_expected) : "—"}
                   </td>
                   <td className="px-4 py-2 text-right text-zinc-500">
-                    {fee ? naira(Number(fee.amount_paid)) : "—"}
+                    {fee ? naira(fee.amount_paid) : "—"}
                   </td>
                   <td className="px-4 py-2 text-right font-medium text-zinc-900">
-                    {fee ? naira(Number(fee.balance)) : "—"}
+                    {fee ? naira(fee.balance) : "—"}
                   </td>
                   <td className="px-4 py-2">
                     <span

@@ -43,6 +43,7 @@ async function getOrCreateFeeRecord(
   supabase: Awaited<ReturnType<typeof createClient>>,
   schoolId: string,
   studentId: string,
+  feeTypeId: string,
   session: string,
   term: string
 ) {
@@ -50,6 +51,7 @@ async function getOrCreateFeeRecord(
     .from("fee_records")
     .select("id")
     .eq("student_id", studentId)
+    .eq("fee_type_id", feeTypeId)
     .eq("session", session)
     .eq("term", term)
     .maybeSingle();
@@ -58,7 +60,7 @@ async function getOrCreateFeeRecord(
 
   const { data: created, error } = await supabase
     .from("fee_records")
-    .insert({ school_id: schoolId, student_id: studentId, session, term, amount_expected: 0 })
+    .insert({ school_id: schoolId, student_id: studentId, fee_type_id: feeTypeId, session, term, amount_expected: 0 })
     .select("id")
     .single();
 
@@ -66,7 +68,7 @@ async function getOrCreateFeeRecord(
   return created.id as string;
 }
 
-export async function matchTransferAlert(alertId: string, studentId: string) {
+export async function matchTransferAlert(alertId: string, studentId: string, feeTypeId: string) {
   const { profile, school } = await requireProprietor();
   const supabase = await createClient();
 
@@ -87,6 +89,7 @@ export async function matchTransferAlert(alertId: string, studentId: string) {
     supabase,
     profile.school_id!,
     studentId,
+    feeTypeId,
     session,
     term
   );

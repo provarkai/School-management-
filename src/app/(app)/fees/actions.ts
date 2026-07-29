@@ -18,6 +18,7 @@ async function getOrCreateFeeRecord(
   supabase: Awaited<ReturnType<typeof createClient>>,
   schoolId: string,
   studentId: string,
+  feeTypeId: string,
   session: string,
   term: string
 ) {
@@ -25,6 +26,7 @@ async function getOrCreateFeeRecord(
     .from("fee_records")
     .select("id")
     .eq("student_id", studentId)
+    .eq("fee_type_id", feeTypeId)
     .eq("session", session)
     .eq("term", term)
     .maybeSingle();
@@ -33,7 +35,7 @@ async function getOrCreateFeeRecord(
 
   const { data: created, error } = await supabase
     .from("fee_records")
-    .insert({ school_id: schoolId, student_id: studentId, session, term, amount_expected: 0 })
+    .insert({ school_id: schoolId, student_id: studentId, fee_type_id: feeTypeId, session, term, amount_expected: 0 })
     .select("id")
     .single();
 
@@ -42,13 +44,14 @@ async function getOrCreateFeeRecord(
 }
 
 export async function setFeeAmount(
+  studentId: string,
+  feeTypeId: string,
   _prevState: FeeActionState,
   formData: FormData
 ): Promise<FeeActionState> {
   const { profile, school } = await requireProprietor();
   const supabase = await createClient();
 
-  const studentId = String(formData.get("student_id"));
   const amount = Number(formData.get("amount_expected"));
 
   if (!Number.isFinite(amount) || amount < 0) {
@@ -62,6 +65,7 @@ export async function setFeeAmount(
     supabase,
     profile.school_id!,
     studentId,
+    feeTypeId,
     session,
     term
   );
@@ -78,14 +82,110 @@ export async function setFeeAmount(
   return { success: "Fee amount updated." };
 }
 
+export interface FeeTypeFormState {
+  error?: string;
+}
+
+export async function createFeeType(
+  _prevState: FeeTypeFormState,
+  formData: FormData
+): Promise<FeeTypeFormState> {
+  const { profile } = await requireProprietor();
+  const name = String(formData.get("name") ?? "").trim();
+
+  if (!name) {
+    return { error: "Fee type name is required." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("fee_types").insert({
+    school_id: profile.school_id,
+    name,
+  });
+
+  if (error) {
+    if (error.code === "23505") {
+      return { error: `"${name}" is already in the fee type list.` };
+    }
+    return { error: error.message };
+  }
+
+  revalidatePath("/fees");
+  return {};
+}
+
+export async function deleteFeeType(feeTypeId: string) {
+  await requireProprietor();
+  const supabase = await createClient();
+  const { error } = await supabase.from("fee_types").delete().eq("id", feeTypeId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/fees");
+}
+
+export interface BulkSetClassFeeState {
+  error?: string;
+  success?: string;
+}
+
+export async function setClassFeeAmount(
+  _prevState: BulkSetClassFeeState,
+  formData: FormData
+): Promise<BulkSetClassFeeState> {
+  const { profile, school } = await requireProprietor();
+  const supabase = await createClient();
+
+  const classId = String(formData.get("class_id") ?? "");
+  const feeTypeId = String(formData.get("fee_type_id") ?? "");
+  const amount = Number(formData.get("amount_expected"));
+
+  if (!classId || !feeTypeId) {
+    return { error: "Choose a class and a fee type." };
+  }
+  if (!Number.isFinite(amount) || amount < 0) {
+    return { error: "Enter a valid amount." };
+  }
+
+  const session = school?.current_session ?? "";
+  const term = school?.current_term ?? "1";
+
+  const { data: students, error: studentsError } = await supabase
+    .from("students")
+    .select("id")
+    .eq("class_id", classId)
+    .eq("status", "active");
+
+  if (studentsError) return { error: studentsError.message };
+  if (!students || students.length === 0) {
+    return { error: "No active students in that class." };
+  }
+
+  const { error } = await supabase.from("fee_records").upsert(
+    students.map((s) => ({
+      school_id: profile.school_id,
+      student_id: s.id,
+      fee_type_id: feeTypeId,
+      session,
+      term,
+      amount_expected: amount,
+    })),
+    { onConflict: "student_id,session,term,fee_type_id" }
+  );
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/fees");
+  return { success: `Set for ${students.length} student(s) in that class.` };
+}
+
 export async function recordPayment(
+  studentId: string,
+  feeTypeId: string,
   _prevState: FeeActionState,
   formData: FormData
 ): Promise<FeeActionState> {
   const { profile, school } = await requireProprietor();
   const supabase = await createClient();
 
-  const studentId = String(formData.get("student_id"));
   const amount = Number(formData.get("amount"));
   const paymentDate = String(formData.get("payment_date") ?? "") || undefined;
   const method = String(formData.get("method") ?? "cash");
@@ -102,6 +202,7 @@ export async function recordPayment(
     supabase,
     profile.school_id!,
     studentId,
+    feeTypeId,
     session,
     term
   );
@@ -145,36 +246,42 @@ export async function sendFeeReminder(
   const session = school?.current_session ?? "";
   const term = (school?.current_term ?? "1") as Term;
 
-  const { data: fee } = await supabase
+  const { data: fees } = await supabase
     .from("fee_summary")
-    .select("fee_record_id, balance")
+    .select("fee_record_id, fee_type_name, balance")
     .eq("student_id", studentId)
     .eq("session", session)
-    .eq("term", term)
-    .maybeSingle();
+    .eq("term", term);
 
-  const balance = Number(fee?.balance ?? 0);
-  if (!fee || balance <= 0) {
+  const owing = (fees ?? []).filter((f) => Number(f.balance) > 0);
+  if (owing.length === 0) {
     return { error: "This student has no outstanding balance." };
   }
 
-  const payLink = await buildPaymentLink({
-    schoolId: profile.school_id!,
-    feeRecordId: fee.fee_record_id,
-    studentId,
-    amountNaira: balance,
-    email: student.parent_email,
-    initiatedBy: profile.id,
-  });
+  const lines: string[] = [];
+  let total = 0;
+  for (const f of owing) {
+    const balance = Number(f.balance);
+    total += balance;
+    const payLink = await buildPaymentLink({
+      schoolId: profile.school_id!,
+      feeRecordId: f.fee_record_id,
+      studentId,
+      amountNaira: balance,
+      email: student.parent_email,
+      initiatedBy: profile.id,
+    });
+    lines.push(`${f.fee_type_name}: ${naira(balance)}${payLink ? ` (Pay: ${payLink})` : ""}`);
+  }
 
   const message =
     feeReminderTemplate({
       parentName: student.parent_name || "Parent",
       studentName: student.full_name,
-      balance: naira(balance),
+      balance: naira(total),
       termLabel: TERM_LABELS[term],
       schoolName: school?.name ?? "the school",
-    }) + (payLink ? ` Pay online: ${payLink}` : "");
+    }) + ` Breakdown — ${lines.join("; ")}`;
 
   const result = await sendReminderMessage(student.parent_phone, message);
 
@@ -224,6 +331,7 @@ export interface PaymentLinkState {
 
 export async function generatePaymentLink(
   studentId: string,
+  feeTypeId: string,
   _prevState: PaymentLinkState,
   _formData: FormData
 ): Promise<PaymentLinkState> {
@@ -243,13 +351,14 @@ export async function generatePaymentLink(
     .from("fee_summary")
     .select("fee_record_id, balance")
     .eq("student_id", studentId)
+    .eq("fee_type_id", feeTypeId)
     .eq("session", session)
     .eq("term", term)
     .maybeSingle();
 
   const balance = Number(fee?.balance ?? 0);
   if (!fee || balance <= 0) {
-    return { error: "This student has no outstanding balance." };
+    return { error: "No outstanding balance for this fee type." };
   }
 
   const headerList = await headers();

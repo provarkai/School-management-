@@ -42,7 +42,12 @@ export async function GET(request: Request) {
       .eq("term", term)
       .neq("status", "paid");
 
-    const owingStudentIds = (fees ?? []).filter((f) => Number(f.balance) > 0).map((f) => f.student_id);
+    const balanceByStudent = new Map<string, number>();
+    for (const f of fees ?? []) {
+      if (Number(f.balance) <= 0) continue;
+      balanceByStudent.set(f.student_id, (balanceByStudent.get(f.student_id) ?? 0) + Number(f.balance));
+    }
+    const owingStudentIds = Array.from(balanceByStudent.keys());
     if (owingStudentIds.length === 0) continue;
 
     const { data: students } = await supabase
@@ -50,8 +55,6 @@ export async function GET(request: Request) {
       .select("id, full_name, parent_name, parent_phone")
       .in("id", owingStudentIds)
       .eq("status", "active");
-
-    const balanceByStudent = new Map((fees ?? []).map((f) => [f.student_id, Number(f.balance)]));
 
     for (const student of students ?? []) {
       if (!student.parent_phone) {

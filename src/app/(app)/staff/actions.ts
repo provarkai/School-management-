@@ -10,7 +10,7 @@ export interface AddTeacherState {
   tempPassword?: string;
 }
 
-export async function addTeacher(
+export async function addStaffMember(
   _prevState: AddTeacherState,
   formData: FormData
 ): Promise<AddTeacherState> {
@@ -19,7 +19,9 @@ export async function addTeacher(
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const phone = String(formData.get("phone") ?? "").trim();
+  const role = String(formData.get("role") ?? "teacher") === "staff" ? "staff" : "teacher";
   const subject = String(formData.get("subject") ?? "").trim();
+  const jobTitle = String(formData.get("job_title") ?? "").trim();
   const campusId = String(formData.get("campus_id") ?? "").trim() || null;
 
   if (!name || !email) {
@@ -45,10 +47,11 @@ export async function addTeacher(
     .from("app_users")
     .update({
       school_id: profile.school_id,
-      role: "teacher",
+      role,
       name,
       phone: phone || null,
-      subject: subject || null,
+      subject: role === "teacher" ? subject || null : null,
+      job_title: role === "staff" ? jobTitle || null : null,
       campus_id: campusId,
     })
     .eq("id", created.user.id);
@@ -68,6 +71,18 @@ export async function updateTeacherSubject(formData: FormData) {
 
   const supabase = await createClient();
   const { error } = await supabase.from("app_users").update({ subject }).eq("id", teacherId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/staff");
+}
+
+export async function updateStaffJobTitle(formData: FormData) {
+  await requireProprietor();
+  const staffId = String(formData.get("staff_id"));
+  const jobTitle = String(formData.get("job_title") ?? "").trim() || null;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("app_users").update({ job_title: jobTitle }).eq("id", staffId);
 
   if (error) throw new Error(error.message);
   revalidatePath("/staff");

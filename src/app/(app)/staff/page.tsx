@@ -3,6 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 import { AddTeacherForm } from "./AddTeacherForm";
 import { TeacherSubjectSelect } from "./TeacherSubjectSelect";
 import { TeacherCampusSelect } from "./TeacherCampusSelect";
+import { StaffJobTitleInput } from "./StaffJobTitleInput";
+
+const ROLE_LABELS: Record<string, string> = {
+  proprietor: "Proprietor",
+  teacher: "Teacher",
+  staff: "Non-teaching staff",
+};
 
 export default async function StaffPage() {
   const { profile } = await requireProprietor();
@@ -11,7 +18,7 @@ export default async function StaffPage() {
   const [{ data: staff }, { data: subjectRows }, { data: campuses }] = await Promise.all([
     supabase
       .from("app_users")
-      .select("id, name, email, phone, role, subject, campus_id")
+      .select("id, name, email, phone, role, subject, job_title, campus_id")
       .order("name"),
     supabase.from("subjects").select("name").eq("school_id", profile.school_id ?? "").order("name"),
     supabase
@@ -35,8 +42,8 @@ export default async function StaffPage() {
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Name</th>
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Email</th>
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Phone</th>
-              <th className="px-4 py-2 text-left font-medium text-zinc-500">Role</th>
-              <th className="px-4 py-2 text-left font-medium text-zinc-500">Subject</th>
+              <th className="px-4 py-2 text-left font-medium text-zinc-500">Type</th>
+              <th className="px-4 py-2 text-left font-medium text-zinc-500">Subject / Job title</th>
               {(campuses ?? []).length > 0 && (
                 <th className="px-4 py-2 text-left font-medium text-zinc-500">Campus</th>
               )}
@@ -48,7 +55,9 @@ export default async function StaffPage() {
                 <td className="px-4 py-2 text-zinc-900">{person.name}</td>
                 <td className="px-4 py-2 text-zinc-500">{person.email}</td>
                 <td className="px-4 py-2 text-zinc-500">{person.phone ?? "—"}</td>
-                <td className="px-4 py-2 capitalize text-zinc-500">{person.role}</td>
+                <td className="px-4 py-2 text-zinc-500">
+                  {ROLE_LABELS[person.role] ?? person.role}
+                </td>
                 <td className="px-4 py-2">
                   {person.role === "teacher" ? (
                     <TeacherSubjectSelect
@@ -56,13 +65,15 @@ export default async function StaffPage() {
                       subject={person.subject}
                       subjects={subjects}
                     />
+                  ) : person.role === "staff" ? (
+                    <StaffJobTitleInput staffId={person.id} jobTitle={person.job_title} />
                   ) : (
                     "—"
                   )}
                 </td>
                 {(campuses ?? []).length > 0 && (
                   <td className="px-4 py-2">
-                    {person.role === "teacher" ? (
+                    {person.role === "teacher" || person.role === "staff" ? (
                       <TeacherCampusSelect
                         teacherId={person.id}
                         campusId={person.campus_id}

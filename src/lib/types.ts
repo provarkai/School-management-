@@ -1,4 +1,5 @@
-export type Role = "proprietor" | "teacher";
+export type Role = "proprietor" | "teacher" | "staff";
+export type NoticeAudience = "all" | "teachers" | "staff";
 export type Term = "1" | "2" | "3";
 export type StudentStatus = "active" | "withdrawn";
 export type AttendanceStatus = "present" | "absent" | "late";
@@ -24,7 +25,25 @@ export interface AppUser {
   phone: string | null;
   role: Role;
   subject: string | null;
+  job_title: string | null;
   campus_id: string | null;
+  created_at: string;
+}
+
+export interface StaffNotice {
+  id: string;
+  school_id: string;
+  title: string;
+  body: string;
+  audience: NoticeAudience;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface FeeType {
+  id: string;
+  school_id: string;
+  name: string;
   created_at: string;
 }
 
@@ -75,6 +94,7 @@ export interface FeeRecord {
   student_id: string;
   session: string;
   term: Term;
+  fee_type_id: string;
   amount_expected: number;
   created_at: string;
   updated_at: string;
@@ -86,6 +106,8 @@ export interface FeeSummary {
   student_id: string;
   session: string;
   term: Term;
+  fee_type_id: string;
+  fee_type_name: string;
   amount_expected: number;
   amount_paid: number;
   balance: number;

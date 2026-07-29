@@ -11,7 +11,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", roles: ["proprietor", "teacher"] },
+  { href: "/dashboard", label: "Dashboard", roles: ["proprietor", "teacher", "staff"] },
   { href: "/students", label: "Students", roles: ["proprietor", "teacher"] },
   { href: "/campuses", label: "Campuses", roles: ["proprietor"] },
   { href: "/classes", label: "Classes", roles: ["proprietor"] },
@@ -21,8 +21,10 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/timetable", label: "Timetable", roles: ["proprietor", "teacher"] },
   { href: "/subjects", label: "Subjects", roles: ["proprietor"] },
   { href: "/reminders", label: "Reminders", roles: ["proprietor"] },
+  { href: "/notices", label: "Notices", roles: ["proprietor", "teacher", "staff"] },
   { href: "/assistant", label: "AI Assistant", roles: ["proprietor", "teacher"] },
   { href: "/staff", label: "Staff", roles: ["proprietor"] },
+  { href: "/profile", label: "My Profile", roles: ["proprietor", "teacher", "staff"] },
 ];
 
 export function NavLinks({ role }: { role: Role }) {
