@@ -47,6 +47,16 @@ select '00000000-0000-0000-0000-000000000001', id, 20000, current_date - 5, 'cas
 from public.fee_records where student_id = '00000000-0000-0000-0000-000000000102' and term = '2'
 on conflict do nothing;
 
+insert into public.academic_calendar_events (school_id, title, description, event_type, start_date, end_date)
+values
+  ('00000000-0000-0000-0000-000000000001', 'PTA Meeting', 'General meeting for all parents in the school hall.', 'pta_meeting', current_date + 12, null),
+  ('00000000-0000-0000-0000-000000000001', 'Mid-term Break', null, 'holiday', current_date + 21, current_date + 25),
+  ('00000000-0000-0000-0000-000000000001', 'Second Term Examination', 'Examinations begin for all classes.', 'exam', current_date + 40, current_date + 47),
+  ('00000000-0000-0000-0000-000000000001', 'Inter-house Sports', 'Annual sports competition.', 'event', current_date + 55, null),
+  ('00000000-0000-0000-0000-000000000001', 'Second Term Ends', null, 'term_end', current_date + 60, null),
+  ('00000000-0000-0000-0000-000000000001', 'Third Term Begins', null, 'term_start', current_date + 75, null)
+on conflict do nothing;
+
 -- ---------------------------------------------------------------------------
 -- After signing up through the app with e.g. admin@brightfuture.test, run:
 --
