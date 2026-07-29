@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { Role } from "@/lib/types";
 
 interface NavItem {
@@ -25,26 +25,49 @@ const NAV_ITEMS: NavItem[] = [
 
 export function NavLinks({ role }: { role: Role }) {
   const pathname = usePathname();
+  const router = useRouter();
   const items = NAV_ITEMS.filter((item) => item.roles.includes(role));
 
+  const current = items.find(
+    (item) => pathname === item.href || pathname.startsWith(item.href + "/")
+  );
+
   return (
-    <nav className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-col md:overflow-visible md:px-0 md:pb-0">
-      {items.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(item.href + "/");
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition md:rounded-md md:px-3 md:py-2 ${
-              active
-                ? "bg-zinc-900 text-white"
-                : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 hover:text-zinc-900 md:bg-transparent md:hover:bg-zinc-100"
-            }`}
-          >
+    <nav>
+      {/* Mobile: a dropdown to jump between pages */}
+      <select
+        aria-label="Go to page"
+        value={current?.href ?? ""}
+        onChange={(e) => router.push(e.target.value)}
+        className="block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 md:hidden"
+      >
+        {!current && <option value="">Menu</option>}
+        {items.map((item) => (
+          <option key={item.href} value={item.href}>
             {item.label}
-          </Link>
-        );
-      })}
+          </option>
+        ))}
+      </select>
+
+      {/* Desktop: full vertical sidebar list */}
+      <div className="hidden md:flex md:flex-col md:gap-1">
+        {items.map((item) => {
+          const active = pathname === item.href || pathname.startsWith(item.href + "/");
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                active
+                  ? "bg-zinc-900 text-white"
+                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }
