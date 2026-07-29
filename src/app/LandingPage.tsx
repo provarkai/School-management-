@@ -20,81 +20,81 @@ const FEATURE_COLORS = [
 
 const FEATURES: { title: string; description: string; mark: string }[] = [
   {
-    mark: "₦",
+    mark: "💰",
     title: "Fees & scholarships",
     description:
       "Multiple fee types per term, class-wide bulk pricing, discounts/scholarships, and a full payment history per student.",
   },
   {
-    mark: "$",
+    mark: "💳",
     title: "Online payments",
     description:
       "Parents pay a balance online via Paystack — a link you send or a Pay Now button in the parent portal, reconciled automatically.",
   },
   {
-    mark: "SMS",
+    mark: "💬",
     title: "SMS & WhatsApp reminders",
     description: "Automated weekly balance reminders and one-off announcements, sent straight to parents' phones.",
   },
   {
-    mark: "Att",
+    mark: "✅",
     title: "Attendance",
     description: "Mark daily attendance per class in seconds, with full history and exportable reports.",
   },
   {
-    mark: "A+",
+    mark: "🎓",
     title: "Report cards & GPA",
     description:
       "CA/exam score entry, auto-computed grades and class ranking, GPA tracking, and printable PDF report cards.",
   },
   {
-    mark: "Par",
+    mark: "👪",
     title: "Parent portal",
     description:
       "A dedicated login for parents to see fees, attendance, results, assignments, and upcoming events for each child.",
   },
   {
-    mark: "Tt",
+    mark: "🕒",
     title: "Timetabling",
     description: "Build each class's weekly period grid with automatic double-booking detection for teachers.",
   },
   {
-    mark: "₦",
+    mark: "🧾",
     title: "Payroll",
     description: "Set staff salaries, run monthly payroll with per-staff deductions, and keep a paid history.",
   },
   {
-    mark: "!",
+    mark: "📋",
     title: "Behavior records",
     description: "Log merit and demerit incidents per student, with severity and action taken.",
   },
   {
-    mark: "Cal",
+    mark: "📅",
     title: "Academic calendar",
     description: "Term dates, holidays, exams, and PTA meetings — visible to staff and parents alike.",
   },
   {
-    mark: "Doc",
+    mark: "📄",
     title: "Document management",
     description: "Securely upload and store birth certificates, medical records, and other student documents.",
   },
   {
-    mark: "Hw",
+    mark: "📝",
     title: "Assignments & homework",
     description: "Teachers post class assignments with due dates; parents see what's due for their child.",
   },
   {
-    mark: "Rpt",
+    mark: "📊",
     title: "Analytics & reports",
     description: "Trends across every term on record, plus a report builder to export exactly the data you need.",
   },
   {
-    mark: "Multi",
+    mark: "🏫",
     title: "Multi-campus support",
     description: "Run several campuses under one account, each with its own classes, staff, and filtered views.",
   },
   {
-    mark: "AI",
+    mark: "🤖",
     title: "AI Assistant",
     description:
       "Ask questions about your students, fees, attendance and results in plain language, answered from your own records.",
@@ -207,7 +207,7 @@ export function LandingPage() {
                   className="rounded-xl border border-zinc-200 p-5 transition hover:-translate-y-0.5 hover:shadow-md"
                 >
                   <span
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-bold ${color.bg} ${color.text}`}
+                    className={`flex h-10 w-10 items-center justify-center rounded-lg text-lg ${color.bg}`}
                   >
                     {f.mark}
                   </span>
