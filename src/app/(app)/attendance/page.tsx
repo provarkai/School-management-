@@ -9,14 +9,14 @@ export default async function AttendancePage({
 }: {
   searchParams: Promise<{ class?: string; date?: string }>;
 }) {
-  const { profile } = await requireUser();
+  const { profile, isManager } = await requireUser();
   const { class: classParam, date: dateParam } = await searchParams;
   const supabase = await createClient();
 
   const date = dateParam || new Date().toISOString().slice(0, 10);
 
   let classesQuery = supabase.from("classes").select("id, name").order("name");
-  if (profile.role === "teacher") {
+  if (profile.role === "teacher" && !isManager) {
     classesQuery = classesQuery.eq("teacher_id", profile.id);
   }
   const { data: classes } = await classesQuery;
@@ -28,7 +28,7 @@ export default async function AttendancePage({
       <div className="space-y-4">
         <h1 className="text-2xl font-bold text-zinc-900">Attendance</h1>
         <p className="text-sm text-zinc-500">
-          {profile.role === "teacher"
+          {profile.role === "teacher" && !isManager
             ? "You have not been assigned a class yet — ask the proprietor to assign you one."
             : "No classes have been created yet."}
         </p>
@@ -57,7 +57,7 @@ export default async function AttendancePage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-zinc-900">Attendance</h1>
-        {profile.role === "proprietor" && (
+        {isManager && (
           <Link
             href="/attendance/history"
             className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"

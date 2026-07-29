@@ -7,12 +7,12 @@ export default async function ReportCardsPage({
 }: {
   searchParams: Promise<{ class?: string }>;
 }) {
-  const { profile } = await requireUser();
+  const { profile, isManager } = await requireUser();
   const { class: classParam } = await searchParams;
   const supabase = await createClient();
 
   let classesQuery = supabase.from("classes").select("id, name").order("name");
-  if (profile.role === "teacher") {
+  if (profile.role === "teacher" && !isManager) {
     classesQuery = classesQuery.eq("teacher_id", profile.id);
   }
   const { data: classes } = await classesQuery;

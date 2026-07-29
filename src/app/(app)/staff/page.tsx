@@ -5,6 +5,7 @@ import { AddTeacherForm } from "./AddTeacherForm";
 import { TeacherSubjectSelect } from "./TeacherSubjectSelect";
 import { TeacherCampusSelect } from "./TeacherCampusSelect";
 import { StaffJobTitleInput } from "./StaffJobTitleInput";
+import { SchoolAdminToggle } from "./SchoolAdminToggle";
 import { proprietorTitle } from "@/lib/format";
 import type { Gender } from "@/lib/types";
 
@@ -19,12 +20,13 @@ function roleLabel(role: string, gender: Gender | null): string {
 
 export default async function StaffPage() {
   const { profile } = await requireProprietor();
+  const isLiteralProprietor = profile.role === "proprietor";
   const supabase = await createClient();
 
   const [{ data: staff }, { data: subjectRows }, { data: campuses }] = await Promise.all([
     supabase
       .from("app_users")
-      .select("id, name, email, phone, role, subject, job_title, campus_id, photo_url, gender")
+      .select("id, name, email, phone, role, subject, job_title, campus_id, photo_url, gender, is_school_admin")
       .order("name"),
     supabase.from("subjects").select("name").eq("school_id", profile.school_id ?? "").order("name"),
     supabase
@@ -53,6 +55,9 @@ export default async function StaffPage() {
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Subject / Job title</th>
               {(campuses ?? []).length > 0 && (
                 <th className="px-4 py-2 text-left font-medium text-zinc-500">Campus</th>
+              )}
+              {isLiteralProprietor && (
+                <th className="px-4 py-2 text-left font-medium text-zinc-500">Admin</th>
               )}
             </tr>
           </thead>
@@ -95,6 +100,13 @@ export default async function StaffPage() {
                       />
                     ) : (
                       "—"
+                    )}
+                  </td>
+                )}
+                {isLiteralProprietor && (
+                  <td className="px-4 py-2">
+                    {person.role !== "proprietor" && (
+                      <SchoolAdminToggle staffId={person.id} isAdmin={person.is_school_admin} />
                     )}
                   </td>
                 )}

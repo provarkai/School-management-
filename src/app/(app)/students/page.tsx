@@ -10,7 +10,7 @@ export default async function StudentsPage({
 }: {
   searchParams: Promise<{ class?: string; campus?: string }>;
 }) {
-  const { profile } = await requireUser();
+  const { profile, isManager } = await requireUser();
   const { class: classFilter, campus: campusFilter } = await searchParams;
   const supabase = await createClient();
 
@@ -30,7 +30,7 @@ export default async function StudentsPage({
         if (classFilter) query = query.eq("class_id", classFilter);
         return query;
       })(),
-      profile.role === "proprietor"
+      isManager
         ? supabase.from("students").select("admission_date, status")
         : Promise.resolve({ data: null }),
     ]);
@@ -49,7 +49,7 @@ export default async function StudentsPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-zinc-900">Students</h1>
-        {profile.role === "proprietor" && (
+        {isManager && (
           <div className="flex gap-2">
             <ExportLinks
               baseUrl="/students/export"
@@ -77,15 +77,15 @@ export default async function StudentsPage({
         )}
       </div>
 
-      {profile.role === "proprietor" && enrollmentRows && (
+      {isManager && enrollmentRows && (
         <EnrollmentStats students={enrollmentRows} />
       )}
 
-      {profile.role === "proprietor" && (campuses ?? []).length > 0 && (
+      {isManager && (campuses ?? []).length > 0 && (
         <CampusFilter campuses={campuses ?? []} current={campusFilter ?? ""} />
       )}
 
-      {profile.role === "proprietor" && (
+      {isManager && (
         <div className="flex flex-wrap gap-2 text-sm">
           <Link
             href="/students"

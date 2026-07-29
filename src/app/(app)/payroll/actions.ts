@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireProprietor } from "@/lib/current-user";
+import { requireLiteralProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 
 export interface SalaryFormState {
@@ -15,7 +15,7 @@ export async function setStaffSalary(
   _prevState: SalaryFormState,
   formData: FormData
 ): Promise<SalaryFormState> {
-  const { profile } = await requireProprietor();
+  const { profile } = await requireLiteralProprietor();
   const supabase = await createClient();
 
   const amount = Number(formData.get("monthly_salary"));
@@ -44,7 +44,7 @@ export async function generatePayrollRun(
   _prevState: PayrollRunFormState,
   formData: FormData
 ): Promise<PayrollRunFormState> {
-  const { profile } = await requireProprietor();
+  const { profile } = await requireLiteralProprietor();
   const supabase = await createClient();
 
   const period = String(formData.get("period") ?? "").trim();
@@ -106,7 +106,7 @@ export async function setPayrollEntryDeduction(
   _prevState: DeductionFormState,
   formData: FormData
 ): Promise<DeductionFormState> {
-  await requireProprietor();
+  await requireLiteralProprietor();
   const supabase = await createClient();
 
   const { data: run } = await supabase.from("payroll_runs").select("status").eq("id", runId).single();
@@ -133,7 +133,7 @@ export async function setPayrollEntryDeduction(
 }
 
 export async function markPayrollRunPaid(runId: string) {
-  await requireProprietor();
+  await requireLiteralProprietor();
   const supabase = await createClient();
   const { error } = await supabase
     .from("payroll_runs")

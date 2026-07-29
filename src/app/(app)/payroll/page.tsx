@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireProprietor } from "@/lib/current-user";
+import { requireLiteralProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { SalaryForm } from "./SalaryForm";
 import { GeneratePayrollForm } from "./GeneratePayrollForm";
@@ -16,7 +16,7 @@ function roleLabel(role: string, gender: Gender | null): string {
 }
 
 export default async function PayrollPage() {
-  const { profile } = await requireProprietor();
+  const { profile } = await requireLiteralProprietor();
   const supabase = await createClient();
 
   const [{ data: staff }, { data: salaries }, { data: runs }] = await Promise.all([

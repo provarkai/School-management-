@@ -10,11 +10,11 @@ const AUDIENCE_LABELS: Record<string, string> = {
 };
 
 export default async function NoticesPage() {
-  const { profile } = await requireUser();
+  const { profile, isManager } = await requireUser();
   const supabase = await createClient();
 
   const relevantAudiences =
-    profile.role === "proprietor"
+    isManager
       ? ["all", "teachers", "staff"]
       : profile.role === "teacher"
         ? ["all", "teachers"]
@@ -33,7 +33,7 @@ export default async function NoticesPage() {
         <p className="text-sm text-zinc-500">Announcements from the school office to staff.</p>
       </div>
 
-      {profile.role === "proprietor" && (
+      {isManager && (
         <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="mb-3 text-sm font-semibold text-zinc-900">Post a notice</h2>
           <NewNoticeForm />
@@ -56,7 +56,7 @@ export default async function NoticesPage() {
                   })}
                 </p>
               </div>
-              {profile.role === "proprietor" && <DeleteNoticeButton noticeId={n.id} />}
+              {isManager && <DeleteNoticeButton noticeId={n.id} />}
             </div>
           </div>
         ))}

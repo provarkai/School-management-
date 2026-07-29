@@ -15,7 +15,7 @@ export default async function TimetablePage({
 }: {
   searchParams: Promise<{ class?: string }>;
 }) {
-  const { profile, school } = await requireUser();
+  const { profile, school, isManager } = await requireUser();
   const { class: classParam } = await searchParams;
   const supabase = await createClient();
 
@@ -67,7 +67,7 @@ export default async function TimetablePage({
         </p>
       </div>
 
-      {profile.role === "proprietor" && <PeriodSlotsManager periodSlots={periodSlots ?? []} />}
+      {isManager && <PeriodSlotsManager periodSlots={periodSlots ?? []} />}
 
       {(classes ?? []).length === 0 ? (
         <p className="rounded-lg border border-zinc-200 bg-white p-5 text-sm text-zinc-400 shadow-sm">
@@ -142,7 +142,7 @@ export default async function TimetablePage({
 
                       return (
                         <td key={d} className="min-w-[9rem] px-3 py-2 align-top">
-                          {profile.role === "proprietor" ? (
+                          {isManager ? (
                             <TimetableCell
                               classId={selectedClassId}
                               periodSlotId={p.id}

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "node:crypto";
-import { requireProprietor } from "@/lib/current-user";
+import { requireProprietor, requireLiteralProprietor } from "@/lib/current-user";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 export interface AddTeacherState {
@@ -98,6 +98,18 @@ export async function updateTeacherCampus(formData: FormData) {
     .from("app_users")
     .update({ campus_id: campusId })
     .eq("id", teacherId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/staff");
+}
+
+export async function setSchoolAdmin(staffId: string, isAdmin: boolean) {
+  await requireLiteralProprietor();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("app_users")
+    .update({ is_school_admin: isAdmin })
+    .eq("id", staffId);
 
   if (error) throw new Error(error.message);
   revalidatePath("/staff");

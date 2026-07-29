@@ -17,7 +17,7 @@ export default async function StudentDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { profile } = await requireUser();
+  const { profile, isManager } = await requireUser();
   const supabase = await createClient();
 
   const { data: student } = await supabase
@@ -110,10 +110,10 @@ export default async function StudentDetailPage({
         studentId={student.id}
         fieldDefs={fieldDefs ?? []}
         values={fieldValueByDefId}
-        editable={profile.role === "proprietor"}
+        editable={isManager}
       />
 
-      {profile.role === "proprietor" && (
+      {isManager && (
         <>
           <ShareLinkButton url={shareUrl} />
           <ParentEmailForm studentId={student.id} currentEmail={student.parent_email} />
@@ -121,7 +121,7 @@ export default async function StudentDetailPage({
       )}
 
       <div className="flex flex-wrap gap-3">
-        {profile.role === "proprietor" && (
+        {isManager && (
           <Link
             href={`/fees/student/${student.id}`}
             className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
@@ -160,7 +160,7 @@ export default async function StudentDetailPage({
         <BehaviorRecord
           studentId={student.id}
           incidents={incidents ?? []}
-          canDelete={profile.role === "proprietor"}
+          canDelete={isManager}
         />
       </div>
 
@@ -170,7 +170,7 @@ export default async function StudentDetailPage({
         <DocumentsList
           studentId={student.id}
           documents={documents}
-          canDelete={profile.role === "proprietor"}
+          canDelete={isManager}
         />
       </div>
     </div>

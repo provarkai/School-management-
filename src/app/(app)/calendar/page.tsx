@@ -14,7 +14,7 @@ const TYPE_STYLE: Record<CalendarEventType, string> = {
 };
 
 export default async function CalendarPage() {
-  const { profile } = await requireUser();
+  const { profile, isManager } = await requireUser();
   const supabase = await createClient();
 
   const today = new Date().toISOString().slice(0, 10);
@@ -37,21 +37,21 @@ export default async function CalendarPage() {
         </p>
       </div>
 
-      {profile.role === "proprietor" && <CalendarEventForm />}
+      {isManager && <CalendarEventForm />}
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">Upcoming</h2>
         <EventList
           events={upcoming}
           emptyMessage="No upcoming events."
-          canDelete={profile.role === "proprietor"}
+          canDelete={isManager}
         />
       </section>
 
       {past.length > 0 && (
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">Past</h2>
-          <EventList events={past} emptyMessage="" canDelete={profile.role === "proprietor"} />
+          <EventList events={past} emptyMessage="" canDelete={isManager} />
         </section>
       )}
     </div>

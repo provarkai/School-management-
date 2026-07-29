@@ -37,6 +37,7 @@ export interface AppUser {
   campus_id: string | null;
   photo_url: string | null;
   gender: Gender | null;
+  is_school_admin: boolean;
   created_at: string;
 }
 

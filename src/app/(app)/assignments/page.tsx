@@ -8,12 +8,12 @@ export default async function AssignmentsPage({
 }: {
   searchParams: Promise<{ class?: string }>;
 }) {
-  const { profile } = await requireUser();
+  const { profile, isManager } = await requireUser();
   const { class: classParam } = await searchParams;
   const supabase = await createClient();
 
   let classesQuery = supabase.from("classes").select("id, name").order("name");
-  if (profile.role === "teacher") {
+  if (profile.role === "teacher" && !isManager) {
     classesQuery = classesQuery.eq("teacher_id", profile.id);
   }
   const { data: classes } = await classesQuery;
@@ -23,7 +23,7 @@ export default async function AssignmentsPage({
       <div className="space-y-4">
         <h1 className="text-2xl font-bold text-zinc-900">Assignments</h1>
         <p className="text-sm text-zinc-500">
-          {profile.role === "teacher"
+          {profile.role === "teacher" && !isManager
             ? "You have not been assigned a class yet — ask the proprietor to assign you one."
             : "No classes have been created yet."}
         </p>

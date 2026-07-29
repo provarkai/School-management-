@@ -3,13 +3,20 @@ import { Avatar } from "@/components/Avatar";
 import { NavLinks } from "./NavLinks";
 import { signOut } from "./actions";
 import { TERM_LABELS } from "@/lib/types";
+import { proprietorTitle } from "@/lib/format";
 
 export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { profile, school } = await requireUser();
+  const { profile, school, isManager } = await requireUser();
+  const roleDisplay =
+    profile.role === "proprietor"
+      ? proprietorTitle(profile.gender)
+      : profile.is_school_admin
+        ? `${profile.role} · Admin`
+        : profile.role;
 
   return (
     <div className="flex min-h-screen flex-1 flex-col md:flex-row">
@@ -28,10 +35,10 @@ export default async function AppLayout({
             </div>
             <div className="shrink-0 text-right md:hidden">
               <p className="truncate text-xs font-medium text-zinc-700">{profile.name}</p>
-              <p className="text-[11px] capitalize text-zinc-400">{profile.role}</p>
+              <p className="text-[11px] capitalize text-zinc-400">{roleDisplay}</p>
             </div>
           </div>
-          <NavLinks role={profile.role} />
+          <NavLinks role={profile.role} isManager={isManager} />
         </div>
         <div className="mt-3 hidden border-t border-zinc-100 pt-4 md:block">
           <div className="flex items-center gap-2 px-1">
@@ -40,7 +47,7 @@ export default async function AppLayout({
             )}
             <div className="min-w-0">
               <p className="truncate text-sm text-zinc-700">{profile.name}</p>
-              <p className="truncate text-xs capitalize text-zinc-400">{profile.role}</p>
+              <p className="truncate text-xs capitalize text-zinc-400">{roleDisplay}</p>
             </div>
           </div>
           <form action={signOut}>

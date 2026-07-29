@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireProprietor } from "@/lib/current-user";
+import { requireLiteralProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import { DeductionForm } from "./DeductionForm";
@@ -12,7 +12,7 @@ export default async function PayrollRunPage({
   params: Promise<{ runId: string }>;
 }) {
   const { runId } = await params;
-  const { profile } = await requireProprietor();
+  const { profile } = await requireLiteralProprietor();
   const supabase = await createClient();
 
   const { data: run } = await supabase

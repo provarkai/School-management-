@@ -11,7 +11,10 @@ const ROLE_LABELS: Record<string, string> = {
 
 export default async function ProfilePage() {
   const { authId, profile } = await requireUser();
-  const roleLabel = profile.role === "proprietor" ? proprietorTitle(profile.gender) : ROLE_LABELS[profile.role] ?? profile.role;
+  const roleLabel =
+    profile.role === "proprietor"
+      ? proprietorTitle(profile.gender)
+      : `${ROLE_LABELS[profile.role] ?? profile.role}${profile.is_school_admin ? " · Admin" : ""}`;
 
   return (
     <div className="max-w-lg space-y-6">

@@ -11,11 +11,11 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ campus?: string }>;
 }) {
-  const { profile, school } = await requireUser();
+  const { profile, school, isManager } = await requireUser();
   const { campus: campusFilter } = await searchParams;
   const supabase = await createClient();
 
-  if (profile.role === "teacher") {
+  if (profile.role === "teacher" && !isManager) {
     const { data: myClasses } = await supabase
       .from("classes")
       .select("id, name")
@@ -76,7 +76,7 @@ export default async function DashboardPage({
     );
   }
 
-  if (profile.role === "staff") {
+  if (profile.role === "staff" && !isManager) {
     const { data: notices } = await supabase
       .from("staff_notices")
       .select("id, title, body, created_at")
