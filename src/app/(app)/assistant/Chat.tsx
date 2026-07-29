@@ -10,7 +10,7 @@ const SUGGESTIONS = [
   "Draft a reminder for Chidinma Okafor",
 ];
 
-export function Chat() {
+export function Chat({ heightClassName = "h-[70vh]" }: { heightClassName?: string }) {
   const [history, setHistory] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState("");
   const [pending, startTransition] = useTransition();
@@ -34,7 +34,7 @@ export function Chat() {
   }
 
   return (
-    <div className="flex h-[70vh] flex-col rounded-lg border border-zinc-200 bg-white shadow-sm">
+    <div className={`flex ${heightClassName} flex-col rounded-lg border border-zinc-200 bg-white shadow-sm`}>
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {history.length === 0 && (
           <div className="space-y-3">

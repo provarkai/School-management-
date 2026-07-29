@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
+import { Chat } from "../assistant/Chat";
 
 export default async function DashboardPage() {
   const { profile, school } = await requireUser();
@@ -49,6 +50,18 @@ export default async function DashboardPage() {
         <div className="flex flex-wrap gap-3">
           <QuickLink href="/attendance" label="Mark today's attendance" />
           <QuickLink href="/report-cards" label="Enter scores" />
+        </div>
+
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+              AI Assistant
+            </h2>
+            <Link href="/assistant" className="text-sm font-medium text-zinc-600 hover:text-zinc-900">
+              Open full screen →
+            </Link>
+          </div>
+          <Chat heightClassName="h-[420px]" />
         </div>
       </div>
     );
@@ -110,6 +123,18 @@ export default async function DashboardPage() {
           <QuickLink href="/reminders" label="Send bulk reminder" />
           <QuickLink href="/report-cards" label="Generate report cards" />
         </div>
+      </div>
+
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            AI Assistant
+          </h2>
+          <Link href="/assistant" className="text-sm font-medium text-zinc-600 hover:text-zinc-900">
+            Open full screen →
+          </Link>
+        </div>
+        <Chat heightClassName="h-[420px]" />
       </div>
     </div>
   );
