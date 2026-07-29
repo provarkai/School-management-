@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/current-user";
 import { Avatar } from "@/components/Avatar";
 import { NavLinks } from "./NavLinks";
+import { GroupTabs } from "./GroupTabs";
 import { signOut } from "./actions";
 import { TERM_LABELS } from "@/lib/types";
 import { proprietorTitle } from "@/lib/format";
@@ -68,7 +69,10 @@ export default async function AppLayout({
           </button>
         </form>
       </aside>
-      <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-8">{children}</main>
+      <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-8">
+        <GroupTabs role={profile.role} isManager={isManager} />
+        {children}
+      </main>
     </div>
   );
 }
