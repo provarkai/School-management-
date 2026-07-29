@@ -10,7 +10,7 @@ export default async function ScoreEntryPage({
   params: Promise<{ studentId: string }>;
 }) {
   const { studentId } = await params;
-  const { school } = await requireUser();
+  const { profile, school } = await requireUser();
   const supabase = await createClient();
 
   const { data: student } = await supabase
@@ -24,13 +24,21 @@ export default async function ScoreEntryPage({
   const session = school?.current_session ?? "";
   const term = school?.current_term ?? "1";
 
-  const { data: results } = await supabase
-    .from("results")
-    .select("id, subject, ca_score, exam_score, total, grade")
-    .eq("student_id", studentId)
-    .eq("session", session)
-    .eq("term", term)
-    .order("subject");
+  const [{ data: results }, { data: subjectRows }] = await Promise.all([
+    supabase
+      .from("results")
+      .select("id, subject, ca_score, exam_score, total, grade")
+      .eq("student_id", studentId)
+      .eq("session", session)
+      .eq("term", term)
+      .order("subject"),
+    supabase
+      .from("subjects")
+      .select("name")
+      .eq("school_id", profile.school_id ?? "")
+      .order("name"),
+  ]);
+  const subjects = (subjectRows ?? []).map((s) => s.name);
 
   const ranking = student.class_id
     ? (await computeClassRanking(supabase, student.class_id, session, term)).get(studentId) ?? null
@@ -56,10 +64,10 @@ export default async function ScoreEntryPage({
 
       <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-zinc-900">Add / update a subject score</h2>
-        <ScoreForm studentId={studentId} />
+        <ScoreForm studentId={studentId} subjects={subjects} />
       </section>
 
-      <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
+      <section className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-zinc-200 text-sm">
           <thead className="bg-zinc-50">
             <tr>

@@ -146,7 +146,7 @@ export default async function TransfersPage() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
             Recently resolved
           </h2>
-          <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
+          <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
             <table className="min-w-full divide-y divide-zinc-200 text-sm">
               <tbody className="divide-y divide-zinc-100">
                 {(recent ?? []).map((r) => (

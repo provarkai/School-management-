@@ -103,7 +103,7 @@ export default async function AttendanceHistoryPage({
         </button>
       </form>
 
-      <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-zinc-200 text-sm">
           <thead className="bg-zinc-50">
             <tr>
@@ -138,7 +138,7 @@ export default async function AttendanceHistoryPage({
           <summary className="cursor-pointer font-medium text-zinc-700">
             Per-student detail
           </summary>
-          <div className="mt-3 overflow-hidden rounded-md border border-zinc-100">
+          <div className="mt-3 overflow-x-auto rounded-md border border-zinc-100">
             <table className="min-w-full divide-y divide-zinc-100 text-sm">
               <thead className="bg-zinc-50">
                 <tr>

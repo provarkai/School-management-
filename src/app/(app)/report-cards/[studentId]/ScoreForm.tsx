@@ -1,25 +1,31 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { saveScore, deleteScore, type ScoreFormState } from "../actions";
 
 const initialState: ScoreFormState = {};
 
-const COMMON_SUBJECTS = [
-  "Mathematics",
-  "English Language",
-  "Basic Science",
-  "Social Studies",
-  "Civic Education",
-  "Agricultural Science",
-  "Business Studies",
-  "French",
-  "Physical Education",
-  "Creative Arts",
-];
-
-export function ScoreForm({ studentId }: { studentId: string }) {
+export function ScoreForm({
+  studentId,
+  subjects,
+}: {
+  studentId: string;
+  subjects: string[];
+}) {
   const [state, action, pending] = useActionState(saveScore, initialState);
+
+  if (subjects.length === 0) {
+    return (
+      <p className="text-sm text-zinc-500">
+        No subjects set up yet.{" "}
+        <Link href="/subjects" className="font-medium text-zinc-700 underline">
+          Add subjects
+        </Link>{" "}
+        before entering scores.
+      </p>
+    );
+  }
 
   return (
     <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-4 sm:items-end">
@@ -38,17 +44,21 @@ export function ScoreForm({ studentId }: { studentId: string }) {
       </div>
       <label className="text-sm font-medium text-zinc-700">
         Subject
-        <input
+        <select
           name="subject"
-          list="subjects"
           required
+          defaultValue=""
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
-        />
-        <datalist id="subjects">
-          {COMMON_SUBJECTS.map((s) => (
-            <option key={s} value={s} />
+        >
+          <option value="" disabled>
+            Select a subject
+          </option>
+          {subjects.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
           ))}
-        </datalist>
+        </select>
       </label>
       <label className="text-sm font-medium text-zinc-700">
         CA score (/40)

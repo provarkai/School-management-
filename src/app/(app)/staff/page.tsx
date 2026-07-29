@@ -17,7 +17,7 @@ export default async function StaffPage() {
 
       <AddTeacherForm />
 
-      <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-zinc-200 text-sm">
           <thead className="bg-zinc-50">
             <tr>

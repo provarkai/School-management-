@@ -1,8 +1,16 @@
 @import "tailwindcss";
 
+/*
+ * This app is light-themed only (no dark UI has been designed). Forcing
+ * color-scheme: light stops mobile browsers from auto-dark-styling native
+ * form controls (select, date, checkbox) against our hardcoded light
+ * Tailwind palette — without it, a phone in system dark mode renders inputs
+ * with mismatched, hard-to-read native chrome.
+ */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -12,15 +20,26 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer base {
+  select,
+  input,
+  textarea {
+    background-color: #ffffff;
+    color: #18181b;
+  }
+
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2371717a'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    background-size: 1.1em 1.1em;
+    padding-right: 2rem;
+  }
 }
