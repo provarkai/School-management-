@@ -8,6 +8,7 @@ export type FeeStatus = "paid" | "partial" | "owing";
 export type PaymentIntentStatus = "pending" | "success" | "failed";
 export type BehaviorCategory = "merit" | "demerit";
 export type BehaviorSeverity = "minor" | "major" | "severe";
+export type CalendarEventType = "term_start" | "term_end" | "holiday" | "exam" | "pta_meeting" | "event";
 
 export interface School {
   id: string;
@@ -172,6 +173,27 @@ export interface BehaviorIncident {
   recorded_by: string | null;
   created_at: string;
 }
+
+export interface CalendarEvent {
+  id: string;
+  school_id: string;
+  title: string;
+  description: string | null;
+  event_type: CalendarEventType;
+  start_date: string;
+  end_date: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export const CALENDAR_EVENT_TYPE_LABELS: Record<CalendarEventType, string> = {
+  term_start: "Term start",
+  term_end: "Term end",
+  holiday: "Holiday",
+  exam: "Exam",
+  pta_meeting: "PTA meeting",
+  event: "Event",
+};
 
 export interface PaymentIntent {
   id: string;

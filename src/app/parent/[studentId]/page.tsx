@@ -3,7 +3,7 @@ import Link from "next/link";
 import { requireParent } from "@/lib/current-parent";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
-import { TERM_LABELS, type Term } from "@/lib/types";
+import { CALENDAR_EVENT_TYPE_LABELS, TERM_LABELS, type Term } from "@/lib/types";
 import { PayNowButton } from "./PayNowButton";
 
 export default async function ParentChildPage({
@@ -28,7 +28,9 @@ export default async function ParentChildPage({
   const session = school?.current_session ?? "";
   const term = (school?.current_term ?? "1") as Term;
 
-  const [{ data: fees }, { data: attendance }, { data: results }] = await Promise.all([
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [{ data: fees }, { data: attendance }, { data: results }, { data: events }] = await Promise.all([
     supabase
       .from("fee_summary")
       .select("fee_type_id, fee_type_name, amount_expected, amount_paid, balance, status")
@@ -47,6 +49,13 @@ export default async function ParentChildPage({
       .eq("session", session)
       .eq("term", term)
       .order("subject"),
+    supabase
+      .from("academic_calendar_events")
+      .select("id, title, event_type, start_date, end_date")
+      .eq("school_id", child.school_id)
+      .gte("start_date", today)
+      .order("start_date")
+      .limit(5),
   ]);
 
   const attendanceRows = attendance ?? [];
@@ -148,6 +157,23 @@ export default async function ParentChildPage({
           </table>
         )}
       </section>
+
+      {(events ?? []).length > 0 && (
+        <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold text-zinc-900">Upcoming school events</h2>
+          <ul className="space-y-2">
+            {(events ?? []).map((event) => (
+              <li key={event.id} className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="text-zinc-900">{event.title}</span>
+                <span className="shrink-0 text-xs text-zinc-400">
+                  {CALENDAR_EVENT_TYPE_LABELS[event.event_type as keyof typeof CALENDAR_EVENT_TYPE_LABELS]} ·{" "}
+                  {event.start_date}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }
