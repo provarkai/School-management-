@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { CampusFilter } from "../CampusFilter";
+import { ExportLinks } from "@/components/ExportLinks";
+import { EnrollmentStats } from "./EnrollmentStats";
 
 export default async function StudentsPage({
   searchParams,
@@ -12,22 +14,26 @@ export default async function StudentsPage({
   const { class: classFilter, campus: campusFilter } = await searchParams;
   const supabase = await createClient();
 
-  const [{ data: classes }, { data: campuses }, studentsQuery] = await Promise.all([
-    supabase.from("classes").select("id, name, campus_id").order("name"),
-    supabase
-      .from("campuses")
-      .select("id, name")
-      .eq("school_id", profile.school_id ?? "")
-      .order("name"),
-    (async () => {
-      let query = supabase
-        .from("students")
-        .select("id, full_name, class_id, parent_name, parent_phone, status")
-        .order("full_name");
-      if (classFilter) query = query.eq("class_id", classFilter);
-      return query;
-    })(),
-  ]);
+  const [{ data: classes }, { data: campuses }, studentsQuery, { data: enrollmentRows }] =
+    await Promise.all([
+      supabase.from("classes").select("id, name, campus_id").order("name"),
+      supabase
+        .from("campuses")
+        .select("id, name")
+        .eq("school_id", profile.school_id ?? "")
+        .order("name"),
+      (async () => {
+        let query = supabase
+          .from("students")
+          .select("id, full_name, class_id, parent_name, parent_phone, status")
+          .order("full_name");
+        if (classFilter) query = query.eq("class_id", classFilter);
+        return query;
+      })(),
+      profile.role === "proprietor"
+        ? supabase.from("students").select("admission_date, status")
+        : Promise.resolve({ data: null }),
+    ]);
 
   const classNameById = new Map((classes ?? []).map((c) => [c.id, c.name]));
   const classesInCampus = campusFilter
@@ -45,6 +51,10 @@ export default async function StudentsPage({
         <h1 className="text-2xl font-bold text-zinc-900">Students</h1>
         {profile.role === "proprietor" && (
           <div className="flex gap-2">
+            <ExportLinks
+              baseUrl="/students/export"
+              params={classFilter ? { class: classFilter } : {}}
+            />
             <Link
               href="/students/import"
               className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
@@ -60,6 +70,10 @@ export default async function StudentsPage({
           </div>
         )}
       </div>
+
+      {profile.role === "proprietor" && enrollmentRows && (
+        <EnrollmentStats students={enrollmentRows} />
+      )}
 
       {profile.role === "proprietor" && (campuses ?? []).length > 0 && (
         <CampusFilter campuses={campuses ?? []} current={campusFilter ?? ""} />

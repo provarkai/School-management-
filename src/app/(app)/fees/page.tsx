@@ -3,6 +3,7 @@ import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import type { FeeStatus } from "@/lib/types";
+import { ExportLinks } from "@/components/ExportLinks";
 import { FeeTypesManager } from "./FeeTypesManager";
 import { SetClassFeeForm } from "./SetClassFeeForm";
 
@@ -116,16 +117,14 @@ export default async function FeesPage({
           </p>
         </div>
         <div className="flex gap-2">
-          <a
-            href={`/fees/export?${new URLSearchParams({
+          <ExportLinks
+            baseUrl="/fees/export"
+            params={{
               ...(classFilter ? { class: classFilter } : {}),
               ...(statusFilter ? { status: statusFilter } : {}),
               ...(typeFilter ? { type: typeFilter } : {}),
-            }).toString()}`}
-            className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
-          >
-            Export CSV
-          </a>
+            }}
+          />
           <Link
             href="/fees/transfers"
             className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"

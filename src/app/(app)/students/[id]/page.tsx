@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { ShareLinkButton } from "./ShareLinkButton";
 import { ParentEmailForm } from "./ParentEmailForm";
+import { AcademicHistory } from "./AcademicHistory";
 
 export default async function StudentDetailPage({
   params,
@@ -25,9 +26,22 @@ export default async function StudentDetailPage({
 
   if (!student) notFound();
 
-  const { data: klass } = student.class_id
-    ? await supabase.from("classes").select("name").eq("id", student.class_id).single()
-    : { data: null };
+  const [{ data: klass }, { data: results }, { data: fees }, { data: attendance }] =
+    await Promise.all([
+      student.class_id
+        ? supabase.from("classes").select("name").eq("id", student.class_id).single()
+        : Promise.resolve({ data: null }),
+      supabase
+        .from("results")
+        .select("session, term, subject, total, grade")
+        .eq("student_id", student.id)
+        .order("subject"),
+      supabase
+        .from("fee_summary")
+        .select("session, term, fee_type_name, amount_expected, amount_paid, balance, status")
+        .eq("student_id", student.id),
+      supabase.from("attendance").select("status").eq("student_id", student.id),
+    ]);
 
   const headerList = await headers();
   const host = headerList.get("host");
@@ -72,6 +86,22 @@ export default async function StudentDetailPage({
         >
           Enter scores / report card
         </Link>
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          Academic history
+        </h2>
+        <AcademicHistory
+          results={(results ?? []).map((r) => ({ ...r, total: Number(r.total) }))}
+          fees={(fees ?? []).map((f) => ({
+            ...f,
+            amount_expected: Number(f.amount_expected),
+            amount_paid: Number(f.amount_paid),
+            balance: Number(f.balance),
+          }))}
+          attendance={attendance ?? []}
+        />
       </div>
     </div>
   );

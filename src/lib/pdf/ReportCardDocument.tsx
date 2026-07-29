@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { TERM_LABELS, type Term } from "@/lib/types";
+import { computeGPA } from "@/lib/grading";
 
 const styles = StyleSheet.create({
   page: { padding: 32, fontSize: 10, fontFamily: "Helvetica" },
@@ -62,6 +63,7 @@ export interface ReportCardData {
 function ReportCardPage({ school, student, term, results, ranking }: ReportCardData) {
   const totalScore = results.reduce((sum, r) => sum + Number(r.total), 0);
   const average = results.length ? totalScore / results.length : 0;
+  const gpa = computeGPA(results);
 
   return (
     <Page size="A4" style={styles.page}>
@@ -118,8 +120,8 @@ function ReportCardPage({ school, student, term, results, ranking }: ReportCardD
 
       <View style={styles.summary}>
         <Text>Subjects: {results.length}</Text>
-        <Text>Total score: {totalScore.toFixed(1)}</Text>
         <Text>Average: {average.toFixed(1)}%</Text>
+        <Text>GPA: {gpa !== null ? `${gpa.toFixed(2)}/5` : "—"}</Text>
         <Text>Position: {ranking ? `${ranking.position} of ${ranking.outOf}` : "—"}</Text>
       </View>
 

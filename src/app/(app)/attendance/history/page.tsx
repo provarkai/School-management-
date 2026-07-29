@@ -1,5 +1,6 @@
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { ExportLinks } from "@/components/ExportLinks";
 
 export default async function AttendanceHistoryPage({
   searchParams,
@@ -48,16 +49,10 @@ export default async function AttendanceHistoryPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-zinc-900">Attendance history</h1>
         {selectedClassId && (
-          <a
-            href={`/attendance/history/export?${new URLSearchParams({
-              class: selectedClassId,
-              from: fromDate,
-              to: toDate,
-            }).toString()}`}
-            className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
-          >
-            Export CSV
-          </a>
+          <ExportLinks
+            baseUrl="/attendance/history/export"
+            params={{ class: selectedClassId, from: fromDate, to: toDate }}
+          />
         )}
       </div>
 

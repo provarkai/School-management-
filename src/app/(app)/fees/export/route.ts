@@ -1,6 +1,6 @@
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
-import { toCsv, csvResponse } from "@/lib/csv";
+import { parseExportFormat, exportRows } from "@/lib/export";
 import type { FeeStatus } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -81,16 +81,20 @@ export async function GET(request: Request) {
     })
     .filter((r) => (statusFilter ? r.status === statusFilter : true));
 
-  const csv = toCsv(rows, [
-    { key: "student_name", label: "Student" },
-    { key: "class", label: "Class" },
-    { key: "parent_name", label: "Parent" },
-    { key: "parent_phone", label: "Parent Phone" },
-    { key: "amount_expected", label: "Amount Expected" },
-    { key: "amount_paid", label: "Amount Paid" },
-    { key: "balance", label: "Balance" },
-    { key: "status", label: "Status" },
-  ]);
-
-  return csvResponse(csv, `fees-${session.replace("/", "-")}-term${term}.csv`);
+  const format = parseExportFormat(searchParams);
+  return exportRows(
+    format,
+    rows,
+    [
+      { key: "student_name", label: "Student" },
+      { key: "class", label: "Class" },
+      { key: "parent_name", label: "Parent" },
+      { key: "parent_phone", label: "Parent Phone" },
+      { key: "amount_expected", label: "Amount Expected" },
+      { key: "amount_paid", label: "Amount Paid" },
+      { key: "balance", label: "Balance" },
+      { key: "status", label: "Status" },
+    ],
+    `fees-${session.replace("/", "-")}-term${term}`
+  );
 }
