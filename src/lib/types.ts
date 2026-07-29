@@ -9,6 +9,7 @@ export type PaymentIntentStatus = "pending" | "success" | "failed";
 export type BehaviorCategory = "merit" | "demerit";
 export type BehaviorSeverity = "minor" | "major" | "severe";
 export type CalendarEventType = "term_start" | "term_end" | "holiday" | "exam" | "pta_meeting" | "event";
+export type CustomFieldType = "text" | "number" | "date" | "select";
 
 export interface School {
   id: string;
@@ -194,6 +195,25 @@ export const CALENDAR_EVENT_TYPE_LABELS: Record<CalendarEventType, string> = {
   pta_meeting: "PTA meeting",
   event: "Event",
 };
+
+export interface StudentFieldDefinition {
+  id: string;
+  school_id: string;
+  label: string;
+  field_type: CustomFieldType;
+  options: string[] | null;
+  position: number;
+  created_at: string;
+}
+
+export interface StudentFieldValue {
+  id: string;
+  school_id: string;
+  student_id: string;
+  field_definition_id: string;
+  value: string | null;
+  updated_at: string;
+}
 
 export interface PaymentIntent {
   id: string;

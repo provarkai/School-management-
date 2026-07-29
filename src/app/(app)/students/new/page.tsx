@@ -3,14 +3,21 @@ import { createClient } from "@/lib/supabase/server";
 import { NewStudentForm } from "./NewStudentForm";
 
 export default async function NewStudentPage() {
-  await requireProprietor();
+  const { profile } = await requireProprietor();
   const supabase = await createClient();
-  const { data: classes } = await supabase.from("classes").select("id, name").order("name");
+  const [{ data: classes }, { data: fieldDefs }] = await Promise.all([
+    supabase.from("classes").select("id, name").order("name"),
+    supabase
+      .from("student_field_definitions")
+      .select("id, label, field_type, options")
+      .eq("school_id", profile.school_id ?? "")
+      .order("created_at"),
+  ]);
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-zinc-900">Register student</h1>
-      <NewStudentForm classes={classes ?? []} />
+      <NewStudentForm classes={classes ?? []} fieldDefs={fieldDefs ?? []} />
     </div>
   );
 }

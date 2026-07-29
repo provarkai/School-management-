@@ -5,7 +5,20 @@ import { createStudent, type StudentFormState } from "../actions";
 
 const initialState: StudentFormState = {};
 
-export function NewStudentForm({ classes }: { classes: { id: string; name: string }[] }) {
+interface FieldDef {
+  id: string;
+  label: string;
+  field_type: string;
+  options: string[] | null;
+}
+
+export function NewStudentForm({
+  classes,
+  fieldDefs,
+}: {
+  classes: { id: string; name: string }[];
+  fieldDefs: FieldDef[];
+}) {
   const [state, action, pending] = useActionState(createStudent, initialState);
 
   return (
@@ -38,6 +51,32 @@ export function NewStudentForm({ classes }: { classes: { id: string; name: strin
         hint="Lets the parent sign in to the parent portal with this email"
       />
       <Field label="Admission date" name="admission_date" type="date" />
+
+      {fieldDefs.map((def) => (
+        <label key={def.id} className="block text-sm font-medium text-zinc-700">
+          {def.label}
+          {def.field_type === "select" ? (
+            <select
+              name={`field_${def.id}`}
+              className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+            >
+              <option value="">—</option>
+              {(def.options ?? []).map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              name={`field_${def.id}`}
+              type={def.field_type === "number" ? "number" : def.field_type === "date" ? "date" : "text"}
+              className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+            />
+          )}
+        </label>
+      ))}
+
       <button
         type="submit"
         disabled={pending}

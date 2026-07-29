@@ -29,23 +29,80 @@ export async function createStudent(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("students").insert({
-    school_id: profile.school_id,
-    full_name: fullName,
-    class_id: classId,
-    date_of_birth: dateOfBirth,
-    parent_name: parentName,
-    parent_phone: parentPhone,
-    parent_email: parentEmail,
-    ...(admissionDate ? { admission_date: admissionDate } : {}),
-  });
+  const { data: student, error } = await supabase
+    .from("students")
+    .insert({
+      school_id: profile.school_id,
+      full_name: fullName,
+      class_id: classId,
+      date_of_birth: dateOfBirth,
+      parent_name: parentName,
+      parent_phone: parentPhone,
+      parent_email: parentEmail,
+      ...(admissionDate ? { admission_date: admissionDate } : {}),
+    })
+    .select("id")
+    .single();
 
   if (error) {
     return { error: error.message };
   }
 
+  const { data: fieldDefs } = await supabase
+    .from("student_field_definitions")
+    .select("id")
+    .eq("school_id", profile.school_id ?? "");
+
+  const fieldValues = (fieldDefs ?? [])
+    .map((def) => ({
+      school_id: profile.school_id,
+      student_id: student.id,
+      field_definition_id: def.id,
+      value: String(formData.get(`field_${def.id}`) ?? "").trim() || null,
+    }))
+    .filter((row) => row.value !== null);
+
+  if (fieldValues.length > 0) {
+    await supabase.from("student_field_values").insert(fieldValues);
+  }
+
   revalidatePath("/students");
   redirect("/students");
+}
+
+export interface StudentFieldValuesState {
+  error?: string;
+  success?: string;
+}
+
+export async function setStudentFieldValues(
+  studentId: string,
+  _prevState: StudentFieldValuesState,
+  formData: FormData
+): Promise<StudentFieldValuesState> {
+  const { profile } = await requireProprietor();
+  const supabase = await createClient();
+
+  const { data: fieldDefs } = await supabase
+    .from("student_field_definitions")
+    .select("id")
+    .eq("school_id", profile.school_id ?? "");
+
+  const rows = (fieldDefs ?? []).map((def) => ({
+    school_id: profile.school_id,
+    student_id: studentId,
+    field_definition_id: def.id,
+    value: String(formData.get(`field_${def.id}`) ?? "").trim() || null,
+  }));
+
+  const { error } = await supabase
+    .from("student_field_values")
+    .upsert(rows, { onConflict: "student_id,field_definition_id" });
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/students/${studentId}`);
+  return { success: "Custom fields saved." };
 }
 
 export interface ImportRow {

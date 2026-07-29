@@ -56,6 +56,12 @@ export default async function StudentsPage({
               params={classFilter ? { class: classFilter } : {}}
             />
             <Link
+              href="/students/custom-fields"
+              className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
+            >
+              Custom fields
+            </Link>
+            <Link
               href="/students/import"
               className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
             >

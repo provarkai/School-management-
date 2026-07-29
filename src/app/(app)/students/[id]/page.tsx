@@ -7,6 +7,7 @@ import { ShareLinkButton } from "./ShareLinkButton";
 import { ParentEmailForm } from "./ParentEmailForm";
 import { AcademicHistory } from "./AcademicHistory";
 import { BehaviorRecord } from "./BehaviorRecord";
+import { CustomFieldValuesForm } from "./CustomFieldValuesForm";
 
 export default async function StudentDetailPage({
   params,
@@ -27,27 +28,45 @@ export default async function StudentDetailPage({
 
   if (!student) notFound();
 
-  const [{ data: klass }, { data: results }, { data: fees }, { data: attendance }, { data: incidents }] =
-    await Promise.all([
-      student.class_id
-        ? supabase.from("classes").select("name").eq("id", student.class_id).single()
-        : Promise.resolve({ data: null }),
-      supabase
-        .from("results")
-        .select("session, term, subject, total, grade")
-        .eq("student_id", student.id)
-        .order("subject"),
-      supabase
-        .from("fee_summary")
-        .select("session, term, fee_type_name, amount_expected, amount_paid, balance, status")
-        .eq("student_id", student.id),
-      supabase.from("attendance").select("status").eq("student_id", student.id),
-      supabase
-        .from("behavior_incidents")
-        .select("id, incident_date, category, severity, description, action_taken")
-        .eq("student_id", student.id)
-        .order("incident_date", { ascending: false }),
-    ]);
+  const [
+    { data: klass },
+    { data: results },
+    { data: fees },
+    { data: attendance },
+    { data: incidents },
+    { data: fieldDefs },
+    { data: fieldValues },
+  ] = await Promise.all([
+    student.class_id
+      ? supabase.from("classes").select("name").eq("id", student.class_id).single()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("results")
+      .select("session, term, subject, total, grade")
+      .eq("student_id", student.id)
+      .order("subject"),
+    supabase
+      .from("fee_summary")
+      .select("session, term, fee_type_name, amount_expected, amount_paid, balance, status")
+      .eq("student_id", student.id),
+    supabase.from("attendance").select("status").eq("student_id", student.id),
+    supabase
+      .from("behavior_incidents")
+      .select("id, incident_date, category, severity, description, action_taken")
+      .eq("student_id", student.id)
+      .order("incident_date", { ascending: false }),
+    supabase
+      .from("student_field_definitions")
+      .select("id, label, field_type, options")
+      .eq("school_id", profile.school_id ?? "")
+      .order("created_at"),
+    supabase
+      .from("student_field_values")
+      .select("field_definition_id, value")
+      .eq("student_id", student.id),
+  ]);
+
+  const fieldValueByDefId = new Map((fieldValues ?? []).map((v) => [v.field_definition_id, v.value]));
 
   const headerList = await headers();
   const host = headerList.get("host");
@@ -69,6 +88,13 @@ export default async function StudentDetailPage({
         <Info label="Parent email" value={student.parent_email ?? "—"} />
         <Info label="Status" value={student.status} />
       </dl>
+
+      <CustomFieldValuesForm
+        studentId={student.id}
+        fieldDefs={fieldDefs ?? []}
+        values={fieldValueByDefId}
+        editable={profile.role === "proprietor"}
+      />
 
       {profile.role === "proprietor" && (
         <>
