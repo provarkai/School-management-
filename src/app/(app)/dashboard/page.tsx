@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import { Chat } from "../assistant/Chat";
 import { CampusFilter } from "../CampusFilter";
+import { UpcomingEvents } from "./UpcomingEvents";
 
 export default async function DashboardPage({
   searchParams,
@@ -58,6 +59,8 @@ export default async function DashboardPage({
           <QuickLink href="/report-cards" label="Enter scores" />
         </div>
 
+        <UpcomingEvents schoolId={profile.school_id ?? ""} />
+
         <div>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
@@ -108,6 +111,8 @@ export default async function DashboardPage({
             )}
           </div>
         </div>
+
+        <UpcomingEvents schoolId={profile.school_id ?? ""} />
       </div>
     );
   }
@@ -208,6 +213,8 @@ export default async function DashboardPage({
           <QuickLink href="/report-cards" label="Generate report cards" />
         </div>
       </div>
+
+      <UpcomingEvents schoolId={profile.school_id ?? ""} />
 
       <div>
         <div className="mb-3 flex items-center justify-between">
