@@ -5,6 +5,7 @@ import { naira } from "@/lib/format";
 import { Chat } from "../assistant/Chat";
 import { CampusFilter } from "../CampusFilter";
 import { UpcomingEvents } from "./UpcomingEvents";
+import { RecentActivity } from "./RecentActivity";
 
 export default async function DashboardPage({
   searchParams,
@@ -213,6 +214,8 @@ export default async function DashboardPage({
           <QuickLink href="/report-cards" label="Generate report cards" />
         </div>
       </div>
+
+      <RecentActivity schoolId={profile.school_id ?? ""} />
 
       <UpcomingEvents schoolId={profile.school_id ?? ""} />
 
