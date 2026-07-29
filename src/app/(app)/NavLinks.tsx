@@ -25,7 +25,10 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const PINNED_TOP: NavItem[] = [{ href: "/dashboard", label: "Dashboard", alwaysVisible: true }];
+const PINNED_TOP: NavItem[] = [
+  { href: "/dashboard", label: "Dashboard", alwaysVisible: true },
+  { href: "/assistant", label: "AI Assistant", roles: ["teacher"], managerOnly: true },
+];
 
 const GROUPS: NavGroup[] = [
   {
@@ -65,7 +68,6 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: "/reminders", label: "Reminders", managerOnly: true },
       { href: "/notices", label: "Notices", alwaysVisible: true },
-      { href: "/assistant", label: "AI Assistant", roles: ["teacher"], managerOnly: true },
     ],
   },
   {

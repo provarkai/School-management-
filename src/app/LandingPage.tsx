@@ -37,6 +37,12 @@ const FEATURES: { title: string; description: string; mark: string }[] = [
     description: "Automated weekly balance reminders and one-off announcements, sent straight to parents' phones.",
   },
   {
+    mark: "🤖",
+    title: "AI Assistant",
+    description:
+      "Ask questions about your students, fees, attendance and results in plain language, answered from your own records.",
+  },
+  {
     mark: "✅",
     title: "Attendance",
     description: "Mark daily attendance per class in seconds, with full history and exportable reports.",
@@ -92,12 +98,6 @@ const FEATURES: { title: string; description: string; mark: string }[] = [
     mark: "🏫",
     title: "Multi-campus support",
     description: "Run several campuses under one account, each with its own classes, staff, and filtered views.",
-  },
-  {
-    mark: "🤖",
-    title: "AI Assistant",
-    description:
-      "Ask questions about your students, fees, attendance and results in plain language, answered from your own records.",
   },
 ];
 
