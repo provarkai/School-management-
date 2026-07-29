@@ -4,8 +4,8 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC_PATHS = ["/login", "/signup", "/parent/login"];
 
 export async function updateSession(request: NextRequest) {
-  // Public, tokenized parent view — no auth required or checked.
-  if (request.nextUrl.pathname.startsWith("/p/")) {
+  // Public, tokenized views — no auth required or checked.
+  if (request.nextUrl.pathname.startsWith("/p/") || request.nextUrl.pathname.startsWith("/t/")) {
     return NextResponse.next({ request });
   }
 

@@ -130,8 +130,39 @@ export interface ResultRecord {
   updated_at: string;
 }
 
+export interface PeriodSlot {
+  id: string;
+  school_id: string;
+  position: number;
+  label: string;
+  start_time: string;
+  end_time: string;
+  is_break: boolean;
+  created_at: string;
+}
+
+export interface TimetableEntry {
+  id: string;
+  school_id: string;
+  class_id: string;
+  period_slot_id: string;
+  day_of_week: number;
+  subject_id: string | null;
+  teacher_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export const TERM_LABELS: Record<Term, string> = {
   "1": "1st Term",
   "2": "2nd Term",
   "3": "3rd Term",
+};
+
+export const WEEKDAY_LABELS: Record<number, string> = {
+  1: "Monday",
+  2: "Tuesday",
+  3: "Wednesday",
+  4: "Thursday",
+  5: "Friday",
 };

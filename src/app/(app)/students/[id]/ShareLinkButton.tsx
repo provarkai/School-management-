@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 
-export function ShareLinkButton({ url }: { url: string }) {
+export function ShareLinkButton({
+  url,
+  label = "Copy parent share link",
+}: {
+  url: string;
+  label?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -23,7 +29,7 @@ export function ShareLinkButton({ url }: { url: string }) {
         className="w-full truncate px-4 py-2 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50"
         title={url}
       >
-        {copied ? "Copied!" : "Copy parent share link"}
+        {copied ? "Copied!" : label}
       </button>
     </div>
   );
