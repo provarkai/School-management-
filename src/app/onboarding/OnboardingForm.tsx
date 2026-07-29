@@ -30,6 +30,21 @@ export function OnboardingForm() {
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         />
       </label>
+      <fieldset>
+        <legend className="block text-sm font-medium text-zinc-700">
+          Are you the Proprietor or Proprietress?
+        </legend>
+        <div className="mt-1 flex gap-4">
+          <label className="flex items-center gap-2 text-sm text-zinc-700">
+            <input type="radio" name="gender" value="male" defaultChecked />
+            Proprietor
+          </label>
+          <label className="flex items-center gap-2 text-sm text-zinc-700">
+            <input type="radio" name="gender" value="female" />
+            Proprietress
+          </label>
+        </div>
+      </fieldset>
       <button
         type="submit"
         disabled={pending}

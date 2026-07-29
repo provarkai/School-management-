@@ -5,12 +5,17 @@ import { AddTeacherForm } from "./AddTeacherForm";
 import { TeacherSubjectSelect } from "./TeacherSubjectSelect";
 import { TeacherCampusSelect } from "./TeacherCampusSelect";
 import { StaffJobTitleInput } from "./StaffJobTitleInput";
+import { proprietorTitle } from "@/lib/format";
+import type { Gender } from "@/lib/types";
 
 const ROLE_LABELS: Record<string, string> = {
-  proprietor: "Proprietor",
   teacher: "Teacher",
   staff: "Non-teaching staff",
 };
+
+function roleLabel(role: string, gender: Gender | null): string {
+  return role === "proprietor" ? proprietorTitle(gender) : ROLE_LABELS[role] ?? role;
+}
 
 export default async function StaffPage() {
   const { profile } = await requireProprietor();
@@ -19,7 +24,7 @@ export default async function StaffPage() {
   const [{ data: staff }, { data: subjectRows }, { data: campuses }] = await Promise.all([
     supabase
       .from("app_users")
-      .select("id, name, email, phone, role, subject, job_title, campus_id, photo_url")
+      .select("id, name, email, phone, role, subject, job_title, campus_id, photo_url, gender")
       .order("name"),
     supabase.from("subjects").select("name").eq("school_id", profile.school_id ?? "").order("name"),
     supabase
@@ -65,7 +70,7 @@ export default async function StaffPage() {
                 <td className="px-4 py-2 text-zinc-500">{person.email}</td>
                 <td className="px-4 py-2 text-zinc-500">{person.phone ?? "—"}</td>
                 <td className="px-4 py-2 text-zinc-500">
-                  {ROLE_LABELS[person.role] ?? person.role}
+                  {roleLabel(person.role, person.gender)}
                 </td>
                 <td className="px-4 py-2">
                   {person.role === "teacher" ? (

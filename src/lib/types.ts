@@ -10,6 +10,7 @@ export type BehaviorCategory = "merit" | "demerit";
 export type BehaviorSeverity = "minor" | "major" | "severe";
 export type CalendarEventType = "term_start" | "term_end" | "holiday" | "exam" | "pta_meeting" | "event";
 export type CustomFieldType = "text" | "number" | "date" | "select";
+export type Gender = "male" | "female";
 
 export type SchoolStatus = "active" | "suspended";
 
@@ -35,6 +36,7 @@ export interface AppUser {
   job_title: string | null;
   campus_id: string | null;
   photo_url: string | null;
+  gender: Gender | null;
   created_at: string;
 }
 

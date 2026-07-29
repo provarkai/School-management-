@@ -13,9 +13,13 @@ export async function createSchool(
 ): Promise<OnboardingState> {
   const name = String(formData.get("name") ?? "").trim();
   const address = String(formData.get("address") ?? "").trim();
+  const gender = String(formData.get("gender") ?? "");
 
   if (!name) {
     return { error: "School name is required." };
+  }
+  if (gender !== "male" && gender !== "female") {
+    return { error: "Choose Proprietor or Proprietress." };
   }
 
   const supabase = await createClient();
@@ -30,6 +34,7 @@ export async function createSchool(
   const { error } = await supabase.rpc("bootstrap_school", {
     school_name: name,
     school_address: address || null,
+    proprietor_gender: gender,
   });
 
   if (error) {

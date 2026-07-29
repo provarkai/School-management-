@@ -44,6 +44,7 @@ export interface ReportCardData {
     name: string;
     address: string | null;
     current_session: string;
+    proprietorLabel?: string;
   };
   student: {
     full_name: string;
@@ -127,7 +128,7 @@ function ReportCardPage({ school, student, term, results, ranking }: ReportCardD
 
       <View style={styles.footer}>
         <Text style={styles.signatureLine}>Class Teacher</Text>
-        <Text style={styles.signatureLine}>Proprietor</Text>
+        <Text style={styles.signatureLine}>{school.proprietorLabel ?? "Proprietor"}</Text>
       </View>
     </Page>
   );

@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { BulkReportCardDocument, type ReportCardData } from "@/lib/pdf/ReportCardDocument";
 import { computeClassRanking } from "@/lib/ranking";
+import { proprietorTitle } from "@/lib/format";
 import type { Term } from "@/lib/types";
 
 export async function GET(
@@ -22,6 +23,15 @@ export async function GET(
   if (!klass || !school) {
     return new Response("Class not found", { status: 404 });
   }
+
+  const { data: proprietor } = await supabase
+    .from("app_users")
+    .select("gender")
+    .eq("school_id", school.id)
+    .eq("role", "proprietor")
+    .limit(1)
+    .maybeSingle();
+  const proprietorLabel = proprietorTitle(proprietor?.gender ?? null);
 
   const { data: students } = await supabase
     .from("students")
@@ -48,6 +58,7 @@ export async function GET(
           name: school.name,
           address: school.address,
           current_session: school.current_session,
+          proprietorLabel,
         },
         student: { full_name: student.full_name, className: klass.name },
         term,

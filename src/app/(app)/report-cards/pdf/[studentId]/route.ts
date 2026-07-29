@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { ReportCardDocument } from "@/lib/pdf/ReportCardDocument";
 import { computeClassRanking } from "@/lib/ranking";
+import { proprietorTitle } from "@/lib/format";
 import type { Term } from "@/lib/types";
 
 export async function GET(
@@ -12,6 +13,16 @@ export async function GET(
   const { studentId } = await params;
   const { school } = await requireUser();
   const supabase = await createClient();
+
+  const { data: proprietor } = school
+    ? await supabase
+        .from("app_users")
+        .select("gender")
+        .eq("school_id", school.id)
+        .eq("role", "proprietor")
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
 
   const { data: student } = await supabase
     .from("students")
@@ -47,6 +58,7 @@ export async function GET(
         name: school.name,
         address: school.address,
         current_session: school.current_session,
+        proprietorLabel: proprietorTitle(proprietor?.gender ?? null),
       },
       student: { full_name: student.full_name, className: klass?.name ?? "—" },
       term,
