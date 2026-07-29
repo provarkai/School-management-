@@ -73,12 +73,22 @@ export default async function StudentFeePage({
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-900">{student.full_name}</h1>
-        <p className="text-sm text-zinc-500">
-          {session} · Term {term} — Parent: {student.parent_name ?? "—"} (
-          {student.parent_phone ?? "no phone on file"})
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900">{student.full_name}</h1>
+          <p className="text-sm text-zinc-500">
+            {session} · Term {term} — Parent: {student.parent_name ?? "—"} (
+            {student.parent_phone ?? "no phone on file"})
+          </p>
+        </div>
+        <a
+          href={`/fees/invoice/${id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
+        >
+          Download invoice
+        </a>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
