@@ -36,6 +36,20 @@ export async function updateOwnProfile(
   return { success: "Profile updated." };
 }
 
+export async function saveProfilePhoto(url: string): Promise<void> {
+  const { authId, profile } = await requireUser();
+
+  if (profile.role === "proprietor") {
+    throw new Error("Profile photos aren't available for the proprietor account.");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("app_users").update({ photo_url: url }).eq("id", authId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/profile");
+}
+
 export async function changeOwnPassword(
   _prevState: ProfileFormState,
   formData: FormData

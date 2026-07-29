@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/current-user";
+import { Avatar } from "@/components/Avatar";
 import { NavLinks } from "./NavLinks";
 import { signOut } from "./actions";
 import { TERM_LABELS } from "@/lib/types";
@@ -33,8 +34,15 @@ export default async function AppLayout({
           <NavLinks role={profile.role} />
         </div>
         <div className="mt-3 hidden border-t border-zinc-100 pt-4 md:block">
-          <p className="truncate px-1 text-sm text-zinc-700">{profile.name}</p>
-          <p className="px-1 text-xs capitalize text-zinc-400">{profile.role}</p>
+          <div className="flex items-center gap-2 px-1">
+            {profile.role !== "proprietor" && (
+              <Avatar url={profile.photo_url} name={profile.name} size="sm" />
+            )}
+            <div className="min-w-0">
+              <p className="truncate text-sm text-zinc-700">{profile.name}</p>
+              <p className="truncate text-xs capitalize text-zinc-400">{profile.role}</p>
+            </div>
+          </div>
           <form action={signOut}>
             <button
               type="submit"

@@ -1,5 +1,6 @@
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { Avatar } from "@/components/Avatar";
 import { AddTeacherForm } from "./AddTeacherForm";
 import { TeacherSubjectSelect } from "./TeacherSubjectSelect";
 import { TeacherCampusSelect } from "./TeacherCampusSelect";
@@ -18,7 +19,7 @@ export default async function StaffPage() {
   const [{ data: staff }, { data: subjectRows }, { data: campuses }] = await Promise.all([
     supabase
       .from("app_users")
-      .select("id, name, email, phone, role, subject, job_title, campus_id")
+      .select("id, name, email, phone, role, subject, job_title, campus_id, photo_url")
       .order("name"),
     supabase.from("subjects").select("name").eq("school_id", profile.school_id ?? "").order("name"),
     supabase
@@ -39,6 +40,7 @@ export default async function StaffPage() {
         <table className="min-w-full divide-y divide-zinc-200 text-sm">
           <thead className="bg-zinc-50">
             <tr>
+              <th className="px-4 py-2" />
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Name</th>
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Email</th>
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Phone</th>
@@ -52,6 +54,13 @@ export default async function StaffPage() {
           <tbody className="divide-y divide-zinc-100">
             {(staff ?? []).map((person) => (
               <tr key={person.id}>
+                <td className="px-4 py-2">
+                  <Avatar
+                    url={person.role === "proprietor" ? null : person.photo_url}
+                    name={person.name}
+                    size="sm"
+                  />
+                </td>
                 <td className="px-4 py-2 text-zinc-900">{person.name}</td>
                 <td className="px-4 py-2 text-zinc-500">{person.email}</td>
                 <td className="px-4 py-2 text-zinc-500">{person.phone ?? "—"}</td>

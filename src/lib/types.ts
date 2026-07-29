@@ -27,6 +27,7 @@ export interface AppUser {
   subject: string | null;
   job_title: string | null;
   campus_id: string | null;
+  photo_url: string | null;
   created_at: string;
 }
 
@@ -85,6 +86,7 @@ export interface Parent {
   name: string;
   email: string | null;
   phone: string | null;
+  photo_url: string | null;
   created_at: string;
 }
 

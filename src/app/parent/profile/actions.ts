@@ -36,6 +36,16 @@ export async function updateOwnParentProfile(
   return { success: "Profile updated." };
 }
 
+export async function saveParentProfilePhoto(url: string): Promise<void> {
+  const { authId } = await requireParent();
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("parents").update({ photo_url: url }).eq("id", authId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/parent/profile");
+}
+
 export async function changeOwnParentPassword(
   _prevState: ProfileFormState,
   formData: FormData

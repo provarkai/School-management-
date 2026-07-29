@@ -1,5 +1,7 @@
 import { requireUser } from "@/lib/current-user";
+import { AvatarUploader } from "@/components/AvatarUploader";
 import { EditProfileForm, ChangePasswordForm } from "./ProfileForms";
+import { saveProfilePhoto } from "./actions";
 
 const ROLE_LABELS: Record<string, string> = {
   proprietor: "Proprietor",
@@ -8,7 +10,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default async function ProfilePage() {
-  const { profile } = await requireUser();
+  const { authId, profile } = await requireUser();
 
   return (
     <div className="max-w-lg space-y-6">
@@ -20,6 +22,18 @@ export default async function ProfilePage() {
           {profile.role === "staff" && profile.job_title ? ` · ${profile.job_title}` : ""}
         </p>
       </div>
+
+      {profile.role !== "proprietor" && (
+        <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold text-zinc-900">Photo</h2>
+          <AvatarUploader
+            userId={authId}
+            name={profile.name}
+            initialUrl={profile.photo_url}
+            onSave={saveProfilePhoto}
+          />
+        </section>
+      )}
 
       <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-zinc-900">Details</h2>
