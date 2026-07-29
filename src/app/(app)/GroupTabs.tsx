@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Role } from "@/lib/types";
-import { GROUPS, isVisible, isActive } from "./navConfig";
+import { getVisibleGroups, isActive } from "./navConfig";
 
 export function GroupTabs({ role, isManager }: { role: Role; isManager: boolean }) {
   const pathname = usePathname();
 
-  const group = GROUPS.find((g) => g.items.some((item) => isActive(pathname, item.href)));
+  const visibleGroups = getVisibleGroups(role, isManager);
+  const group = visibleGroups.find((g) => g.items.some((item) => isActive(pathname, item.href)));
   if (!group) return null;
 
-  const items = group.items.filter((item) => isVisible(item, role, isManager));
+  const items = group.items;
   if (items.length < 2) return null;
 
   return (

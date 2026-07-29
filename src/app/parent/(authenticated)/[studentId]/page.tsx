@@ -21,7 +21,7 @@ export default async function ParentChildPage({
 
   const { data: school } = await supabase
     .from("schools")
-    .select("name, current_session, current_term")
+    .select("name, phone, current_session, current_term")
     .eq("id", child.school_id)
     .single();
 
@@ -88,6 +88,7 @@ export default async function ParentChildPage({
         <p className="text-sm text-zinc-500">
           {child.className ?? "—"} · {session} · {TERM_LABELS[term]}
         </p>
+        {school?.phone && <p className="mt-1 text-xs text-zinc-400">School office: {school.phone}</p>}
       </div>
 
       <section className="space-y-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">

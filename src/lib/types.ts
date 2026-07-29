@@ -18,6 +18,7 @@ export interface School {
   id: string;
   name: string;
   address: string | null;
+  phone: string | null;
   logo_url: string | null;
   current_session: string;
   current_term: Term;

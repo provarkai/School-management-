@@ -33,36 +33,14 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      {profile.role !== "proprietor" && (
-        <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-3 text-sm font-semibold text-zinc-900">Photo</h2>
-          <AvatarUploader
-            userId={authId}
-            name={profile.name}
-            initialUrl={profile.photo_url}
-            onSave={saveProfilePhoto}
-          />
-        </section>
-      )}
-
-      <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-900">Details</h2>
-        <p className="mb-4 text-sm text-zinc-500">
-          Email: <span className="text-zinc-700">{profile.email}</span> (contact the school
-          proprietor to change your email, subject, job title, or campus)
-        </p>
-        <EditProfileForm name={profile.name} phone={profile.phone} />
-      </section>
-
-      <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-900">Change password</h2>
-        <ChangePasswordForm />
-      </section>
-
       {isManager && school && (
-        <>
+        <div className="space-y-6">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            School profile
+          </h2>
+
           <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-zinc-900">School logo</h2>
+            <h3 className="mb-3 text-sm font-semibold text-zinc-900">Logo</h3>
             <SchoolLogoUploader
               schoolId={school.id}
               schoolName={school.name}
@@ -72,20 +50,52 @@ export default async function SettingsPage() {
           </section>
 
           <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-zinc-900">School profile</h2>
-            <SchoolProfileForm name={school.name} address={school.address} />
+            <h3 className="mb-3 text-sm font-semibold text-zinc-900">Details</h3>
+            <SchoolProfileForm name={school.name} address={school.address} phone={school.phone} />
           </section>
 
           <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-zinc-900">Academic session</h2>
+            <h3 className="mb-3 text-sm font-semibold text-zinc-900">Academic session</h3>
             <p className="mb-3 text-sm text-zinc-500">
               This drives every &quot;current term&quot; view across the app — fees, attendance,
               and results all default to whatever is set here.
             </p>
             <AcademicSessionForm session={school.current_session} term={school.current_term} />
           </section>
-        </>
+        </div>
       )}
+
+      <div className="space-y-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          {profile.role === "proprietor" ? roleLabel : "Your profile"}
+        </h2>
+
+        {profile.role !== "proprietor" && (
+          <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-zinc-900">Photo</h3>
+            <AvatarUploader
+              userId={authId}
+              name={profile.name}
+              initialUrl={profile.photo_url}
+              onSave={saveProfilePhoto}
+            />
+          </section>
+        )}
+
+        <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-zinc-900">Details</h3>
+          <p className="mb-4 text-sm text-zinc-500">
+            Email: <span className="text-zinc-700">{profile.email}</span> (contact the school
+            proprietor to change your email, subject, job title, or campus)
+          </p>
+          <EditProfileForm name={profile.name} phone={profile.phone} />
+        </section>
+
+        <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-zinc-900">Change password</h3>
+          <ChangePasswordForm />
+        </section>
+      </div>
     </div>
   );
 }

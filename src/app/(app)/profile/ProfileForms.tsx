@@ -12,7 +12,15 @@ import type { Term } from "@/lib/types";
 
 const initialState: ProfileFormState = {};
 
-export function SchoolProfileForm({ name, address }: { name: string; address: string | null }) {
+export function SchoolProfileForm({
+  name,
+  address,
+  phone,
+}: {
+  name: string;
+  address: string | null;
+  phone: string | null;
+}) {
   const [state, action, pending] = useActionState(updateSchoolProfile, initialState);
 
   return (
@@ -41,6 +49,19 @@ export function SchoolProfileForm({ name, address }: { name: string; address: st
           defaultValue={address ?? ""}
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         />
+      </label>
+      <label className="block text-sm font-medium text-zinc-700">
+        School phone
+        <input
+          name="school_phone"
+          type="tel"
+          defaultValue={phone ?? ""}
+          placeholder="+234…"
+          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+        />
+        <span className="mt-1 block text-xs font-normal text-zinc-400">
+          Shown to parents on their dashboard as a number to call the school office.
+        </span>
       </label>
       <button
         type="submit"

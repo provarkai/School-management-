@@ -59,6 +59,7 @@ export async function updateSchoolProfile(
 
   const name = String(formData.get("school_name") ?? "").trim();
   const address = String(formData.get("school_address") ?? "").trim();
+  const phone = String(formData.get("school_phone") ?? "").trim();
 
   if (!name) {
     return { error: "School name is required." };
@@ -67,7 +68,7 @@ export async function updateSchoolProfile(
   const supabase = await createClient();
   const { error } = await supabase
     .from("schools")
-    .update({ name, address: address || null })
+    .update({ name, address: address || null, phone: phone || null })
     .eq("id", profile.school_id ?? "");
 
   if (error) {

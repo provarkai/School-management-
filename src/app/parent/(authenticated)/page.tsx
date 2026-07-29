@@ -36,6 +36,9 @@ export default async function ParentDashboardPage() {
               </p>
               <p className="mt-1 text-lg font-bold text-zinc-900">{child.full_name}</p>
               <p className="text-sm text-zinc-500">{child.className ?? "No class assigned"}</p>
+              {child.schoolPhone && (
+                <p className="mt-1 text-xs text-zinc-400">School office: {child.schoolPhone}</p>
+              )}
               <p className="mt-3 text-sm font-medium text-zinc-600">View fees, attendance &amp; results →</p>
             </Link>
           ))}
