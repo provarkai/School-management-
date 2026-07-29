@@ -33,7 +33,7 @@ export function PeriodSlotsManager({ periodSlots }: { periodSlots: PeriodSlot[] 
             onClick={() => startGenerate(async () => { await generateDefaultPeriods(); })}
             className="font-semibold underline hover:no-underline disabled:opacity-50"
           >
-            {generating ? "Adding…" : "Use a default 7-period day"}
+            {generating ? "Adding…" : "Use default periods (break by noon, closes 2pm / 1pm Fri)"}
           </button>{" "}
           or add periods manually below.
         </div>
@@ -50,7 +50,11 @@ export function PeriodSlotsManager({ periodSlots }: { periodSlots: PeriodSlot[] 
                     <td className="px-3 py-1.5 text-zinc-500">
                       {p.start_time.slice(0, 5)}–{p.end_time.slice(0, 5)}
                     </td>
-                    <td className="px-3 py-1.5 text-zinc-400">{p.is_break ? "Break" : ""}</td>
+                    <td className="px-3 py-1.5 text-zinc-400">
+                      {[p.is_break ? "Break" : null, !p.applies_on_friday ? "Skips Friday" : null]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </td>
                     <td className="px-3 py-1.5 text-right">
                       <form action={deletePeriodSlot.bind(null, p.id)}>
                         <button
@@ -77,7 +81,7 @@ export function PeriodSlotsManager({ periodSlots }: { periodSlots: PeriodSlot[] 
           {state.error && (
             <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
           )}
-          <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-4 sm:items-end">
+          <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-5 sm:items-end">
             <label className="text-sm font-medium text-zinc-700">
               Label
               <input
@@ -109,10 +113,14 @@ export function PeriodSlotsManager({ periodSlots }: { periodSlots: PeriodSlot[] 
               <input name="is_break" type="checkbox" className="h-4 w-4 rounded border-zinc-300" />
               Break/assembly
             </label>
+            <label className="flex items-center gap-2 text-sm font-medium text-zinc-700">
+              <input name="skip_friday" type="checkbox" className="h-4 w-4 rounded border-zinc-300" />
+              Skip this period on Fridays
+            </label>
             <button
               type="submit"
               disabled={pending}
-              className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:opacity-50 sm:col-span-4 sm:w-fit"
+              className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:opacity-50 sm:col-span-5 sm:w-fit"
             >
               {pending ? "Adding…" : "Add period"}
             </button>

@@ -8,15 +8,26 @@ export interface PeriodSlotFormState {
   error?: string;
 }
 
-const DEFAULT_PERIODS: { label: string; start_time: string; end_time: string; is_break: boolean }[] = [
-  { label: "Period 1", start_time: "08:00", end_time: "08:40", is_break: false },
-  { label: "Period 2", start_time: "08:40", end_time: "09:20", is_break: false },
-  { label: "Period 3", start_time: "09:20", end_time: "10:00", is_break: false },
-  { label: "Break", start_time: "10:00", end_time: "10:20", is_break: true },
-  { label: "Period 4", start_time: "10:20", end_time: "11:00", is_break: false },
-  { label: "Period 5", start_time: "11:00", end_time: "11:40", is_break: false },
-  { label: "Period 6", start_time: "11:40", end_time: "12:20", is_break: false },
-  { label: "Period 7", start_time: "12:20", end_time: "13:00", is_break: false },
+// Break lands right at midday; the school day runs to 2pm Mon-Thu but
+// closes at 1pm on Fridays, so periods after 1pm are flagged as not
+// applying on Fridays.
+const DEFAULT_PERIODS: {
+  label: string;
+  start_time: string;
+  end_time: string;
+  is_break: boolean;
+  applies_on_friday: boolean;
+}[] = [
+  { label: "Period 1", start_time: "08:00", end_time: "08:40", is_break: false, applies_on_friday: true },
+  { label: "Period 2", start_time: "08:40", end_time: "09:20", is_break: false, applies_on_friday: true },
+  { label: "Period 3", start_time: "09:20", end_time: "10:00", is_break: false, applies_on_friday: true },
+  { label: "Period 4", start_time: "10:00", end_time: "10:40", is_break: false, applies_on_friday: true },
+  { label: "Period 5", start_time: "10:40", end_time: "11:20", is_break: false, applies_on_friday: true },
+  { label: "Period 6", start_time: "11:20", end_time: "12:00", is_break: false, applies_on_friday: true },
+  { label: "Break", start_time: "12:00", end_time: "12:20", is_break: true, applies_on_friday: true },
+  { label: "Period 7", start_time: "12:20", end_time: "13:00", is_break: false, applies_on_friday: true },
+  { label: "Period 8", start_time: "13:00", end_time: "13:30", is_break: false, applies_on_friday: false },
+  { label: "Period 9", start_time: "13:30", end_time: "14:00", is_break: false, applies_on_friday: false },
 ];
 
 export async function createPeriodSlot(
@@ -29,6 +40,7 @@ export async function createPeriodSlot(
   const startTime = String(formData.get("start_time") ?? "");
   const endTime = String(formData.get("end_time") ?? "");
   const isBreak = formData.get("is_break") === "on";
+  const skipFriday = formData.get("skip_friday") === "on";
 
   if (!label || !startTime || !endTime) {
     return { error: "Label, start time and end time are all required." };
@@ -51,6 +63,7 @@ export async function createPeriodSlot(
     start_time: startTime,
     end_time: endTime,
     is_break: isBreak,
+    applies_on_friday: !skipFriday,
   });
 
   if (error) {

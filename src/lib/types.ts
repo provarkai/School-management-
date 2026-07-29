@@ -178,6 +178,7 @@ export interface PeriodSlot {
   start_time: string;
   end_time: string;
   is_break: boolean;
+  applies_on_friday: boolean;
   created_at: string;
 }
 

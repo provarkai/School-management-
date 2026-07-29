@@ -87,6 +87,13 @@ export default async function PublicTimetablePage({
                       </td>
                     );
                   }
+                  if (d === 5 && !p.applies_on_friday) {
+                    return (
+                      <td key={d} className="px-3 py-2 text-center text-xs text-zinc-400">
+                        School closed
+                      </td>
+                    );
+                  }
                   const entry = entryByCell.get(`${p.id}:${d}`);
                   const subjectName = (subjects ?? []).find((s) => s.id === entry?.subject_id)?.name;
                   const teacherName = (teachers ?? []).find((t) => t.id === entry?.teacher_id)?.name;
