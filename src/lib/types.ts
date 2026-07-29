@@ -23,6 +23,15 @@ export interface AppUser {
   phone: string | null;
   role: Role;
   subject: string | null;
+  campus_id: string | null;
+  created_at: string;
+}
+
+export interface Campus {
+  id: string;
+  school_id: string;
+  name: string;
+  address: string | null;
   created_at: string;
 }
 
@@ -31,6 +40,7 @@ export interface SchoolClass {
   school_id: string;
   name: string;
   teacher_id: string | null;
+  campus_id: string | null;
   session: string;
   term: Term;
   created_at: string;

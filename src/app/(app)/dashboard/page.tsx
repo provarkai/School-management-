@@ -3,9 +3,15 @@ import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import { Chat } from "../assistant/Chat";
+import { CampusFilter } from "../CampusFilter";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campus?: string }>;
+}) {
   const { profile, school } = await requireUser();
+  const { campus: campusFilter } = await searchParams;
   const supabase = await createClient();
 
   if (profile.role === "teacher") {
@@ -67,20 +73,54 @@ export default async function DashboardPage() {
     );
   }
 
-  const [{ count: studentCount }, feeRows, todaysAttendance] = await Promise.all([
-    supabase
+  const { data: campuses } = await supabase
+    .from("campuses")
+    .select("id, name")
+    .eq("school_id", profile.school_id ?? "")
+    .order("name");
+
+  let campusClassIds: string[] | null = null;
+  let campusStudentIds: string[] | null = null;
+  if (campusFilter) {
+    const { data: campusClasses } = await supabase
+      .from("classes")
+      .select("id")
+      .eq("campus_id", campusFilter);
+    campusClassIds = (campusClasses ?? []).map((c) => c.id);
+
+    const { data: campusStudents } = await supabase
       .from("students")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "active"),
-    supabase
-      .from("fee_summary")
-      .select("amount_expected, amount_paid")
-      .eq("session", school?.current_session ?? "")
-      .eq("term", school?.current_term ?? "1"),
-    supabase
-      .from("attendance")
-      .select("status")
-      .eq("date", new Date().toISOString().slice(0, 10)),
+      .select("id")
+      .in("class_id", campusClassIds.length ? campusClassIds : ["00000000-0000-0000-0000-000000000000"]);
+    campusStudentIds = (campusStudents ?? []).map((s) => s.id);
+  }
+
+  const [{ count: studentCount }, feeRows, todaysAttendance] = await Promise.all([
+    (() => {
+      let query = supabase
+        .from("students")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "active");
+      if (campusClassIds) query = query.in("class_id", campusClassIds.length ? campusClassIds : ["00000000-0000-0000-0000-000000000000"]);
+      return query;
+    })(),
+    (() => {
+      let query = supabase
+        .from("fee_summary")
+        .select("amount_expected, amount_paid")
+        .eq("session", school?.current_session ?? "")
+        .eq("term", school?.current_term ?? "1");
+      if (campusStudentIds) query = query.in("student_id", campusStudentIds.length ? campusStudentIds : ["00000000-0000-0000-0000-000000000000"]);
+      return query;
+    })(),
+    (() => {
+      let query = supabase
+        .from("attendance")
+        .select("status")
+        .eq("date", new Date().toISOString().slice(0, 10));
+      if (campusClassIds) query = query.in("class_id", campusClassIds.length ? campusClassIds : ["00000000-0000-0000-0000-000000000000"]);
+      return query;
+    })(),
   ]);
 
   const expected = (feeRows.data ?? []).reduce((sum, r) => sum + Number(r.amount_expected), 0);
@@ -95,11 +135,16 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-900">Dashboard</h1>
-        <p className="text-sm text-zinc-500">
-          {school?.current_session} · {school ? `Term ${school.current_term}` : ""}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900">Dashboard</h1>
+          <p className="text-sm text-zinc-500">
+            {school?.current_session} · {school ? `Term ${school.current_term}` : ""}
+          </p>
+        </div>
+        {(campuses ?? []).length > 0 && (
+          <CampusFilter campuses={campuses ?? []} current={campusFilter ?? ""} />
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

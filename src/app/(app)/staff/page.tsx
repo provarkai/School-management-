@@ -2,14 +2,23 @@ import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { AddTeacherForm } from "./AddTeacherForm";
 import { TeacherSubjectSelect } from "./TeacherSubjectSelect";
+import { TeacherCampusSelect } from "./TeacherCampusSelect";
 
 export default async function StaffPage() {
   const { profile } = await requireProprietor();
   const supabase = await createClient();
 
-  const [{ data: staff }, { data: subjectRows }] = await Promise.all([
-    supabase.from("app_users").select("id, name, email, phone, role, subject").order("name"),
+  const [{ data: staff }, { data: subjectRows }, { data: campuses }] = await Promise.all([
+    supabase
+      .from("app_users")
+      .select("id, name, email, phone, role, subject, campus_id")
+      .order("name"),
     supabase.from("subjects").select("name").eq("school_id", profile.school_id ?? "").order("name"),
+    supabase
+      .from("campuses")
+      .select("id, name")
+      .eq("school_id", profile.school_id ?? "")
+      .order("name"),
   ]);
   const subjects = (subjectRows ?? []).map((s) => s.name);
 
@@ -17,7 +26,7 @@ export default async function StaffPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-zinc-900">Staff</h1>
 
-      <AddTeacherForm subjects={subjects} />
+      <AddTeacherForm subjects={subjects} campuses={campuses ?? []} />
 
       <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-zinc-200 text-sm">
@@ -28,6 +37,9 @@ export default async function StaffPage() {
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Phone</th>
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Role</th>
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Subject</th>
+              {(campuses ?? []).length > 0 && (
+                <th className="px-4 py-2 text-left font-medium text-zinc-500">Campus</th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
@@ -48,6 +60,19 @@ export default async function StaffPage() {
                     "—"
                   )}
                 </td>
+                {(campuses ?? []).length > 0 && (
+                  <td className="px-4 py-2">
+                    {person.role === "teacher" ? (
+                      <TeacherCampusSelect
+                        teacherId={person.id}
+                        campusId={person.campus_id}
+                        campuses={campuses ?? []}
+                      />
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

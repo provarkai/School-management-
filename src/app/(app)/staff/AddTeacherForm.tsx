@@ -5,7 +5,13 @@ import { addTeacher, type AddTeacherState } from "./actions";
 
 const initialState: AddTeacherState = {};
 
-export function AddTeacherForm({ subjects }: { subjects: string[] }) {
+export function AddTeacherForm({
+  subjects,
+  campuses,
+}: {
+  subjects: string[];
+  campuses: { id: string; name: string }[];
+}) {
   const [state, action, pending] = useActionState(addTeacher, initialState);
 
   return (
@@ -23,7 +29,12 @@ export function AddTeacherForm({ subjects }: { subjects: string[] }) {
           this with them securely; they can change it after signing in.
         </p>
       )}
-      <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-4 sm:items-end">
+      <form
+        action={action}
+        className={`grid grid-cols-1 gap-3 sm:items-end ${
+          campuses.length > 0 ? "sm:grid-cols-5" : "sm:grid-cols-4"
+        }`}
+      >
         <label className="text-sm font-medium text-zinc-700">
           Full name
           <input
@@ -63,10 +74,29 @@ export function AddTeacherForm({ subjects }: { subjects: string[] }) {
             ))}
           </select>
         </label>
+        {campuses.length > 0 && (
+          <label className="text-sm font-medium text-zinc-700">
+            Campus
+            <select
+              name="campus_id"
+              defaultValue=""
+              className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+            >
+              <option value="">Unassigned</option>
+              {campuses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:opacity-50 sm:col-span-4 sm:w-fit"
+          className={`rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:opacity-50 sm:w-fit ${
+            campuses.length > 0 ? "sm:col-span-5" : "sm:col-span-4"
+          }`}
         >
           {pending ? "Adding…" : "Add teacher"}
         </button>

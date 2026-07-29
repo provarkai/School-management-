@@ -16,6 +16,7 @@ export async function createClass(
 
   const name = String(formData.get("name") ?? "").trim();
   const teacherId = String(formData.get("teacher_id") ?? "") || null;
+  const campusId = String(formData.get("campus_id") ?? "") || null;
 
   if (!name) {
     return { error: "Class name is required." };
@@ -26,6 +27,7 @@ export async function createClass(
     school_id: profile.school_id,
     name,
     teacher_id: teacherId,
+    campus_id: campusId,
     session: school?.current_session ?? "",
     term: school?.current_term ?? "1",
   });
@@ -47,6 +49,21 @@ export async function updateClassTeacher(formData: FormData) {
   const { error } = await supabase
     .from("classes")
     .update({ teacher_id: teacherId })
+    .eq("id", classId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/classes");
+}
+
+export async function updateClassCampus(formData: FormData) {
+  await requireProprietor();
+  const classId = String(formData.get("class_id"));
+  const campusId = String(formData.get("campus_id") ?? "") || null;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("classes")
+    .update({ campus_id: campusId })
     .eq("id", classId);
 
   if (error) throw new Error(error.message);

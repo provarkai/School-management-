@@ -1,18 +1,24 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { CampusFilter } from "../CampusFilter";
 
 export default async function StudentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ class?: string }>;
+  searchParams: Promise<{ class?: string; campus?: string }>;
 }) {
   const { profile } = await requireUser();
-  const { class: classFilter } = await searchParams;
+  const { class: classFilter, campus: campusFilter } = await searchParams;
   const supabase = await createClient();
 
-  const [{ data: classes }, studentsQuery] = await Promise.all([
-    supabase.from("classes").select("id, name").order("name"),
+  const [{ data: classes }, { data: campuses }, studentsQuery] = await Promise.all([
+    supabase.from("classes").select("id, name, campus_id").order("name"),
+    supabase
+      .from("campuses")
+      .select("id, name")
+      .eq("school_id", profile.school_id ?? "")
+      .order("name"),
     (async () => {
       let query = supabase
         .from("students")
@@ -23,8 +29,15 @@ export default async function StudentsPage({
     })(),
   ]);
 
-  const { data: students } = studentsQuery;
   const classNameById = new Map((classes ?? []).map((c) => [c.id, c.name]));
+  const classesInCampus = campusFilter
+    ? new Set((classes ?? []).filter((c) => c.campus_id === campusFilter).map((c) => c.id))
+    : null;
+
+  const { data: studentsRaw } = studentsQuery;
+  const students = classesInCampus
+    ? (studentsRaw ?? []).filter((s) => s.class_id && classesInCampus.has(s.class_id))
+    : studentsRaw ?? [];
 
   return (
     <div className="space-y-6">
@@ -47,6 +60,10 @@ export default async function StudentsPage({
           </div>
         )}
       </div>
+
+      {profile.role === "proprietor" && (campuses ?? []).length > 0 && (
+        <CampusFilter campuses={campuses ?? []} current={campusFilter ?? ""} />
+      )}
 
       {profile.role === "proprietor" && (
         <div className="flex flex-wrap gap-2 text-sm">
@@ -84,7 +101,7 @@ export default async function StudentsPage({
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
-            {(students ?? []).map((s) => (
+            {students.map((s) => (
               <tr key={s.id}>
                 <td className="px-4 py-2 font-medium text-zinc-900">{s.full_name}</td>
                 <td className="px-4 py-2 text-zinc-500">
@@ -102,7 +119,7 @@ export default async function StudentsPage({
                 </td>
               </tr>
             ))}
-            {(students ?? []).length === 0 && (
+            {students.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-zinc-400">
                   No students found.

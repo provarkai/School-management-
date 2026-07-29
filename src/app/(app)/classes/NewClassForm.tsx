@@ -5,7 +5,13 @@ import { createClass, type ClassFormState } from "./actions";
 
 const initialState: ClassFormState = {};
 
-export function NewClassForm({ teachers }: { teachers: { id: string; name: string }[] }) {
+export function NewClassForm({
+  teachers,
+  campuses,
+}: {
+  teachers: { id: string; name: string }[];
+  campuses: { id: string; name: string }[];
+}) {
   const [state, action, pending] = useActionState(createClass, initialState);
 
   return (
@@ -16,7 +22,12 @@ export function NewClassForm({ teachers }: { teachers: { id: string; name: strin
           {state.error}
         </p>
       )}
-      <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:items-end">
+      <form
+        action={action}
+        className={`grid grid-cols-1 gap-3 sm:items-end ${
+          campuses.length > 0 ? "sm:grid-cols-4" : "sm:grid-cols-3"
+        }`}
+      >
         <label className="text-sm font-medium text-zinc-700">
           Class name
           <input
@@ -40,6 +51,22 @@ export function NewClassForm({ teachers }: { teachers: { id: string; name: strin
             ))}
           </select>
         </label>
+        {campuses.length > 0 && (
+          <label className="text-sm font-medium text-zinc-700">
+            Campus
+            <select
+              name="campus_id"
+              className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+            >
+              <option value="">Unassigned</option>
+              {campuses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <button
           type="submit"
           disabled={pending}

@@ -20,6 +20,7 @@ export async function addTeacher(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const phone = String(formData.get("phone") ?? "").trim();
   const subject = String(formData.get("subject") ?? "").trim();
+  const campusId = String(formData.get("campus_id") ?? "").trim() || null;
 
   if (!name || !email) {
     return { error: "Name and email are required." };
@@ -48,6 +49,7 @@ export async function addTeacher(
       name,
       phone: phone || null,
       subject: subject || null,
+      campus_id: campusId,
     })
     .eq("id", created.user.id);
 
@@ -66,6 +68,21 @@ export async function updateTeacherSubject(formData: FormData) {
 
   const supabase = await createClient();
   const { error } = await supabase.from("app_users").update({ subject }).eq("id", teacherId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/staff");
+}
+
+export async function updateTeacherCampus(formData: FormData) {
+  await requireProprietor();
+  const teacherId = String(formData.get("teacher_id"));
+  const campusId = String(formData.get("campus_id") ?? "") || null;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("app_users")
+    .update({ campus_id: campusId })
+    .eq("id", teacherId);
 
   if (error) throw new Error(error.message);
   revalidatePath("/staff");
