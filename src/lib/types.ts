@@ -115,6 +115,9 @@ export interface FeeSummary {
   balance: number;
   status: FeeStatus;
   last_payment_date: string | null;
+  sticker_amount_expected: number;
+  discount_amount: number;
+  discount_reason: string | null;
 }
 
 export interface FeePayment {

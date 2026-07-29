@@ -5,6 +5,7 @@ import {
   generatePaymentLink,
   recordPayment,
   sendFeeReminder,
+  setDiscount,
   setFeeAmount,
   type FeeActionState,
   type PaymentLinkState,
@@ -59,6 +60,56 @@ export function SetAmountForm({
         className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
       >
         {pending ? "Saving…" : "Save amount"}
+      </button>
+    </form>
+  );
+}
+
+export function SetDiscountForm({
+  studentId,
+  feeTypeId,
+  currentDiscount,
+  currentReason,
+}: {
+  studentId: string;
+  feeTypeId: string;
+  currentDiscount: number;
+  currentReason: string | null;
+}) {
+  const action = setDiscount.bind(null, studentId, feeTypeId);
+  const [state, formAction, pending] = useActionState(action, initialState);
+
+  return (
+    <form action={formAction} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="sm:col-span-2">
+        <Message state={state} />
+      </div>
+      <label className="block text-sm font-medium text-zinc-700">
+        Discount / scholarship amount
+        <input
+          name="discount_amount"
+          type="number"
+          min={0}
+          step="0.01"
+          defaultValue={currentDiscount || undefined}
+          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+        />
+      </label>
+      <label className="block text-sm font-medium text-zinc-700">
+        Reason (optional)
+        <input
+          name="discount_reason"
+          defaultValue={currentReason ?? ""}
+          placeholder="e.g. Sibling discount, merit scholarship"
+          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+        />
+      </label>
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 disabled:opacity-50 sm:col-span-2 sm:w-fit"
+      >
+        {pending ? "Saving…" : "Save discount"}
       </button>
     </form>
   );

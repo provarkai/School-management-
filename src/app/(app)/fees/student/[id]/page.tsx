@@ -2,7 +2,13 @@ import { notFound } from "next/navigation";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
-import { PaymentLinkButton, RecordPaymentForm, SendReminderButton, SetAmountForm } from "./FeeForms";
+import {
+  PaymentLinkButton,
+  RecordPaymentForm,
+  SendReminderButton,
+  SetAmountForm,
+  SetDiscountForm,
+} from "./FeeForms";
 
 export default async function StudentFeePage({
   params,
@@ -32,7 +38,9 @@ export default async function StudentFeePage({
       .order("name"),
     supabase
       .from("fee_summary")
-      .select("fee_record_id, fee_type_id, amount_expected, amount_paid, balance, status")
+      .select(
+        "fee_record_id, fee_type_id, amount_expected, amount_paid, balance, status, sticker_amount_expected, discount_amount, discount_reason"
+      )
       .eq("student_id", id)
       .eq("session", session)
       .eq("term", term),
@@ -109,14 +117,30 @@ export default async function StudentFeePage({
                 )}
               </div>
 
+              {fee && Number(fee.discount_amount) > 0 && (
+                <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  Sticker price {naira(Number(fee.sticker_amount_expected))} − discount{" "}
+                  {naira(Number(fee.discount_amount))}
+                  {fee.discount_reason ? ` (${fee.discount_reason})` : ""} = net{" "}
+                  {naira(Number(fee.amount_expected))}
+                </p>
+              )}
+
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <SetAmountForm
                   studentId={id}
                   feeTypeId={type.id}
-                  currentAmount={Number(fee?.amount_expected ?? 0)}
+                  currentAmount={Number(fee?.sticker_amount_expected ?? 0)}
                 />
                 <RecordPaymentForm studentId={id} feeTypeId={type.id} />
               </div>
+
+              <SetDiscountForm
+                studentId={id}
+                feeTypeId={type.id}
+                currentDiscount={Number(fee?.discount_amount ?? 0)}
+                currentReason={fee?.discount_reason ?? null}
+              />
 
               <PaymentLinkButton studentId={id} feeTypeId={type.id} />
             </section>

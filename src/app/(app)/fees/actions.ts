@@ -122,6 +122,46 @@ export async function deleteFeeType(feeTypeId: string) {
   revalidatePath("/fees");
 }
 
+export async function setDiscount(
+  studentId: string,
+  feeTypeId: string,
+  _prevState: FeeActionState,
+  formData: FormData
+): Promise<FeeActionState> {
+  const { profile, school } = await requireProprietor();
+  const supabase = await createClient();
+
+  const discountAmount = Number(formData.get("discount_amount"));
+  const discountReason = String(formData.get("discount_reason") ?? "").trim() || null;
+
+  if (!Number.isFinite(discountAmount) || discountAmount < 0) {
+    return { error: "Enter a valid discount amount." };
+  }
+
+  const session = school?.current_session ?? "";
+  const term = school?.current_term ?? "1";
+
+  const feeRecordId = await getOrCreateFeeRecord(
+    supabase,
+    profile.school_id!,
+    studentId,
+    feeTypeId,
+    session,
+    term
+  );
+
+  const { error } = await supabase
+    .from("fee_records")
+    .update({ discount_amount: discountAmount, discount_reason: discountReason })
+    .eq("id", feeRecordId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/fees");
+  revalidatePath(`/fees/student/${studentId}`);
+  return { success: discountAmount > 0 ? "Discount applied." : "Discount removed." };
+}
+
 export interface BulkSetClassFeeState {
   error?: string;
   success?: string;
