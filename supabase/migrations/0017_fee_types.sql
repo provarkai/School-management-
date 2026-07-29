@@ -50,7 +50,11 @@ create index if not exists fee_records_fee_type_id_idx on public.fee_records (fe
 
 -- fee_summary now carries the fee type through (one row per fee_record, as
 -- before — a student can have several rows per term, one per fee type).
-create or replace view public.fee_summary
+-- Dropped and recreated (not CREATE OR REPLACE) because the new column
+-- order isn't just an append — Postgres refuses to reorder/rename existing
+-- view columns in place.
+drop view if exists public.fee_summary;
+create view public.fee_summary
 with (security_invoker = true)
 as
 select
