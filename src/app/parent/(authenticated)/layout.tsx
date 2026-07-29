@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireParent } from "@/lib/current-parent";
 import { Avatar } from "@/components/Avatar";
-import { parentSignOut } from "./actions";
+import { parentSignOut } from "../actions";
 
 export default async function ParentLayout({
   children,
