@@ -24,7 +24,7 @@ export default async function PublicTimetablePage({
 
   const [{ data: school }, { data: periodSlots }, { data: entries }, { data: subjects }, { data: teachers }] =
     await Promise.all([
-      supabase.from("schools").select("name").eq("id", klass.school_id).single(),
+      supabase.from("schools").select("name, status").eq("id", klass.school_id).single(),
       supabase
         .from("period_slots")
         .select("*")
@@ -37,6 +37,8 @@ export default async function PublicTimetablePage({
       supabase.from("subjects").select("id, name").eq("school_id", klass.school_id),
       supabase.from("app_users").select("id, name").eq("school_id", klass.school_id),
     ]);
+
+  if (school?.status === "suspended") notFound();
 
   const entryByCell = new Map(
     (entries ?? []).map((e) => [`${e.period_slot_id}:${e.day_of_week}`, e])

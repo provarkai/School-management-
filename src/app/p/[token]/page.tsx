@@ -23,9 +23,11 @@ export default async function ParentViewPage({
 
   const { data: school } = await supabase
     .from("schools")
-    .select("name, logo_url, current_session, current_term")
+    .select("name, logo_url, current_session, current_term, status")
     .eq("id", student.school_id)
     .single();
+
+  if (school?.status === "suspended") notFound();
 
   const { data: klass } = student.class_id
     ? await supabase.from("classes").select("name").eq("id", student.class_id).single()

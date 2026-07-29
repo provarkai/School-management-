@@ -120,5 +120,15 @@ export function verifyWebhookSignature(rawBody: string, signature: string | null
     .update(rawBody)
     .digest("hex");
 
-  return hash === signature;
+  const hashBuffer = Buffer.from(hash, "hex");
+  const signatureBuffer = Buffer.from(signature, "hex");
+
+  // Constant-time comparison — a plain === leaks timing information about
+  // how many leading bytes matched, which is the textbook attack against
+  // HMAC verification (irrelevant over a noisy network in practice, but
+  // free to close off).
+  return (
+    hashBuffer.length === signatureBuffer.length &&
+    crypto.timingSafeEqual(hashBuffer, signatureBuffer)
+  );
 }
