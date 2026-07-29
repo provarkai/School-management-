@@ -25,19 +25,25 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const PINNED_TOP: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", alwaysVisible: true },
-  { href: "/assistant", label: "AI Assistant", roles: ["teacher"], managerOnly: true },
-];
+const PINNED_TOP: NavItem[] = [{ href: "/dashboard", label: "Dashboard", alwaysVisible: true }];
 
+// Everything else (17 pages) folds into exactly 6 related groups, so the
+// sidebar shows Dashboard + 6 tab-style sections instead of 19 flat links.
 const GROUPS: NavGroup[] = [
   {
+    id: "insights",
+    label: "Insights",
+    items: [
+      { href: "/assistant", label: "AI Assistant", roles: ["teacher"], managerOnly: true },
+      { href: "/analytics", label: "Analytics", managerOnly: true },
+      { href: "/reports", label: "Reports", managerOnly: true },
+    ],
+  },
+  {
     id: "students",
-    label: "Students & Classes",
+    label: "Students",
     items: [
       { href: "/students", label: "Students", roles: ["teacher"], managerOnly: true },
-      { href: "/classes", label: "Classes", managerOnly: true },
-      { href: "/campuses", label: "Campuses", managerOnly: true },
       { href: "/attendance", label: "Attendance", roles: ["teacher"], managerOnly: true },
       { href: "/assignments", label: "Assignments", roles: ["teacher"], managerOnly: true },
       { href: "/report-cards", label: "Report cards", roles: ["teacher"], managerOnly: true },
@@ -50,8 +56,6 @@ const GROUPS: NavGroup[] = [
       { href: "/timetable", label: "Timetable", roles: ["teacher"], managerOnly: true },
       { href: "/subjects", label: "Subjects", managerOnly: true },
       { href: "/calendar", label: "Calendar", roles: ["teacher", "staff"], managerOnly: true },
-      { href: "/analytics", label: "Analytics", managerOnly: true },
-      { href: "/reports", label: "Reports", managerOnly: true },
     ],
   },
   {
@@ -63,17 +67,21 @@ const GROUPS: NavGroup[] = [
     ],
   },
   {
-    id: "communication",
-    label: "Communication",
+    id: "notifications",
+    label: "Notifications",
     items: [
       { href: "/reminders", label: "Reminders", managerOnly: true },
       { href: "/notices", label: "Notices", alwaysVisible: true },
     ],
   },
   {
-    id: "staff",
-    label: "Staff",
-    items: [{ href: "/staff", label: "Staff", managerOnly: true }],
+    id: "admin",
+    label: "Admin",
+    items: [
+      { href: "/campuses", label: "Campuses", managerOnly: true },
+      { href: "/classes", label: "Classes", managerOnly: true },
+      { href: "/staff", label: "Staff", managerOnly: true },
+    ],
   },
 ];
 
@@ -120,14 +128,28 @@ export function NavLinks({ role, isManager }: { role: Role; isManager: boolean }
         className="block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 md:hidden"
       >
         {!current && <option value="">Menu</option>}
-        {allItems.map((item) => (
+        {PINNED_TOP.filter((item) => isVisible(item, role, isManager)).map((item) => (
+          <option key={item.href} value={item.href}>
+            {item.label}
+          </option>
+        ))}
+        {visibleGroups.map((group) => (
+          <optgroup key={group.id} label={group.label}>
+            {group.items.map((item) => (
+              <option key={item.href} value={item.href}>
+                {item.label}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+        {PINNED_BOTTOM.filter((item) => isVisible(item, role, isManager)).map((item) => (
           <option key={item.href} value={item.href}>
             {item.label}
           </option>
         ))}
       </select>
 
-      {/* Desktop: pinned items + grouped, tab-style collapsible sections */}
+      {/* Desktop: pinned items + 6 grouped, tab-style collapsible sections */}
       <div className="hidden md:flex md:flex-col md:gap-1">
         {PINNED_TOP.filter((item) => isVisible(item, role, isManager)).map((item) => (
           <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} />
