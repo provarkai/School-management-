@@ -20,6 +20,7 @@ export async function createStudent(
   const dateOfBirth = String(formData.get("date_of_birth") ?? "") || null;
   const parentName = String(formData.get("parent_name") ?? "").trim() || null;
   const parentPhone = String(formData.get("parent_phone") ?? "").trim() || null;
+  const parentEmail = String(formData.get("parent_email") ?? "").trim().toLowerCase() || null;
   const admissionDate = String(formData.get("admission_date") ?? "") || undefined;
 
   if (!fullName) {
@@ -34,6 +35,7 @@ export async function createStudent(
     date_of_birth: dateOfBirth,
     parent_name: parentName,
     parent_phone: parentPhone,
+    parent_email: parentEmail,
     ...(admissionDate ? { admission_date: admissionDate } : {}),
   });
 
@@ -51,6 +53,7 @@ export interface ImportRow {
   date_of_birth?: string;
   parent_name?: string;
   parent_phone?: string;
+  parent_email?: string;
   admission_date?: string;
 }
 
@@ -99,6 +102,7 @@ export async function bulkImportStudents(rows: ImportRow[]): Promise<ImportResul
       date_of_birth: row.date_of_birth || null,
       parent_name: row.parent_name?.trim() || null,
       parent_phone: row.parent_phone?.trim() || null,
+      parent_email: row.parent_email?.trim().toLowerCase() || null,
       ...(row.admission_date ? { admission_date: row.admission_date } : {}),
     });
   });
@@ -114,4 +118,32 @@ export async function bulkImportStudents(rows: ImportRow[]): Promise<ImportResul
 
   revalidatePath("/students");
   return { imported: toInsert.length, skipped };
+}
+
+export interface ParentEmailFormState {
+  error?: string;
+  ok?: boolean;
+}
+
+export async function updateParentEmail(
+  studentId: string,
+  _prevState: ParentEmailFormState,
+  formData: FormData
+): Promise<ParentEmailFormState> {
+  await requireProprietor();
+
+  const parentEmail = String(formData.get("parent_email") ?? "").trim().toLowerCase() || null;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("students")
+    .update({ parent_email: parentEmail })
+    .eq("id", studentId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath(`/students/${studentId}`);
+  return { ok: true };
 }

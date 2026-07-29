@@ -31,6 +31,12 @@ export function NewStudentForm({ classes }: { classes: { id: string; name: strin
       <Field label="Date of birth" name="date_of_birth" type="date" />
       <Field label="Parent/guardian name" name="parent_name" />
       <Field label="Parent/guardian phone" name="parent_phone" type="tel" placeholder="+234..." />
+      <Field
+        label="Parent/guardian email"
+        name="parent_email"
+        type="email"
+        hint="Lets the parent sign in to the parent portal with this email"
+      />
       <Field label="Admission date" name="admission_date" type="date" />
       <button
         type="submit"
@@ -49,12 +55,14 @@ function Field({
   type = "text",
   required,
   placeholder,
+  hint,
 }: {
   label: string;
   name: string;
   type?: string;
   required?: boolean;
   placeholder?: string;
+  hint?: string;
 }) {
   return (
     <label className="block text-sm font-medium text-zinc-700">
@@ -66,6 +74,7 @@ function Field({
         placeholder={placeholder}
         className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
       />
+      {hint && <span className="mt-1 block text-xs font-normal text-zinc-400">{hint}</span>}
     </label>
   );
 }

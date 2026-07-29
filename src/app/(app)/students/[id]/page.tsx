@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { ShareLinkButton } from "./ShareLinkButton";
+import { ParentEmailForm } from "./ParentEmailForm";
 
 export default async function StudentDetailPage({
   params,
@@ -17,7 +18,7 @@ export default async function StudentDetailPage({
   const { data: student } = await supabase
     .from("students")
     .select(
-      "id, full_name, class_id, date_of_birth, parent_name, parent_phone, admission_date, status, access_token"
+      "id, full_name, class_id, date_of_birth, parent_name, parent_phone, parent_email, admission_date, status, access_token"
     )
     .eq("id", id)
     .single();
@@ -45,10 +46,16 @@ export default async function StudentDetailPage({
         <Info label="Admission date" value={student.admission_date} />
         <Info label="Parent/guardian" value={student.parent_name ?? "—"} />
         <Info label="Parent phone" value={student.parent_phone ?? "—"} />
+        <Info label="Parent email" value={student.parent_email ?? "—"} />
         <Info label="Status" value={student.status} />
       </dl>
 
-      {profile.role === "proprietor" && <ShareLinkButton url={shareUrl} />}
+      {profile.role === "proprietor" && (
+        <>
+          <ShareLinkButton url={shareUrl} />
+          <ParentEmailForm studentId={student.id} currentEmail={student.parent_email} />
+        </>
+      )}
 
       <div className="flex flex-wrap gap-3">
         {profile.role === "proprietor" && (

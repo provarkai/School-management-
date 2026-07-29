@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/signup"];
+const PUBLIC_PATHS = ["/login", "/signup", "/parent/login"];
 
 export async function updateSession(request: NextRequest) {
   // Public, tokenized parent view — no auth required or checked.
@@ -36,18 +36,27 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isPublicPath = PUBLIC_PATHS.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
-  );
+  const { pathname } = request.nextUrl;
+  const isParentArea = pathname.startsWith("/parent");
+  const isPublicPath = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
 
   if (!user && !isPublicPath) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", request.nextUrl.pathname);
+    const loginUrl = new URL(isParentArea ? "/parent/login" : "/login", request.url);
+    loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
   if (user && isPublicPath) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    // Same account can only be staff OR a parent (the signup trigger creates
+    // exactly one of the two rows) — figure out which so we don't bounce a
+    // parent back toward the staff dashboard (or vice versa) in a loop.
+    const { data: staffProfile } = await supabase
+      .from("app_users")
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    return NextResponse.redirect(new URL(staffProfile ? "/dashboard" : "/parent", request.url));
   }
 
   return response;

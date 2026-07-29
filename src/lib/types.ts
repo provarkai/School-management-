@@ -44,8 +44,17 @@ export interface Student {
   date_of_birth: string | null;
   parent_name: string | null;
   parent_phone: string | null;
+  parent_email: string | null;
   admission_date: string;
   status: StudentStatus;
+  created_at: string;
+}
+
+export interface Parent {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
   created_at: string;
 }
 

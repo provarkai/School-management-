@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AuthForms } from "./AuthForms";
 
 export default function LoginPage() {
@@ -12,6 +13,9 @@ export default function LoginPage() {
         </p>
       </div>
       <AuthForms />
+      <Link href="/parent/login" className="mt-6 text-xs text-zinc-400 hover:text-zinc-600">
+        Parent? Sign in to the parent portal →
+      </Link>
     </div>
   );
 }
