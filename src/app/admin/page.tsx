@@ -20,17 +20,35 @@ interface SchoolStats {
   last_activity: string | null;
 }
 
+interface AdminLogRow {
+  id: string;
+  action: string;
+  target_school_id: string | null;
+  actor_id: string | null;
+  created_at: string;
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  school_suspended: "Suspended",
+  school_reactivated: "Reactivated",
+};
+
 export default async function AdminDashboardPage() {
   await requirePlatformAdmin();
   const supabase = await createClient();
 
-  const [{ data: totalsRows }, { data: schools }, { data: statsRows }] = await Promise.all([
+  const [{ data: totalsRows }, { data: schools }, { data: statsRows }, { data: logs }] = await Promise.all([
     supabase.rpc("platform_totals"),
     supabase
       .from("schools")
       .select("id, name, current_session, current_term, status, created_at")
       .order("created_at", { ascending: false }),
     supabase.rpc("platform_school_stats"),
+    supabase
+      .from("platform_admin_logs")
+      .select("id, action, target_school_id, actor_id, created_at")
+      .order("created_at", { ascending: false })
+      .limit(50),
   ]);
 
   const totals = (totalsRows?.[0] as {
@@ -43,6 +61,14 @@ export default async function AdminDashboardPage() {
   const statsBySchoolId = new Map(
     ((statsRows ?? []) as SchoolStats[]).map((s) => [s.school_id, s])
   );
+
+  const schoolNameById = new Map(((schools ?? []) as SchoolRow[]).map((s) => [s.id, s.name]));
+
+  const actorIds = [...new Set(((logs ?? []) as AdminLogRow[]).map((l) => l.actor_id).filter(Boolean))] as string[];
+  const { data: actors } = actorIds.length
+    ? await supabase.from("app_users").select("id, name").in("id", actorIds)
+    : { data: [] };
+  const actorNameById = new Map((actors ?? []).map((a) => [a.id, a.name]));
 
   return (
     <div className="max-w-6xl space-y-6">
@@ -113,6 +139,39 @@ export default async function AdminDashboardPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          Recent activity
+        </h2>
+        <div className="rounded-lg border border-zinc-200 bg-white shadow-sm">
+          {((logs ?? []) as AdminLogRow[]).length === 0 ? (
+            <p className="p-5 text-sm text-zinc-400">No admin actions logged yet.</p>
+          ) : (
+            <ul className="divide-y divide-zinc-100">
+              {((logs ?? []) as AdminLogRow[]).map((log) => (
+                <li key={log.id} className="flex items-center justify-between gap-3 p-4 text-sm">
+                  <span className="text-zinc-900">
+                    <span className="font-medium">
+                      {actorNameById.get(log.actor_id ?? "") ?? "Platform admin"}
+                    </span>{" "}
+                    {(ACTION_LABELS[log.action] ?? log.action).toLowerCase()}{" "}
+                    <span className="font-medium">
+                      {schoolNameById.get(log.target_school_id ?? "") ?? "a school"}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-xs text-zinc-400">
+                    {new Date(log.created_at).toLocaleString("en-NG", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );
