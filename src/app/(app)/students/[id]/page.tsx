@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ShareLinkButton } from "./ShareLinkButton";
 import { ParentEmailForm } from "./ParentEmailForm";
 import { AcademicHistory } from "./AcademicHistory";
+import { BehaviorRecord } from "./BehaviorRecord";
 
 export default async function StudentDetailPage({
   params,
@@ -26,7 +27,7 @@ export default async function StudentDetailPage({
 
   if (!student) notFound();
 
-  const [{ data: klass }, { data: results }, { data: fees }, { data: attendance }] =
+  const [{ data: klass }, { data: results }, { data: fees }, { data: attendance }, { data: incidents }] =
     await Promise.all([
       student.class_id
         ? supabase.from("classes").select("name").eq("id", student.class_id).single()
@@ -41,6 +42,11 @@ export default async function StudentDetailPage({
         .select("session, term, fee_type_name, amount_expected, amount_paid, balance, status")
         .eq("student_id", student.id),
       supabase.from("attendance").select("status").eq("student_id", student.id),
+      supabase
+        .from("behavior_incidents")
+        .select("id, incident_date, category, severity, description, action_taken")
+        .eq("student_id", student.id)
+        .order("incident_date", { ascending: false }),
     ]);
 
   const headerList = await headers();
@@ -101,6 +107,17 @@ export default async function StudentDetailPage({
             balance: Number(f.balance),
           }))}
           attendance={attendance ?? []}
+        />
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          Behavior record
+        </h2>
+        <BehaviorRecord
+          studentId={student.id}
+          incidents={incidents ?? []}
+          canDelete={profile.role === "proprietor"}
         />
       </div>
     </div>

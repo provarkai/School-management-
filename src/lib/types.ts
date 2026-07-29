@@ -6,6 +6,8 @@ export type AttendanceStatus = "present" | "absent" | "late";
 export type PaymentMethod = "cash" | "transfer" | "paystack";
 export type FeeStatus = "paid" | "partial" | "owing";
 export type PaymentIntentStatus = "pending" | "success" | "failed";
+export type BehaviorCategory = "merit" | "demerit";
+export type BehaviorSeverity = "minor" | "major" | "severe";
 
 export interface School {
   id: string;
@@ -156,6 +158,19 @@ export interface ResultRecord {
   grade: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface BehaviorIncident {
+  id: string;
+  school_id: string;
+  student_id: string;
+  incident_date: string;
+  category: BehaviorCategory;
+  severity: BehaviorSeverity;
+  description: string;
+  action_taken: string | null;
+  recorded_by: string | null;
+  created_at: string;
 }
 
 export interface PaymentIntent {

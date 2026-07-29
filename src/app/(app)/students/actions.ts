@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireProprietor } from "@/lib/current-user";
+import { requireProprietor, requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import type { BehaviorCategory, BehaviorSeverity } from "@/lib/types";
 
 export interface StudentFormState {
   error?: string;
@@ -146,4 +147,55 @@ export async function updateParentEmail(
 
   revalidatePath(`/students/${studentId}`);
   return { ok: true };
+}
+
+export interface BehaviorIncidentFormState {
+  error?: string;
+  success?: string;
+}
+
+export async function createBehaviorIncident(
+  studentId: string,
+  _prevState: BehaviorIncidentFormState,
+  formData: FormData
+): Promise<BehaviorIncidentFormState> {
+  const { profile } = await requireUser();
+  const supabase = await createClient();
+
+  const category = String(formData.get("category") ?? "") as BehaviorCategory;
+  const severity = String(formData.get("severity") ?? "minor") as BehaviorSeverity;
+  const description = String(formData.get("description") ?? "").trim();
+  const actionTaken = String(formData.get("action_taken") ?? "").trim() || null;
+  const incidentDate = String(formData.get("incident_date") ?? "") || undefined;
+
+  if (category !== "merit" && category !== "demerit") {
+    return { error: "Choose merit or demerit." };
+  }
+  if (!description) {
+    return { error: "Enter a description." };
+  }
+
+  const { error } = await supabase.from("behavior_incidents").insert({
+    school_id: profile.school_id,
+    student_id: studentId,
+    category,
+    severity,
+    description,
+    action_taken: actionTaken,
+    recorded_by: profile.id,
+    ...(incidentDate ? { incident_date: incidentDate } : {}),
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/students/${studentId}`);
+  return { success: "Incident logged." };
+}
+
+export async function deleteBehaviorIncident(studentId: string, incidentId: string) {
+  await requireProprietor();
+  const supabase = await createClient();
+  const { error } = await supabase.from("behavior_incidents").delete().eq("id", incidentId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/students/${studentId}`);
 }
