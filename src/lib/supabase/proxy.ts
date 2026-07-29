@@ -6,11 +6,15 @@ const PUBLIC_PATHS = ["/login", "/signup", "/parent/login"];
 export async function updateSession(request: NextRequest) {
   // Public, tokenized views and API routes — no cookie-based auth to check;
   // API routes authenticate themselves (webhook signatures, bearer secrets).
+  // /privacy is a legal document anyone should be able to read regardless of
+  // sign-in state, so it's exempt from both the "must be signed in" redirect
+  // and the "signed in users get bounced off public pages" redirect below.
   if (
     request.nextUrl.pathname.startsWith("/p/") ||
     request.nextUrl.pathname.startsWith("/t/") ||
     request.nextUrl.pathname.startsWith("/pay/") ||
-    request.nextUrl.pathname.startsWith("/api/")
+    request.nextUrl.pathname.startsWith("/api/") ||
+    request.nextUrl.pathname.startsWith("/privacy")
   ) {
     return NextResponse.next({ request });
   }

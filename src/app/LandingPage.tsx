@@ -257,7 +257,10 @@ export function LandingPage() {
       </section>
 
       <footer className="border-t border-zinc-200 bg-white py-8 text-center text-xs text-zinc-400">
-        School Manager
+        <p>School Manager</p>
+        <Link href="/privacy" className="mt-1 inline-block underline hover:text-zinc-600">
+          Privacy Policy
+        </Link>
       </footer>
     </div>
   );
