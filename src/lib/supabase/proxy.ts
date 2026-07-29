@@ -44,7 +44,7 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isParentArea = pathname.startsWith("/parent");
-  const isPublicPath = PUBLIC_PATHS.some((path) => pathname.startsWith(path));
+  const isPublicPath = pathname === "/" || PUBLIC_PATHS.some((path) => pathname.startsWith(path));
 
   if (!user && !isPublicPath) {
     const loginUrl = new URL(isParentArea ? "/parent/login" : "/login", request.url);
