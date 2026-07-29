@@ -101,6 +101,16 @@ const FEATURES: { title: string; description: string; mark: string }[] = [
   },
 ];
 
+// TODO: illustrative placeholder numbers — replace with a real live count
+// (e.g. a query against the schools table) before this goes in front of
+// real prospective schools.
+const STATS = [
+  { value: "50+", label: "Schools onboard" },
+  { value: "12,000+", label: "Students tracked" },
+  { value: "₦180M+", label: "Fees processed" },
+  { value: "99.9%", label: "Uptime" },
+];
+
 const STEPS = [
   {
     color: "bg-indigo-600",
@@ -171,6 +181,21 @@ export function LandingPage() {
               I&apos;m a parent
             </Link>
           </div>
+        </div>
+      </section>
+
+      <section className="border-b border-zinc-200 bg-white py-10">
+        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 sm:grid-cols-4 sm:px-6">
+          {STATS.map((stat) => (
+            <div key={stat.label} className="text-center">
+              <p className="bg-gradient-to-br from-indigo-600 to-fuchsia-600 bg-clip-text text-3xl font-bold text-transparent">
+                {stat.value}
+              </p>
+              <p className="mt-1 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                {stat.label}
+              </p>
+            </div>
+          ))}
         </div>
       </section>
 
