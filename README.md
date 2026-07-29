@@ -65,12 +65,40 @@ in your environment. See `src/lib/termii.ts` — it's a thin wrapper around the
 Termii SMS API; swap in the WhatsApp Business API endpoint there if/when you
 want WhatsApp delivery specifically rather than Termii's generic channel.
 
-## What's deliberately out of scope (Phase 2+)
+## Beyond the MVP spec
 
-Parent-facing portal, class position/ranking automation, timetabling,
-multi-campus management, automated bank transfer reconciliation, native
-mobile app, scheduled/automated weekly reminders (sending today is a manual
-trigger from the Reminders page).
+A few Phase-2 items from the original spec got pulled forward:
+
+- **Automated weekly fee reminders** — a Vercel Cron job (`vercel.json`,
+  `src/app/api/cron/weekly-fee-reminders/route.ts`) sends reminders to every
+  owing/partial student across all schools, every Monday. Protect it with a
+  `CRON_SECRET` env var (Vercel sends it automatically as a Bearer token once
+  the var exists in your project).
+- **Bank transfer matching** (`/fees/transfers`) — log a transfer alert
+  (amount + narration + date) and the app suggests candidate students by
+  name/amount match; confirming records the payment. Manual entry, not a
+  bank webhook — a semi-automated stopgap for reconciliation.
+- **Parent read-only view** — each student gets an unguessable share link
+  (`/p/[token]`, no login) showing fee balance, attendance, and results.
+  Copy it from a student's detail page. This is a link-sharing stand-in for
+  a full parent portal/account system, which is still out of scope.
+- **Class position/ranking** — computed at report-card render time from
+  `results`, shown on the score-entry page and both PDF routes.
+- **CSV export** — "Export CSV" on the Fees and Attendance History pages,
+  respecting whatever filters are active.
+- **AI Assistant** (`/assistant`) — a tool-using chat backed by the Claude
+  API (`src/lib/ai/`) that answers questions about students, fees,
+  attendance, and results by querying the database through the signed-in
+  user's own RLS-scoped access (a teacher's assistant can't see fee data a
+  teacher can't see, because the query returns nothing — not because the
+  assistant special-cases the role). Needs `ANTHROPIC_API_KEY`; runs in a
+  mock/explain-yourself mode without it.
+
+## What's still out of scope
+
+Full parent-facing accounts/portal (only the read-only share link above
+exists), timetabling, multi-campus management, fully-automated bank
+reconciliation (matching is suggested, not automatic), native mobile app.
 
 ## Project structure
 

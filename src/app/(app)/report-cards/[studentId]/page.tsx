@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { computeClassRanking } from "@/lib/ranking";
 import { ScoreForm, DeleteScoreButton } from "./ScoreForm";
 
 export default async function ScoreEntryPage({
@@ -31,6 +32,10 @@ export default async function ScoreEntryPage({
     .eq("term", term)
     .order("subject");
 
+  const ranking = student.class_id
+    ? (await computeClassRanking(supabase, student.class_id, session, term)).get(studentId) ?? null
+    : null;
+
   return (
     <div className="max-w-2xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -38,6 +43,7 @@ export default async function ScoreEntryPage({
           <h1 className="text-2xl font-bold text-zinc-900">{student.full_name}</h1>
           <p className="text-sm text-zinc-500">
             {session} · Term {term}
+            {ranking && ` · Position ${ranking.position} of ${ranking.outOf}`}
           </p>
         </div>
         <a

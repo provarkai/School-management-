@@ -4,6 +4,11 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC_PATHS = ["/login", "/signup"];
 
 export async function updateSession(request: NextRequest) {
+  // Public, tokenized parent view — no auth required or checked.
+  if (request.nextUrl.pathname.startsWith("/p/")) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

@@ -56,9 +56,10 @@ export interface ReportCardData {
     total: number;
     grade: string | null;
   }[];
+  ranking?: { position: number; outOf: number } | null;
 }
 
-function ReportCardPage({ school, student, term, results }: ReportCardData) {
+function ReportCardPage({ school, student, term, results, ranking }: ReportCardData) {
   const totalScore = results.reduce((sum, r) => sum + Number(r.total), 0);
   const average = results.length ? totalScore / results.length : 0;
 
@@ -119,6 +120,7 @@ function ReportCardPage({ school, student, term, results }: ReportCardData) {
         <Text>Subjects: {results.length}</Text>
         <Text>Total score: {totalScore.toFixed(1)}</Text>
         <Text>Average: {average.toFixed(1)}%</Text>
+        <Text>Position: {ranking ? `${ranking.position} of ${ranking.outOf}` : "—"}</Text>
       </View>
 
       <View style={styles.footer}>

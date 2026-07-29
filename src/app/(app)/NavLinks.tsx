@@ -18,6 +18,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/attendance", label: "Attendance", roles: ["proprietor", "teacher"] },
   { href: "/report-cards", label: "Report cards", roles: ["proprietor", "teacher"] },
   { href: "/reminders", label: "Reminders", roles: ["proprietor"] },
+  { href: "/assistant", label: "AI Assistant", roles: ["proprietor", "teacher"] },
   { href: "/staff", label: "Staff", roles: ["proprietor"] },
 ];
 

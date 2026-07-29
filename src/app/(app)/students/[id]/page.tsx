@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { ShareLinkButton } from "./ShareLinkButton";
 
 export default async function StudentDetailPage({
   params,
@@ -14,7 +16,9 @@ export default async function StudentDetailPage({
 
   const { data: student } = await supabase
     .from("students")
-    .select("id, full_name, class_id, date_of_birth, parent_name, parent_phone, admission_date, status")
+    .select(
+      "id, full_name, class_id, date_of_birth, parent_name, parent_phone, admission_date, status, access_token"
+    )
     .eq("id", id)
     .single();
 
@@ -23,6 +27,11 @@ export default async function StudentDetailPage({
   const { data: klass } = student.class_id
     ? await supabase.from("classes").select("name").eq("id", student.class_id).single()
     : { data: null };
+
+  const headerList = await headers();
+  const host = headerList.get("host");
+  const protocol = host?.startsWith("localhost") ? "http" : "https";
+  const shareUrl = `${protocol}://${host}/p/${student.access_token}`;
 
   return (
     <div className="max-w-lg space-y-6">
@@ -38,6 +47,8 @@ export default async function StudentDetailPage({
         <Info label="Parent phone" value={student.parent_phone ?? "—"} />
         <Info label="Status" value={student.status} />
       </dl>
+
+      {profile.role === "proprietor" && <ShareLinkButton url={shareUrl} />}
 
       <div className="flex flex-wrap gap-3">
         {profile.role === "proprietor" && (

@@ -61,12 +61,31 @@ export default async function FeesPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-900">Fees</h1>
-        <p className="text-sm text-zinc-500">
-          {session} · Term {term} — {naira(totals.paid)} collected of {naira(totals.expected)}{" "}
-          expected
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900">Fees</h1>
+          <p className="text-sm text-zinc-500">
+            {session} · Term {term} — {naira(totals.paid)} collected of {naira(totals.expected)}{" "}
+            expected
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <a
+            href={`/fees/export?${new URLSearchParams({
+              ...(classFilter ? { class: classFilter } : {}),
+              ...(statusFilter ? { status: statusFilter } : {}),
+            }).toString()}`}
+            className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
+          >
+            Export CSV
+          </a>
+          <Link
+            href="/fees/transfers"
+            className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
+          >
+            Bank transfers
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
