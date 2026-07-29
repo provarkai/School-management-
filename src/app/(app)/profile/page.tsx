@@ -1,7 +1,13 @@
 import { requireUser } from "@/lib/current-user";
 import { AvatarUploader } from "@/components/AvatarUploader";
-import { EditProfileForm, ChangePasswordForm } from "./ProfileForms";
-import { saveProfilePhoto } from "./actions";
+import {
+  EditProfileForm,
+  ChangePasswordForm,
+  SchoolProfileForm,
+  AcademicSessionForm,
+} from "./ProfileForms";
+import { SchoolLogoUploader } from "./SchoolLogoUploader";
+import { saveProfilePhoto, saveSchoolLogo } from "./actions";
 import { proprietorTitle } from "@/lib/format";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -9,8 +15,8 @@ const ROLE_LABELS: Record<string, string> = {
   staff: "Non-teaching staff",
 };
 
-export default async function ProfilePage() {
-  const { authId, profile } = await requireUser();
+export default async function SettingsPage() {
+  const { authId, profile, school, isManager } = await requireUser();
   const roleLabel =
     profile.role === "proprietor"
       ? proprietorTitle(profile.gender)
@@ -19,7 +25,7 @@ export default async function ProfilePage() {
   return (
     <div className="max-w-lg space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-zinc-900">My Profile</h1>
+        <h1 className="text-2xl font-bold text-zinc-900">Settings</h1>
         <p className="text-sm text-zinc-500">
           {roleLabel}
           {profile.role === "teacher" && profile.subject ? ` · ${profile.subject}` : ""}
@@ -52,6 +58,34 @@ export default async function ProfilePage() {
         <h2 className="mb-3 text-sm font-semibold text-zinc-900">Change password</h2>
         <ChangePasswordForm />
       </section>
+
+      {isManager && school && (
+        <>
+          <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-zinc-900">School logo</h2>
+            <SchoolLogoUploader
+              schoolId={school.id}
+              schoolName={school.name}
+              initialUrl={school.logo_url}
+              onSave={saveSchoolLogo}
+            />
+          </section>
+
+          <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-zinc-900">School profile</h2>
+            <SchoolProfileForm name={school.name} address={school.address} />
+          </section>
+
+          <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-zinc-900">Academic session</h2>
+            <p className="mb-3 text-sm text-zinc-500">
+              This drives every &quot;current term&quot; view across the app — fees, attendance,
+              and results all default to whatever is set here.
+            </p>
+            <AcademicSessionForm session={school.current_session} term={school.current_term} />
+          </section>
+        </>
+      )}
     </div>
   );
 }

@@ -81,7 +81,7 @@ export const GROUPS: NavGroup[] = [
   },
 ];
 
-export const PINNED_BOTTOM: NavItem[] = [{ href: "/profile", label: "My Profile", alwaysVisible: true }];
+export const PINNED_BOTTOM: NavItem[] = [{ href: "/profile", label: "Settings", alwaysVisible: true }];
 
 export function isVisible(item: NavItem, role: Role, isManager: boolean): boolean {
   if (item.alwaysVisible) return true;

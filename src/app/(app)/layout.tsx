@@ -24,15 +24,18 @@ export default async function AppLayout({
       <aside className="flex shrink-0 flex-col justify-between border-b border-zinc-200 bg-white px-3 py-3 sm:px-4 sm:py-4 md:h-screen md:w-56 md:border-b-0 md:border-r">
         <div>
           <div className="mb-3 flex items-start justify-between gap-3 px-1 md:mb-6 md:block">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold text-zinc-900">
-                {school?.name ?? "School Manager"}
-              </p>
-              {school && (
-                <p className="truncate text-xs text-zinc-400">
-                  {school.current_session} · {TERM_LABELS[school.current_term]}
+            <div className="flex min-w-0 items-center gap-2">
+              {school && <Avatar url={school.logo_url} name={school.name} size="sm" />}
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-zinc-900">
+                  {school?.name ?? "School Manager"}
                 </p>
-              )}
+                {school && (
+                  <p className="truncate text-xs text-zinc-400">
+                    {school.current_session} · {TERM_LABELS[school.current_term]}
+                  </p>
+                )}
+              </div>
             </div>
             <div className="shrink-0 text-right md:hidden">
               <p className="truncate text-xs font-medium text-zinc-700">{profile.name}</p>

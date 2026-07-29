@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/current-user";
+import { requireUser, requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import type { Term } from "@/lib/types";
 
 export interface ProfileFormState {
   error?: string;
@@ -48,6 +49,76 @@ export async function saveProfilePhoto(url: string): Promise<void> {
   if (error) throw new Error(error.message);
 
   revalidatePath("/profile");
+}
+
+export async function updateSchoolProfile(
+  _prevState: ProfileFormState,
+  formData: FormData
+): Promise<ProfileFormState> {
+  const { profile } = await requireProprietor();
+
+  const name = String(formData.get("school_name") ?? "").trim();
+  const address = String(formData.get("school_address") ?? "").trim();
+
+  if (!name) {
+    return { error: "School name is required." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("schools")
+    .update({ name, address: address || null })
+    .eq("id", profile.school_id ?? "");
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/profile");
+  return { success: "School profile updated." };
+}
+
+export async function saveSchoolLogo(url: string): Promise<void> {
+  const { profile } = await requireProprietor();
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("schools")
+    .update({ logo_url: url })
+    .eq("id", profile.school_id ?? "");
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/profile");
+}
+
+export async function updateAcademicSession(
+  _prevState: ProfileFormState,
+  formData: FormData
+): Promise<ProfileFormState> {
+  const { profile } = await requireProprietor();
+
+  const session = String(formData.get("current_session") ?? "").trim();
+  const term = String(formData.get("current_term") ?? "") as Term;
+
+  if (!session) {
+    return { error: "Enter the current session, e.g. 2025/2026." };
+  }
+  if (!["1", "2", "3"].includes(term)) {
+    return { error: "Choose a term." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("schools")
+    .update({ current_session: session, current_term: term })
+    .eq("id", profile.school_id ?? "");
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/profile");
+  return { success: "Academic session updated." };
 }
 
 export async function changeOwnPassword(
