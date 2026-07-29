@@ -256,3 +256,51 @@ export async function deleteBehaviorIncident(studentId: string, incidentId: stri
   if (error) throw new Error(error.message);
   revalidatePath(`/students/${studentId}`);
 }
+
+export interface DocumentUploadState {
+  error?: string;
+  success?: string;
+}
+
+export async function recordStudentDocument(
+  studentId: string,
+  _prevState: DocumentUploadState,
+  formData: FormData
+): Promise<DocumentUploadState> {
+  const { profile } = await requireUser();
+  const supabase = await createClient();
+
+  const label = String(formData.get("label") ?? "").trim();
+  const filePath = String(formData.get("file_path") ?? "").trim();
+  const fileName = String(formData.get("file_name") ?? "").trim();
+  const contentType = String(formData.get("content_type") ?? "").trim() || null;
+  const sizeBytes = Number(formData.get("size_bytes") ?? 0) || null;
+
+  if (!label) return { error: "Enter a label for this document." };
+  if (!filePath || !fileName) return { error: "Upload failed — no file received." };
+
+  const { error } = await supabase.from("student_documents").insert({
+    school_id: profile.school_id,
+    student_id: studentId,
+    label,
+    file_path: filePath,
+    file_name: fileName,
+    content_type: contentType,
+    size_bytes: sizeBytes,
+    uploaded_by: profile.id,
+  });
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/students/${studentId}`);
+  return { success: "Document uploaded." };
+}
+
+export async function deleteStudentDocument(studentId: string, documentId: string, filePath: string) {
+  await requireProprietor();
+  const supabase = await createClient();
+  await supabase.storage.from("student-documents").remove([filePath]);
+  const { error } = await supabase.from("student_documents").delete().eq("id", documentId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/students/${studentId}`);
+}

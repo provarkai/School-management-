@@ -215,6 +215,19 @@ export interface StudentFieldValue {
   updated_at: string;
 }
 
+export interface StudentDocument {
+  id: string;
+  school_id: string;
+  student_id: string;
+  label: string;
+  file_path: string;
+  file_name: string;
+  content_type: string | null;
+  size_bytes: number | null;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
 export interface PaymentIntent {
   id: string;
   school_id: string;

@@ -8,6 +8,8 @@ import { ParentEmailForm } from "./ParentEmailForm";
 import { AcademicHistory } from "./AcademicHistory";
 import { BehaviorRecord } from "./BehaviorRecord";
 import { CustomFieldValuesForm } from "./CustomFieldValuesForm";
+import { DocumentUploadForm } from "./DocumentUploadForm";
+import { DocumentsList } from "./DocumentsList";
 
 export default async function StudentDetailPage({
   params,
@@ -21,7 +23,7 @@ export default async function StudentDetailPage({
   const { data: student } = await supabase
     .from("students")
     .select(
-      "id, full_name, class_id, date_of_birth, parent_name, parent_phone, parent_email, admission_date, status, access_token"
+      "id, school_id, full_name, class_id, date_of_birth, parent_name, parent_phone, parent_email, admission_date, status, access_token"
     )
     .eq("id", id)
     .single();
@@ -36,6 +38,7 @@ export default async function StudentDetailPage({
     { data: incidents },
     { data: fieldDefs },
     { data: fieldValues },
+    { data: documentRows },
   ] = await Promise.all([
     student.class_id
       ? supabase.from("classes").select("name").eq("id", student.class_id).single()
@@ -64,9 +67,23 @@ export default async function StudentDetailPage({
       .from("student_field_values")
       .select("field_definition_id, value")
       .eq("student_id", student.id),
+    supabase
+      .from("student_documents")
+      .select("id, label, file_name, file_path, size_bytes, created_at")
+      .eq("student_id", student.id)
+      .order("created_at", { ascending: false }),
   ]);
 
   const fieldValueByDefId = new Map((fieldValues ?? []).map((v) => [v.field_definition_id, v.value]));
+
+  const documents = await Promise.all(
+    (documentRows ?? []).map(async (doc) => {
+      const { data: signed } = await supabase.storage
+        .from("student-documents")
+        .createSignedUrl(doc.file_path, 3600);
+      return { ...doc, signedUrl: signed?.signedUrl ?? null };
+    })
+  );
 
   const headerList = await headers();
   const host = headerList.get("host");
@@ -143,6 +160,16 @@ export default async function StudentDetailPage({
         <BehaviorRecord
           studentId={student.id}
           incidents={incidents ?? []}
+          canDelete={profile.role === "proprietor"}
+        />
+      </div>
+
+      <div className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Documents</h2>
+        <DocumentUploadForm studentId={student.id} schoolId={student.school_id} />
+        <DocumentsList
+          studentId={student.id}
+          documents={documents}
           canDelete={profile.role === "proprietor"}
         />
       </div>
