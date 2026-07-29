@@ -174,12 +174,6 @@ export function LandingPage() {
             >
               Get started
             </Link>
-            <Link
-              href="/parent/login"
-              className="rounded-md border border-white/40 bg-white/10 px-6 py-3 text-sm font-semibold text-white shadow-sm backdrop-blur transition hover:bg-white/20"
-            >
-              I&apos;m a parent
-            </Link>
           </div>
         </div>
       </section>

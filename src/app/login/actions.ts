@@ -22,7 +22,8 @@ export async function signIn(
     return { error: error.message };
   }
 
-  redirect("/dashboard");
+  const { data: isAdmin } = await supabase.rpc("is_platform_admin");
+  redirect(isAdmin ? "/admin" : "/dashboard");
 }
 
 export async function signUp(

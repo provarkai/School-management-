@@ -43,6 +43,10 @@ export async function requireUser(): Promise<CurrentUser> {
     .eq("id", profile.school_id)
     .single();
 
+  if (school?.status === "suspended") {
+    redirect("/account-suspended");
+  }
+
   return { authId: user.id, profile: profile as AppUser, school: school as School | null };
 }
 

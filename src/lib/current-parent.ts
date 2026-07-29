@@ -54,7 +54,7 @@ export async function requireParent(): Promise<CurrentParent> {
 
   const { data: links } = await supabase
     .from("parent_students")
-    .select("student_id, students(id, full_name, class_id, school_id, classes(name), schools(name))")
+    .select("student_id, students(id, full_name, class_id, school_id, classes(name), schools(name, status))")
     .eq("parent_id", user.id);
 
   const children: ParentChild[] = (links ?? [])
@@ -65,9 +65,9 @@ export async function requireParent(): Promise<CurrentParent> {
         class_id: string | null;
         school_id: string;
         classes: { name: string } | null;
-        schools: { name: string } | null;
+        schools: { name: string; status: string } | null;
       } | null;
-      if (!student) return null;
+      if (!student || student.schools?.status === "suspended") return null;
       return {
         id: student.id,
         full_name: student.full_name,
