@@ -19,6 +19,7 @@ export async function addTeacher(
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const phone = String(formData.get("phone") ?? "").trim();
+  const subject = String(formData.get("subject") ?? "").trim();
 
   if (!name || !email) {
     return { error: "Name and email are required." };
@@ -41,7 +42,13 @@ export async function addTeacher(
   const supabase = await createClient();
   const { error: profileError } = await supabase
     .from("app_users")
-    .update({ school_id: profile.school_id, role: "teacher", name, phone: phone || null })
+    .update({
+      school_id: profile.school_id,
+      role: "teacher",
+      name,
+      phone: phone || null,
+      subject: subject || null,
+    })
     .eq("id", created.user.id);
 
   if (profileError) {
@@ -50,6 +57,18 @@ export async function addTeacher(
 
   revalidatePath("/staff");
   return { tempPassword };
+}
+
+export async function updateTeacherSubject(formData: FormData) {
+  await requireProprietor();
+  const teacherId = String(formData.get("teacher_id"));
+  const subject = String(formData.get("subject") ?? "") || null;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("app_users").update({ subject }).eq("id", teacherId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/staff");
 }
 
 export async function assignClassTeacher(classId: string, teacherId: string | null) {

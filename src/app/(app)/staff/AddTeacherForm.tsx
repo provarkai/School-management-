@@ -5,7 +5,7 @@ import { addTeacher, type AddTeacherState } from "./actions";
 
 const initialState: AddTeacherState = {};
 
-export function AddTeacherForm() {
+export function AddTeacherForm({ subjects }: { subjects: string[] }) {
   const [state, action, pending] = useActionState(addTeacher, initialState);
 
   return (
@@ -23,7 +23,7 @@ export function AddTeacherForm() {
           this with them securely; they can change it after signing in.
         </p>
       )}
-      <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:items-end">
+      <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-4 sm:items-end">
         <label className="text-sm font-medium text-zinc-700">
           Full name
           <input
@@ -48,10 +48,25 @@ export function AddTeacherForm() {
             className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
           />
         </label>
+        <label className="text-sm font-medium text-zinc-700">
+          Subject taught
+          <select
+            name="subject"
+            defaultValue=""
+            className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+          >
+            <option value="">Unassigned</option>
+            {subjects.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:opacity-50 sm:col-span-3 sm:w-fit"
+          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:opacity-50 sm:col-span-4 sm:w-fit"
         >
           {pending ? "Adding…" : "Add teacher"}
         </button>

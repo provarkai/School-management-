@@ -22,6 +22,7 @@ export interface AppUser {
   email: string | null;
   phone: string | null;
   role: Role;
+  subject: string | null;
   created_at: string;
 }
 
