@@ -68,7 +68,7 @@ function ReportCardPage({ school, student, term, results, ranking, remarks }: Re
 
   return (
     <Page size="A4" style={styles.page}>
-      <SchoolLetterhead school={school} title="Termly Report Card" />
+      <SchoolLetterhead school={school} title={`${TERM_LABELS[term]} Report Card`} />
 
       <View style={styles.infoRow}>
         <View style={styles.infoItem}>
