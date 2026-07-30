@@ -1,7 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+
+async function siteOrigin(): Promise<string> {
+  const host = (await headers()).get("host") ?? "localhost:3000";
+  const protocol = host.startsWith("localhost") ? "http" : "https";
+  return `${protocol}://${host}`;
+}
 
 export interface AuthActionState {
   error?: string;
@@ -42,7 +49,10 @@ export async function signUp(
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name } },
+    options: {
+      data: { name },
+      emailRedirectTo: `${await siteOrigin()}/auth/confirm`,
+    },
   });
 
   if (error) {
