@@ -52,11 +52,21 @@ export async function GET(
     ? (await computeClassRanking(supabase, student.class_id, school.current_session, term)).get(studentId) ?? null
     : null;
 
+  const { data: remarks } = await supabase
+    .from("report_remarks")
+    .select("teacher_remark, principal_remark")
+    .eq("student_id", studentId)
+    .eq("session", school.current_session)
+    .eq("term", term)
+    .maybeSingle();
+
   const buffer = await renderToBuffer(
     ReportCardDocument({
       school: {
         name: school.name,
         address: school.address,
+        phone: school.phone,
+        logo_url: school.logo_url,
         current_session: school.current_session,
         proprietorLabel: proprietorTitle(proprietor?.gender ?? null),
       },
@@ -70,6 +80,9 @@ export async function GET(
         grade: r.grade,
       })),
       ranking,
+      remarks: remarks
+        ? { teacher: remarks.teacher_remark, principal: remarks.principal_remark }
+        : null,
     })
   );
 

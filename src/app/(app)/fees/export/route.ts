@@ -95,6 +95,9 @@ export async function GET(request: Request) {
       { key: "balance", label: "Balance" },
       { key: "status", label: "Status" },
     ],
-    `fees-${session.replace("/", "-")}-term${term}`
+    `fees-${session.replace("/", "-")}-term${term}`,
+    school
+      ? { name: school.name, address: school.address, phone: school.phone }
+      : undefined
   );
 }

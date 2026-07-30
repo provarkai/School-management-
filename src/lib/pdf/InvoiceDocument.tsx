@@ -1,13 +1,10 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { TERM_LABELS, type Term } from "@/lib/types";
 import { naira } from "@/lib/format";
+import { SchoolLetterhead, type LetterheadSchool } from "./SchoolLetterhead";
 
 const styles = StyleSheet.create({
   page: { padding: 32, fontSize: 10, fontFamily: "Helvetica" },
-  header: { textAlign: "center", marginBottom: 16 },
-  schoolName: { fontSize: 18, fontWeight: 700, marginBottom: 2 },
-  schoolAddress: { fontSize: 9, color: "#555" },
-  title: { fontSize: 12, fontWeight: 700, marginTop: 10, textTransform: "uppercase" },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -58,10 +55,7 @@ export interface InvoiceFeeLine {
 }
 
 export interface InvoiceData {
-  school: {
-    name: string;
-    address: string | null;
-  };
+  school: LetterheadSchool;
   student: {
     full_name: string;
     className: string;
@@ -97,11 +91,7 @@ export function InvoiceDocument({
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <View style={styles.header}>
-          <Text style={styles.schoolName}>{school.name}</Text>
-          {school.address && <Text style={styles.schoolAddress}>{school.address}</Text>}
-          <Text style={styles.title}>Fee Invoice</Text>
-        </View>
+        <SchoolLetterhead school={school} title="Fee Invoice" />
 
         <View style={styles.infoRow}>
           <View style={styles.infoItem}>

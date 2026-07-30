@@ -1,15 +1,41 @@
 import ExcelJS from "exceljs";
 
+export interface XlsxSchoolInfo {
+  name: string;
+  address?: string | null;
+  phone?: string | null;
+}
+
+/** Prepends a school name/address/phone letterhead above the header row —
+ * shared by both the single-sheet and multi-sheet workbook builders so
+ * every downloaded sheet is self-identifying. */
+export function addLetterhead(sheet: ExcelJS.Worksheet, school: XlsxSchoolInfo | undefined, columnCount: number): void {
+  if (!school) return;
+  const nameRow = sheet.addRow([school.name]);
+  nameRow.font = { bold: true, size: 13 };
+  sheet.mergeCells(nameRow.number, 1, nameRow.number, Math.max(columnCount, 1));
+  if (school.address) {
+    sheet.addRow([school.address]);
+  }
+  if (school.phone) {
+    sheet.addRow([`Tel: ${school.phone}`]);
+  }
+  sheet.addRow([]);
+}
+
 export async function toXlsxBuffer(
   rows: Record<string, unknown>[],
-  columns: { key: string; label: string }[]
+  columns: { key: string; label: string }[],
+  school?: XlsxSchoolInfo
 ): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Sheet1");
+  sheet.columns = columns.map(() => ({ width: 20 }));
 
-  sheet.columns = columns.map((c) => ({ header: c.label, key: c.key, width: 20 }));
-  sheet.getRow(1).font = { bold: true };
-  for (const row of rows) sheet.addRow(row);
+  addLetterhead(sheet, school, columns.length);
+  const headerRow = sheet.addRow(columns.map((c) => c.label));
+  headerRow.font = { bold: true };
+  for (const row of rows) sheet.addRow(columns.map((c) => row[c.key]));
 
   const arrayBuffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(arrayBuffer);
@@ -24,8 +50,13 @@ export function xlsxResponse(buffer: Buffer, filename: string): Response {
   });
 }
 
-export function jsonResponse(rows: Record<string, unknown>[], filename: string): Response {
-  return new Response(JSON.stringify(rows, null, 2), {
+export function jsonResponse(
+  rows: Record<string, unknown>[],
+  filename: string,
+  school?: XlsxSchoolInfo
+): Response {
+  const body = school ? { school, rows } : rows;
+  return new Response(JSON.stringify(body, null, 2), {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
       "Content-Disposition": `attachment; filename="${filename}"`,

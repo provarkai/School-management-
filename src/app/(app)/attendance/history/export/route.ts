@@ -3,8 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { parseExportFormat, exportRows } from "@/lib/export";
 
 export async function GET(request: Request) {
-  await requireProprietor();
+  const { school } = await requireProprietor();
   const supabase = await createClient();
+  const schoolInfo = school
+    ? { name: school.name, address: school.address, phone: school.phone }
+    : undefined;
 
   const { searchParams } = new URL(request.url);
   const classId = searchParams.get("class");
@@ -14,7 +17,7 @@ export async function GET(request: Request) {
   const format = parseExportFormat(searchParams);
 
   if (!classId) {
-    return exportRows(format, [], [], "attendance");
+    return exportRows(format, [], [], "attendance", schoolInfo);
   }
 
   const [{ data: attendance }, { data: students }, { data: klass }] = await Promise.all([
@@ -45,6 +48,7 @@ export async function GET(request: Request) {
       { key: "student_name", label: "Student" },
       { key: "status", label: "Status" },
     ],
-    `attendance-${klass?.name ?? "class"}-${fromDate}-to-${toDate}`
+    `attendance-${klass?.name ?? "class"}-${fromDate}-to-${toDate}`,
+    schoolInfo
   );
 }

@@ -5,7 +5,7 @@ import { getReportSource, fetchReportRows, type ReportFilters } from "@/lib/repo
 import { ReportTableDocument } from "@/lib/pdf/ReportTableDocument";
 
 export async function GET(request: Request) {
-  const { profile } = await requireProprietor();
+  const { profile, school } = await requireProprietor();
   const supabase = await createClient();
 
   const { searchParams } = new URL(request.url);
@@ -31,6 +31,12 @@ export async function GET(request: Request) {
 
   const buffer = await renderToBuffer(
     ReportTableDocument({
+      school: {
+        name: school?.name ?? "",
+        address: school?.address ?? null,
+        phone: school?.phone ?? null,
+        logo_url: school?.logo_url ?? null,
+      },
       title: `${source.label} report`,
       subtitle: new Date().toLocaleDateString("en-NG", { dateStyle: "long" }),
       columns: activeColumns,

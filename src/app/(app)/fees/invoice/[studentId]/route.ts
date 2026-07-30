@@ -42,7 +42,7 @@ export async function GET(
 
   const buffer = await renderToBuffer(
     InvoiceDocument({
-      school: { name: school.name, address: school.address },
+      school: { name: school.name, address: school.address, phone: school.phone, logo_url: school.logo_url },
       student: { full_name: student.full_name, className: klass?.name ?? "—" },
       session,
       term,

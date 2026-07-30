@@ -3,9 +3,10 @@ import ExcelJS from "exceljs";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { getExportDataset } from "@/lib/schoolExport";
+import { addLetterhead } from "@/lib/xlsx";
 
 export async function POST(request: Request) {
-  const { profile } = await requireProprietor();
+  const { profile, school } = await requireProprietor();
   const formData = await request.formData();
 
   const password = String(formData.get("password") ?? "");
@@ -41,13 +42,19 @@ export async function POST(request: Request) {
     return errorRedirect("Choose at least one dataset to export.");
   }
 
+  const schoolInfo = school
+    ? { name: school.name, address: school.address, phone: school.phone }
+    : undefined;
+
   const workbook = new ExcelJS.Workbook();
   for (const dataset of datasets) {
     const rows = await dataset.fetch(supabase, profile.school_id ?? "");
     const sheet = workbook.addWorksheet(dataset.label.slice(0, 31));
-    sheet.columns = dataset.columns.map((c) => ({ header: c.label, key: c.key, width: 20 }));
-    sheet.getRow(1).font = { bold: true };
-    for (const row of rows) sheet.addRow(row);
+    sheet.columns = dataset.columns.map(() => ({ width: 20 }));
+    addLetterhead(sheet, schoolInfo, dataset.columns.length);
+    const headerRow = sheet.addRow(dataset.columns.map((c) => c.label));
+    headerRow.font = { bold: true };
+    for (const row of rows) sheet.addRow(dataset.columns.map((c) => row[c.key]));
   }
 
   const buffer = await workbook.xlsx.writeBuffer();

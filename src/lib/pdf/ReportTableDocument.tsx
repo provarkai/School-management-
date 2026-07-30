@@ -1,9 +1,9 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { SchoolLetterhead, type LetterheadSchool } from "./SchoolLetterhead";
 
 const styles = StyleSheet.create({
   page: { padding: 32, fontSize: 9, fontFamily: "Helvetica" },
-  title: { fontSize: 14, fontWeight: 700, marginBottom: 4 },
-  subtitle: { fontSize: 9, color: "#666", marginBottom: 12 },
+  subtitle: { fontSize: 9, color: "#666", marginBottom: 12, textAlign: "center" },
   table: { display: "flex", width: "auto" },
   row: { flexDirection: "row", borderBottom: "0.5pt solid #ddd" },
   headerRow: { flexDirection: "row", backgroundColor: "#f3f4f6", borderBottom: "1pt solid #999" },
@@ -17,11 +17,13 @@ export interface ReportTableColumn {
 }
 
 export function ReportTableDocument({
+  school,
   title,
   subtitle,
   columns,
   rows,
 }: {
+  school: LetterheadSchool;
   title: string;
   subtitle?: string;
   columns: ReportTableColumn[];
@@ -30,7 +32,7 @@ export function ReportTableDocument({
   return (
     <Document>
       <Page size="A4" orientation="landscape" style={styles.page}>
-        <Text style={styles.title}>{title}</Text>
+        <SchoolLetterhead school={school} title={title} />
         {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
         <View style={styles.table}>
           <View style={styles.headerRow}>

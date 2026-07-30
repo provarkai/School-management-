@@ -45,18 +45,29 @@ export async function GET(
 
   const cards: ReportCardData[] = await Promise.all(
     (students ?? []).map(async (student) => {
-      const { data: results } = await supabase
-        .from("results")
-        .select("subject, ca_score, exam_score, total, grade")
-        .eq("student_id", student.id)
-        .eq("session", school.current_session)
-        .eq("term", term)
-        .order("subject");
+      const [{ data: results }, { data: remarks }] = await Promise.all([
+        supabase
+          .from("results")
+          .select("subject, ca_score, exam_score, total, grade")
+          .eq("student_id", student.id)
+          .eq("session", school.current_session)
+          .eq("term", term)
+          .order("subject"),
+        supabase
+          .from("report_remarks")
+          .select("teacher_remark, principal_remark")
+          .eq("student_id", student.id)
+          .eq("session", school.current_session)
+          .eq("term", term)
+          .maybeSingle(),
+      ]);
 
       return {
         school: {
           name: school.name,
           address: school.address,
+          phone: school.phone,
+          logo_url: school.logo_url,
           current_session: school.current_session,
           proprietorLabel,
         },
@@ -70,6 +81,9 @@ export async function GET(
           grade: r.grade,
         })),
         ranking: ranking.get(student.id) ?? null,
+        remarks: remarks
+          ? { teacher: remarks.teacher_remark, principal: remarks.principal_remark }
+          : null,
       };
     })
   );

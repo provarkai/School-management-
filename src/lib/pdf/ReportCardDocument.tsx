@@ -1,13 +1,10 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { TERM_LABELS, type Term } from "@/lib/types";
 import { computeGPA } from "@/lib/grading";
+import { SchoolLetterhead, type LetterheadSchool } from "./SchoolLetterhead";
 
 const styles = StyleSheet.create({
   page: { padding: 32, fontSize: 10, fontFamily: "Helvetica" },
-  header: { textAlign: "center", marginBottom: 16 },
-  schoolName: { fontSize: 18, fontWeight: 700, marginBottom: 2 },
-  schoolAddress: { fontSize: 9, color: "#555" },
-  title: { fontSize: 12, fontWeight: 700, marginTop: 10, textTransform: "uppercase" },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -37,12 +34,14 @@ const styles = StyleSheet.create({
   },
   footer: { marginTop: 40, flexDirection: "row", justifyContent: "space-between" },
   signatureLine: { marginTop: 24, borderTop: "1pt solid #333", width: 160, textAlign: "center", fontSize: 8, paddingTop: 4 },
+  remarks: { marginTop: 20 },
+  remarkBlock: { marginTop: 10 },
+  remarkLabel: { fontSize: 8, color: "#777", textTransform: "uppercase", marginBottom: 2 },
+  remarkText: { fontSize: 10, borderBottom: "0.5pt solid #ccc", paddingBottom: 8, minHeight: 16 },
 });
 
 export interface ReportCardData {
-  school: {
-    name: string;
-    address: string | null;
+  school: LetterheadSchool & {
     current_session: string;
     proprietorLabel?: string;
   };
@@ -59,20 +58,17 @@ export interface ReportCardData {
     grade: string | null;
   }[];
   ranking?: { position: number; outOf: number } | null;
+  remarks?: { teacher: string | null; principal: string | null } | null;
 }
 
-function ReportCardPage({ school, student, term, results, ranking }: ReportCardData) {
+function ReportCardPage({ school, student, term, results, ranking, remarks }: ReportCardData) {
   const totalScore = results.reduce((sum, r) => sum + Number(r.total), 0);
   const average = results.length ? totalScore / results.length : 0;
   const gpa = computeGPA(results);
 
   return (
     <Page size="A4" style={styles.page}>
-      <View style={styles.header}>
-        <Text style={styles.schoolName}>{school.name}</Text>
-        {school.address && <Text style={styles.schoolAddress}>{school.address}</Text>}
-        <Text style={styles.title}>Termly Report Card</Text>
-      </View>
+      <SchoolLetterhead school={school} title="Termly Report Card" />
 
       <View style={styles.infoRow}>
         <View style={styles.infoItem}>
@@ -124,6 +120,17 @@ function ReportCardPage({ school, student, term, results, ranking }: ReportCardD
         <Text>Average: {average.toFixed(1)}%</Text>
         <Text>GPA: {gpa !== null ? `${gpa.toFixed(2)}/5` : "—"}</Text>
         <Text>Position: {ranking ? `${ranking.position} of ${ranking.outOf}` : "—"}</Text>
+      </View>
+
+      <View style={styles.remarks}>
+        <View style={styles.remarkBlock}>
+          <Text style={styles.remarkLabel}>Class Teacher&apos;s Remark</Text>
+          <Text style={styles.remarkText}>{remarks?.teacher || "—"}</Text>
+        </View>
+        <View style={styles.remarkBlock}>
+          <Text style={styles.remarkLabel}>{school.proprietorLabel ?? "Proprietor"}&apos;s Remark</Text>
+          <Text style={styles.remarkText}>{remarks?.principal || "—"}</Text>
+        </View>
       </View>
 
       <View style={styles.footer}>
