@@ -27,12 +27,21 @@ function buildQuery(params: Record<string, string>): string {
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | undefined>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { profile } = await requireProprietor();
   const supabase = await createClient();
   const schoolId = profile.school_id ?? "";
-  const params = await searchParams;
+  const rawParams = await searchParams;
+  // Multiple same-named checkboxes ("columns") submitted via a native GET
+  // form arrive as a string[], not a comma-joined string — only the export
+  // links (built server-side) produce the joined-string form.
+  const params = Object.fromEntries(
+    Object.entries(rawParams).map(([key, value]) => [
+      key,
+      Array.isArray(value) ? value.join(",") : value,
+    ])
+  ) as Record<string, string | undefined>;
 
   const sourceKey = (REPORT_SOURCES.some((s) => s.key === params.source) ? params.source : "students") as ReportSourceKey;
   const source = REPORT_SOURCES.find((s) => s.key === sourceKey)!;
