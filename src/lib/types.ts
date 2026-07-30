@@ -23,6 +23,7 @@ export interface School {
   current_session: string;
   current_term: Term;
   status: SchoolStatus;
+  quick_links: string[];
   created_at: string;
 }
 

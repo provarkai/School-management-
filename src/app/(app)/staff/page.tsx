@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/components/Avatar";
@@ -39,7 +40,15 @@ export default async function StaffPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-zinc-900">Staff</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-zinc-900">Staff</h1>
+        <Link
+          href="/staff/import"
+          className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
+        >
+          Bulk import CSV
+        </Link>
+      </div>
 
       <AddTeacherForm subjects={subjects} campuses={campuses ?? []} />
 

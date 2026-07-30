@@ -1,14 +1,16 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   changeOwnPassword,
   updateOwnProfile,
   updateSchoolProfile,
   updateAcademicSession,
+  updateQuickLinks,
   type ProfileFormState,
 } from "./actions";
 import type { Term } from "@/lib/types";
+import { QUICK_LINK_CATALOG, MAX_QUICK_LINKS } from "@/lib/quickLinks";
 
 const initialState: ProfileFormState = {};
 
@@ -111,6 +113,70 @@ export function AcademicSessionForm({ session, term }: { session: string; term: 
           <option value="3">3rd Term</option>
         </select>
       </label>
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:opacity-50"
+      >
+        {pending ? "Saving…" : "Save"}
+      </button>
+    </form>
+  );
+}
+
+export function QuickLinksForm({ selected }: { selected: string[] }) {
+  const [state, action, pending] = useActionState(updateQuickLinks, initialState);
+  const [checked, setChecked] = useState<string[]>(selected);
+
+  function toggle(key: string) {
+    setChecked((prev) =>
+      prev.includes(key)
+        ? prev.filter((k) => k !== key)
+        : prev.length < MAX_QUICK_LINKS
+          ? [...prev, key]
+          : prev
+    );
+  }
+
+  return (
+    <form action={action} className="space-y-4">
+      {state.error && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
+      )}
+      {state.success && (
+        <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          {state.success}
+        </p>
+      )}
+      <p className="text-sm text-zinc-500">
+        Pick up to {MAX_QUICK_LINKS} shortcuts to show on the dashboard ({checked.length}/
+        {MAX_QUICK_LINKS} selected).
+      </p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {QUICK_LINK_CATALOG.map((option) => {
+          const isChecked = checked.includes(option.key);
+          const disabled = !isChecked && checked.length >= MAX_QUICK_LINKS;
+          return (
+            <label
+              key={option.key}
+              className={`flex items-center gap-2 text-sm ${
+                disabled ? "text-zinc-300" : "text-zinc-700"
+              }`}
+            >
+              <input
+                type="checkbox"
+                name="quick_links"
+                value={option.key}
+                checked={isChecked}
+                disabled={disabled}
+                onChange={() => toggle(option.key)}
+                className="rounded border-zinc-300"
+              />
+              {option.label}
+            </label>
+          );
+        })}
+      </div>
       <button
         type="submit"
         disabled={pending}

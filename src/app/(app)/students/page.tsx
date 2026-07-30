@@ -2,7 +2,6 @@ import Link from "next/link";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { CampusFilter } from "../CampusFilter";
-import { ExportLinks } from "@/components/ExportLinks";
 import { EnrollmentStats } from "./EnrollmentStats";
 
 export default async function StudentsPage({
@@ -51,10 +50,6 @@ export default async function StudentsPage({
         <h1 className="text-2xl font-bold text-zinc-900">Students</h1>
         {isManager && (
           <div className="flex gap-2">
-            <ExportLinks
-              baseUrl="/students/export"
-              params={classFilter ? { class: classFilter } : {}}
-            />
             <Link
               href="/students/custom-fields"
               className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"

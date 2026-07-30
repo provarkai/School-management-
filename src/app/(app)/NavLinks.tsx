@@ -20,30 +20,29 @@ export function NavLinks({ role, isManager }: { role: Role; isManager: boolean }
   const pinnedTop = PINNED_TOP.filter((item) => isVisible(item, role, isManager));
   const allItems = [...pinnedTop, ...visibleGroups.flatMap((g) => g.items), ...pinnedBottom];
   const current = allItems.find((item) => isActive(pathname, item.href));
+  const activeGroup = visibleGroups.find((g) => g.id === activeGroupId);
+  const selectValue = activeGroup ? activeGroup.items[0].href : current?.href ?? "";
 
   return (
     <nav>
-      {/* Mobile: a flat dropdown to jump between pages */}
+      {/* Mobile: a flat dropdown of top-level destinations only — a group's
+          sub-pages show up as tabs (GroupTabs) once you land on it */}
       <select
         aria-label="Go to page"
-        value={current?.href ?? ""}
+        value={selectValue}
         onChange={(e) => router.push(e.target.value)}
         className="block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 md:hidden"
       >
-        {!current && <option value="">Menu</option>}
+        {!selectValue && <option value="">Menu</option>}
         {pinnedTop.map((item) => (
           <option key={item.href} value={item.href}>
             {item.label}
           </option>
         ))}
         {visibleGroups.map((group) => (
-          <optgroup key={group.id} label={group.label}>
-            {group.items.map((item) => (
-              <option key={item.href} value={item.href}>
-                {item.label}
-              </option>
-            ))}
-          </optgroup>
+          <option key={group.id} value={group.items[0].href}>
+            {group.label}
+          </option>
         ))}
         {pinnedBottom.map((item) => (
           <option key={item.href} value={item.href}>

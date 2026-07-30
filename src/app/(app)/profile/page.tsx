@@ -5,8 +5,11 @@ import {
   ChangePasswordForm,
   SchoolProfileForm,
   AcademicSessionForm,
+  QuickLinksForm,
 } from "./ProfileForms";
+import { DEFAULT_QUICK_LINKS } from "@/lib/quickLinks";
 import { SchoolLogoUploader } from "./SchoolLogoUploader";
+import { SchoolExportForm } from "./SchoolExportForm";
 import { saveProfilePhoto, saveSchoolLogo } from "./actions";
 import { proprietorTitle } from "@/lib/format";
 
@@ -15,8 +18,13 @@ const ROLE_LABELS: Record<string, string> = {
   staff: "Non-teaching staff",
 };
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ export_error?: string }>;
+}) {
   const { authId, profile, school, isManager } = await requireUser();
+  const { export_error: exportError } = await searchParams;
   const roleLabel =
     profile.role === "proprietor"
       ? proprietorTitle(profile.gender)
@@ -61,6 +69,16 @@ export default async function SettingsPage() {
               and results all default to whatever is set here.
             </p>
             <AcademicSessionForm session={school.current_session} term={school.current_term} />
+          </section>
+
+          <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-zinc-900">Dashboard quick links</h3>
+            <QuickLinksForm selected={school.quick_links ?? DEFAULT_QUICK_LINKS} />
+          </section>
+
+          <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-zinc-900">Export school data</h3>
+            <SchoolExportForm error={exportError} />
           </section>
         </div>
       )}

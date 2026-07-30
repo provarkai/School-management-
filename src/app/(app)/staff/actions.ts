@@ -64,6 +64,104 @@ export async function addStaffMember(
   return { tempPassword };
 }
 
+export interface StaffImportRow {
+  name: string;
+  email: string;
+  phone?: string;
+  role?: string;
+  subject?: string;
+  job_title?: string;
+  campus_name?: string;
+}
+
+export interface StaffImportResult {
+  error?: string;
+  imported?: number;
+  skipped?: { row: number; reason: string }[];
+  credentials?: { row: number; name: string; email: string; tempPassword: string }[];
+}
+
+export async function bulkImportStaff(rows: StaffImportRow[]): Promise<StaffImportResult> {
+  const { profile } = await requireProprietor();
+
+  const admin = createAdminClient();
+  const supabase = await createClient();
+
+  const { data: campuses } = await supabase
+    .from("campuses")
+    .select("id, name")
+    .eq("school_id", profile.school_id ?? "");
+  const campusByName = new Map((campuses ?? []).map((c) => [c.name.trim().toLowerCase(), c.id]));
+
+  const skipped: { row: number; reason: string }[] = [];
+  const credentials: { row: number; name: string; email: string; tempPassword: string }[] = [];
+
+  for (let index = 0; index < rows.length; index++) {
+    const row = rows[index];
+    const rowNumber = index + 2;
+    const name = row.name?.trim();
+    const email = row.email?.trim().toLowerCase();
+    const role = String(row.role ?? "teacher").trim().toLowerCase() === "staff" ? "staff" : "teacher";
+
+    if (!name || !email) {
+      skipped.push({ row: rowNumber, reason: "Missing name or email" });
+      continue;
+    }
+
+    let campusId: string | null = null;
+    if (row.campus_name?.trim()) {
+      campusId = campusByName.get(row.campus_name.trim().toLowerCase()) ?? null;
+      if (!campusId) {
+        skipped.push({ row: rowNumber, reason: `Unknown campus "${row.campus_name}"` });
+        continue;
+      }
+    }
+
+    const tempPassword = randomBytes(9).toString("base64url");
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email,
+      password: tempPassword,
+      email_confirm: true,
+      user_metadata: { name },
+    });
+
+    if (createError || !created.user) {
+      skipped.push({ row: rowNumber, reason: createError?.message ?? "Could not create account" });
+      continue;
+    }
+
+    const { error: profileError } = await supabase
+      .from("app_users")
+      .update({
+        school_id: profile.school_id,
+        role,
+        name,
+        phone: row.phone?.trim() || null,
+        subject: role === "teacher" ? row.subject?.trim() || null : null,
+        job_title: role === "staff" ? row.job_title?.trim() || null : null,
+        campus_id: campusId,
+      })
+      .eq("id", created.user.id);
+
+    if (profileError) {
+      skipped.push({ row: rowNumber, reason: profileError.message });
+      continue;
+    }
+
+    credentials.push({ row: rowNumber, name, email, tempPassword });
+  }
+
+  if (credentials.length > 0) {
+    revalidatePath("/staff");
+  }
+
+  if (credentials.length === 0) {
+    return { error: "No staff were imported.", skipped };
+  }
+
+  return { imported: credentials.length, skipped, credentials };
+}
+
 export async function updateTeacherSubject(formData: FormData) {
   await requireProprietor();
   const teacherId = String(formData.get("teacher_id"));

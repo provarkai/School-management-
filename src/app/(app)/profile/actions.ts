@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser, requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import type { Term } from "@/lib/types";
+import { QUICK_LINK_CATALOG, MAX_QUICK_LINKS } from "@/lib/quickLinks";
 
 export interface ProfileFormState {
   error?: string;
@@ -120,6 +121,37 @@ export async function updateAcademicSession(
 
   revalidatePath("/profile");
   return { success: "Academic session updated." };
+}
+
+export async function updateQuickLinks(
+  _prevState: ProfileFormState,
+  formData: FormData
+): Promise<ProfileFormState> {
+  const { profile } = await requireProprietor();
+
+  const validKeys = new Set(QUICK_LINK_CATALOG.map((o) => o.key));
+  const selected = formData.getAll("quick_links").map(String).filter((k) => validKeys.has(k));
+
+  if (selected.length === 0) {
+    return { error: "Choose at least one quick link." };
+  }
+  if (selected.length > MAX_QUICK_LINKS) {
+    return { error: `Choose at most ${MAX_QUICK_LINKS} quick links.` };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("schools")
+    .update({ quick_links: selected })
+    .eq("id", profile.school_id ?? "");
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/profile");
+  revalidatePath("/dashboard");
+  return { success: "Quick links updated." };
 }
 
 export async function changeOwnPassword(

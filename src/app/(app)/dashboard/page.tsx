@@ -6,6 +6,7 @@ import { Chat } from "../assistant/Chat";
 import { CampusFilter } from "../CampusFilter";
 import { UpcomingEvents } from "./UpcomingEvents";
 import { RecentActivity } from "./RecentActivity";
+import { DEFAULT_QUICK_LINKS, getQuickLinkOption } from "@/lib/quickLinks";
 
 export default async function DashboardPage({
   searchParams,
@@ -209,13 +210,14 @@ export default async function DashboardPage({
           Quick links
         </h2>
         <div className="flex flex-wrap gap-3">
-          <QuickLink href="/fees?status=owing" label={`View owing students (${owingCount})`} />
-          <QuickLink href="/reminders" label="Send bulk reminder" />
-          <QuickLink href="/report-cards" label="Generate report cards" />
+          {(school?.quick_links?.length ? school.quick_links : DEFAULT_QUICK_LINKS).map((key) => {
+            const option = getQuickLinkOption(key);
+            if (!option) return null;
+            const label = key === "fees_owing" ? `View owing students (${owingCount})` : option.label;
+            return <QuickLink key={key} href={option.href} label={label} />;
+          })}
         </div>
       </div>
-
-      <RecentActivity schoolId={profile.school_id ?? ""} />
 
       <UpcomingEvents schoolId={profile.school_id ?? ""} />
 
@@ -230,6 +232,8 @@ export default async function DashboardPage({
         </div>
         <Chat heightClassName="h-[420px]" />
       </div>
+
+      <RecentActivity schoolId={profile.school_id ?? ""} />
     </div>
   );
 }
