@@ -124,7 +124,21 @@ export default async function FeesPage({
               ...(statusFilter ? { status: statusFilter } : {}),
               ...(typeFilter ? { type: typeFilter } : {}),
             }}
+            formats={[
+              { format: "csv", label: "CSV" },
+              { format: "xlsx", label: "Excel" },
+            ]}
           />
+          <a
+            href={`/fees/pdf?${new URLSearchParams({
+              ...(classFilter ? { class: classFilter } : {}),
+              ...(statusFilter ? { status: statusFilter } : {}),
+              ...(typeFilter ? { type: typeFilter } : {}),
+            }).toString()}`}
+            className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
+          >
+            Download PDF
+          </a>
           <Link
             href="/fees/transfers"
             className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
