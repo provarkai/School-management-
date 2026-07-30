@@ -1,6 +1,7 @@
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { REPORT_SOURCES, fetchReportRows, type ReportFilters, type ReportSourceKey } from "@/lib/reports";
+import { PrintButton } from "./PrintButton";
 
 const STATUS_OPTIONS: Record<string, { value: string; label: string }[]> = {
   students: [
@@ -86,7 +87,7 @@ export default async function ReportsPage({
         </p>
       </div>
 
-      <form method="get" className="space-y-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+      <form method="get" className="space-y-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm print:hidden">
         <label className="block text-sm font-medium text-zinc-700">
           Data source
           <select
@@ -241,24 +242,13 @@ export default async function ReportsPage({
             <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
               Results ({rows.length})
             </h2>
-            <div className="flex gap-2">
+            <div className="flex gap-2 print:hidden">
+              <PrintButton />
               <a
-                href={`/reports/export?${exportQuery}&format=csv`}
+                href={`/reports/pdf?${exportQuery}`}
                 className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
               >
-                Export CSV
-              </a>
-              <a
-                href={`/reports/export?${exportQuery}&format=xlsx`}
-                className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
-              >
-                Export Excel
-              </a>
-              <a
-                href={`/reports/export?${exportQuery}&format=json`}
-                className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
-              >
-                Export JSON
+                Download PDF
               </a>
             </div>
           </div>
@@ -296,7 +286,7 @@ export default async function ReportsPage({
           </div>
           {rows.length > 200 && (
             <p className="text-xs text-zinc-400">
-              Showing the first 200 of {rows.length} rows — export to see everything.
+              Showing the first 200 of {rows.length} rows — download the PDF to see everything.
             </p>
           )}
         </section>

@@ -21,7 +21,7 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-screen flex-1 flex-col md:flex-row">
-      <aside className="flex shrink-0 flex-col justify-between border-b border-zinc-200 bg-white px-3 py-3 sm:px-4 sm:py-4 md:h-screen md:w-56 md:border-b-0 md:border-r">
+      <aside className="flex shrink-0 flex-col justify-between border-b border-zinc-200 bg-white px-3 py-3 print:hidden sm:px-4 sm:py-4 md:h-screen md:w-56 md:border-b-0 md:border-r">
         <div>
           <div className="mb-3 flex items-start justify-between gap-3 px-1 md:mb-6 md:block">
             <div className="flex min-w-0 items-center gap-2">

@@ -1,7 +1,8 @@
+import { renderToBuffer } from "@react-pdf/renderer";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
-import { parseExportFormat, exportRows } from "@/lib/export";
 import { getReportSource, fetchReportRows, type ReportFilters } from "@/lib/reports";
+import { ReportTableDocument } from "@/lib/pdf/ReportTableDocument";
 
 export async function GET(request: Request) {
   const { profile } = await requireProprietor();
@@ -28,6 +29,19 @@ export async function GET(request: Request) {
 
   const rows = await fetchReportRows(supabase, profile.school_id ?? "", source.key, filters);
 
-  const format = parseExportFormat(searchParams);
-  return exportRows(format, rows, activeColumns, `report_${source.key}`);
+  const buffer = await renderToBuffer(
+    ReportTableDocument({
+      title: `${source.label} report`,
+      subtitle: new Date().toLocaleDateString("en-NG", { dateStyle: "long" }),
+      columns: activeColumns,
+      rows,
+    })
+  );
+
+  return new Response(new Uint8Array(buffer), {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="report_${source.key}.pdf"`,
+    },
+  });
 }

@@ -3,6 +3,7 @@ import type { Role } from "@/lib/types";
 export interface NavItem {
   href: string;
   label: string;
+  emoji: string;
   /** Literal roles that always see this item, regardless of manager status. */
   roles?: Role[];
   /** Visible to the proprietor and any staff delegated admin rights. */
@@ -14,15 +15,39 @@ export interface NavItem {
   alwaysVisible?: boolean;
 }
 
+export interface GroupStyle {
+  emoji: string;
+  /** Sidebar leaf "active" pill background + text. */
+  activeBg: string;
+  activeText: string;
+  /** Group header label color while open. */
+  openText: string;
+  /** In-page tab: active underline + text. */
+  tabActive: string;
+  /** In-page tab: hover underline + text. */
+  tabHover: string;
+}
+
 export interface NavGroup {
   id: string;
   label: string;
   items: NavItem[];
 }
 
-export const PINNED_TOP: NavItem[] = [{ href: "/dashboard", label: "Dashboard", alwaysVisible: true }];
+export const PINNED_TOP: NavItem[] = [
+  { href: "/dashboard", label: "Dashboard", emoji: "🏠", alwaysVisible: true },
+];
 
-export const SETTINGS_ITEM: NavItem = { href: "/profile", label: "Settings", alwaysVisible: true };
+export const SETTINGS_ITEM: NavItem = { href: "/profile", label: "Settings", emoji: "⚙️", alwaysVisible: true };
+
+export const PINNED_STYLE: GroupStyle = {
+  emoji: "🏠",
+  activeBg: "bg-sky-600",
+  activeText: "text-white",
+  openText: "text-sky-600",
+  tabActive: "border-sky-600 text-sky-600",
+  tabHover: "hover:border-sky-300 hover:text-sky-600",
+};
 
 // Everything else folds into exactly 6 related groups, so the sidebar shows
 // Dashboard + 6 tab-style sections instead of one long flat list, and each
@@ -32,59 +57,110 @@ export const SETTINGS_ITEM: NavItem = { href: "/profile", label: "Settings", alw
 // ever use it for their own profile/password.
 export const GROUPS: NavGroup[] = [
   {
-    id: "insights",
-    label: "Insights",
-    items: [
-      { href: "/assistant", label: "AI Assistant", roles: ["teacher"], managerOnly: true },
-      { href: "/analytics", label: "Analytics", managerOnly: true },
-      { href: "/reports", label: "Reports", managerOnly: true },
-    ],
-  },
-  {
     id: "students",
     label: "Students",
     items: [
-      { href: "/students", label: "Students", roles: ["teacher"], managerOnly: true },
-      { href: "/attendance", label: "Attendance", roles: ["teacher"], managerOnly: true },
-      { href: "/assignments", label: "Assignments", roles: ["teacher"], managerOnly: true },
-      { href: "/report-cards", label: "Report cards", roles: ["teacher"], managerOnly: true },
+      { href: "/students", label: "Students", emoji: "🧑‍🎓", roles: ["teacher"], managerOnly: true },
+      { href: "/attendance", label: "Attendance", emoji: "✅", roles: ["teacher"], managerOnly: true },
+      { href: "/assignments", label: "Assignments", emoji: "📝", roles: ["teacher"], managerOnly: true },
+      { href: "/report-cards", label: "Report cards", emoji: "📄", roles: ["teacher"], managerOnly: true },
     ],
   },
   {
     id: "academics",
     label: "Academics",
     items: [
-      { href: "/subjects", label: "Subjects", managerOnly: true },
-      { href: "/timetable", label: "Timetable", roles: ["teacher"], managerOnly: true },
-      { href: "/calendar", label: "Calendar", roles: ["teacher", "staff"], managerOnly: true },
+      { href: "/subjects", label: "Subjects", emoji: "📘", managerOnly: true },
+      { href: "/timetable", label: "Timetable", emoji: "🗓️", roles: ["teacher"], managerOnly: true },
+      { href: "/calendar", label: "Calendar", emoji: "📅", roles: ["teacher", "staff"], managerOnly: true },
+    ],
+  },
+  {
+    id: "insights",
+    label: "Insights",
+    items: [
+      { href: "/assistant", label: "AI Assistant", emoji: "🤖", roles: ["teacher"], managerOnly: true },
+      { href: "/analytics", label: "Analytics", emoji: "📈", managerOnly: true },
+      { href: "/reports", label: "Reports", emoji: "🧾", managerOnly: true },
     ],
   },
   {
     id: "finance",
     label: "Finance",
     items: [
-      { href: "/fees", label: "Fees", managerOnly: true },
-      { href: "/payroll", label: "Payroll", literalProprietorOnly: true },
+      { href: "/fees", label: "Fees", emoji: "💵", managerOnly: true },
+      { href: "/payroll", label: "Payroll", emoji: "💼", literalProprietorOnly: true },
     ],
   },
   {
     id: "notifications",
     label: "Notifications",
     items: [
-      { href: "/reminders", label: "Reminders", managerOnly: true },
-      { href: "/notices", label: "Notices", alwaysVisible: true },
+      { href: "/reminders", label: "Reminders", emoji: "📣", managerOnly: true },
+      { href: "/notices", label: "Notices", emoji: "📌", alwaysVisible: true },
     ],
   },
   {
     id: "admin",
     label: "Admin",
     items: [
-      { href: "/staff", label: "Staff", managerOnly: true },
-      { href: "/classes", label: "Classes", managerOnly: true },
-      { href: "/campuses", label: "Campuses", managerOnly: true },
+      { href: "/staff", label: "Staff", emoji: "👥", managerOnly: true },
+      { href: "/classes", label: "Classes", emoji: "🏫", managerOnly: true },
+      { href: "/campuses", label: "Campuses", emoji: "🏢", managerOnly: true },
     ],
   },
 ];
+
+export const GROUP_STYLES: Record<string, GroupStyle> = {
+  students: {
+    emoji: "🧑‍🎓",
+    activeBg: "bg-blue-600",
+    activeText: "text-white",
+    openText: "text-blue-600",
+    tabActive: "border-blue-600 text-blue-600",
+    tabHover: "hover:border-blue-300 hover:text-blue-600",
+  },
+  academics: {
+    emoji: "📚",
+    activeBg: "bg-purple-600",
+    activeText: "text-white",
+    openText: "text-purple-600",
+    tabActive: "border-purple-600 text-purple-600",
+    tabHover: "hover:border-purple-300 hover:text-purple-600",
+  },
+  insights: {
+    emoji: "📊",
+    activeBg: "bg-indigo-600",
+    activeText: "text-white",
+    openText: "text-indigo-600",
+    tabActive: "border-indigo-600 text-indigo-600",
+    tabHover: "hover:border-indigo-300 hover:text-indigo-600",
+  },
+  finance: {
+    emoji: "💰",
+    activeBg: "bg-emerald-600",
+    activeText: "text-white",
+    openText: "text-emerald-600",
+    tabActive: "border-emerald-600 text-emerald-600",
+    tabHover: "hover:border-emerald-300 hover:text-emerald-600",
+  },
+  notifications: {
+    emoji: "🔔",
+    activeBg: "bg-amber-500",
+    activeText: "text-white",
+    openText: "text-amber-600",
+    tabActive: "border-amber-500 text-amber-600",
+    tabHover: "hover:border-amber-300 hover:text-amber-600",
+  },
+  admin: {
+    emoji: "🛠️",
+    activeBg: "bg-rose-600",
+    activeText: "text-white",
+    openText: "text-rose-600",
+    tabActive: "border-rose-600 text-rose-600",
+    tabHover: "hover:border-rose-300 hover:text-rose-600",
+  },
+};
 
 export const PINNED_BOTTOM: NavItem[] = [SETTINGS_ITEM];
 
