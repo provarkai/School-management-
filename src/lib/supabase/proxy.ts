@@ -9,15 +9,16 @@ export async function updateSession(request: NextRequest) {
   // /privacy is a legal document anyone should be able to read regardless of
   // sign-in state, so it's exempt from both the "must be signed in" redirect
   // and the "signed in users get bounced off public pages" redirect below.
-  // /auth/confirm is hit by a signed-out browser clicking an email
-  // confirmation link — it establishes the session itself, so it can't be
-  // gated behind "must already be signed in".
+  // /auth/* routes (email confirmation, password recovery) are hit by a
+  // signed-out browser clicking a link from an email — they establish the
+  // session themselves, so they can't be gated behind "must already be
+  // signed in".
   if (
     request.nextUrl.pathname.startsWith("/p/") ||
     request.nextUrl.pathname.startsWith("/t/") ||
     request.nextUrl.pathname.startsWith("/pay/") ||
     request.nextUrl.pathname.startsWith("/api/") ||
-    request.nextUrl.pathname.startsWith("/auth/confirm") ||
+    request.nextUrl.pathname.startsWith("/auth/") ||
     request.nextUrl.pathname.startsWith("/privacy")
   ) {
     return NextResponse.next({ request });

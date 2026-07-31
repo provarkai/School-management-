@@ -80,6 +80,28 @@ export async function signUp(
   redirect("/onboarding");
 }
 
+export async function requestPasswordReset(
+  _prevState: AuthActionState,
+  formData: FormData
+): Promise<AuthActionState> {
+  const email = String(formData.get("email") ?? "").trim();
+
+  if (!email) {
+    return { error: "Enter your email address." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${await siteOrigin()}/auth/recovery`,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { message: "Password reset email sent — check your inbox (and spam folder)." };
+}
+
 export async function resendConfirmation(
   _prevState: AuthActionState,
   formData: FormData

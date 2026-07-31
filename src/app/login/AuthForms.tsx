@@ -1,13 +1,21 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { signIn, signUp, resendConfirmation, type AuthActionState } from "./actions";
+import {
+  signIn,
+  signUp,
+  resendConfirmation,
+  requestPasswordReset,
+  type AuthActionState,
+} from "./actions";
 
 const initialState: AuthActionState = {};
 
 export function AuthForms() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [signInEmail, setSignInEmail] = useState("");
   const [signUpEmail, setSignUpEmail] = useState("");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [signInState, signInAction, signInPending] = useActionState(
     signIn,
     initialState
@@ -18,6 +26,10 @@ export function AuthForms() {
   );
   const [resendState, resendAction, resendPending] = useActionState(
     resendConfirmation,
+    initialState
+  );
+  const [resetState, resetAction, resetPending] = useActionState(
+    requestPasswordReset,
     initialState
   );
 
@@ -58,11 +70,61 @@ export function AuthForms() {
       )}
 
       {mode === "signin" ? (
-        <form action={signInAction} className="space-y-4">
-          <Field label="Email" name="email" type="email" required />
-          <Field label="Password" name="password" type="password" required />
-          <SubmitButton pending={signInPending} label="Sign in" />
-        </form>
+        <>
+          <form action={signInAction} className="space-y-4">
+            <Field
+              label="Email"
+              name="email"
+              type="email"
+              required
+              value={signInEmail}
+              onChange={setSignInEmail}
+            />
+            <Field label="Password" name="password" type="password" required />
+            <SubmitButton pending={signInPending} label="Sign in" />
+          </form>
+
+          {!showForgotPassword ? (
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(true)}
+              className="mt-3 w-full text-center text-xs font-medium text-zinc-500 hover:text-zinc-900"
+            >
+              Forgot password?
+            </button>
+          ) : (
+            <form action={resetAction} className="mt-3 space-y-2 border-t border-zinc-100 pt-3">
+              <label className="block text-sm font-medium text-zinc-700">
+                Email for password reset
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  value={signInEmail}
+                  onChange={(e) => setSignInEmail(e.target.value)}
+                  className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={resetPending || !signInEmail}
+                className="w-full rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:opacity-50"
+              >
+                {resetPending ? "Sending…" : "Send password reset link"}
+              </button>
+              {resetState.error && (
+                <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+                  {resetState.error}
+                </p>
+              )}
+              {resetState.message && (
+                <p className="rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                  {resetState.message}
+                </p>
+              )}
+            </form>
+          )}
+        </>
       ) : (
         <>
           <form action={signUpAction} className="space-y-4">
