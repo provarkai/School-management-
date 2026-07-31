@@ -1,18 +1,23 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { signIn, signUp, type AuthActionState } from "./actions";
+import { signIn, signUp, resendConfirmation, type AuthActionState } from "./actions";
 
 const initialState: AuthActionState = {};
 
 export function AuthForms() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [signUpEmail, setSignUpEmail] = useState("");
   const [signInState, signInAction, signInPending] = useActionState(
     signIn,
     initialState
   );
   const [signUpState, signUpAction, signUpPending] = useActionState(
     signUp,
+    initialState
+  );
+  const [resendState, resendAction, resendPending] = useActionState(
+    resendConfirmation,
     initialState
   );
 
@@ -59,18 +64,47 @@ export function AuthForms() {
           <SubmitButton pending={signInPending} label="Sign in" />
         </form>
       ) : (
-        <form action={signUpAction} className="space-y-4">
-          <Field label="Full name" name="name" type="text" required />
-          <Field label="Email" name="email" type="email" required />
-          <Field
-            label="Password"
-            name="password"
-            type="password"
-            required
-            hint="At least 8 characters"
-          />
-          <SubmitButton pending={signUpPending} label="Create account" />
-        </form>
+        <>
+          <form action={signUpAction} className="space-y-4">
+            <Field label="Full name" name="name" type="text" required />
+            <Field
+              label="Email"
+              name="email"
+              type="email"
+              required
+              value={signUpEmail}
+              onChange={setSignUpEmail}
+            />
+            <Field
+              label="Password"
+              name="password"
+              type="password"
+              required
+              hint="At least 8 characters"
+            />
+            <SubmitButton pending={signUpPending} label="Create account" />
+          </form>
+          <form action={resendAction} className="mt-3">
+            <input type="hidden" name="email" value={signUpEmail} />
+            <button
+              type="submit"
+              disabled={resendPending || !signUpEmail}
+              className="w-full text-center text-xs font-medium text-zinc-500 hover:text-zinc-900 disabled:opacity-50"
+            >
+              {resendPending ? "Resending…" : "Already signed up? Resend confirmation email"}
+            </button>
+            {resendState.error && (
+              <p className="mt-2 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+                {resendState.error}
+              </p>
+            )}
+            {resendState.message && (
+              <p className="mt-2 rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                {resendState.message}
+              </p>
+            )}
+          </form>
+        </>
       )}
     </div>
   );
@@ -82,12 +116,16 @@ function Field({
   type,
   required,
   hint,
+  value,
+  onChange,
 }: {
   label: string;
   name: string;
   type: string;
   required?: boolean;
   hint?: string;
+  value?: string;
+  onChange?: (value: string) => void;
 }) {
   return (
     <label className="block text-sm font-medium text-zinc-700">
@@ -96,6 +134,8 @@ function Field({
         name={name}
         type={type}
         required={required}
+        value={value}
+        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
         className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
       />
       {hint && <span className="mt-1 block text-xs font-normal text-zinc-400">{hint}</span>}
