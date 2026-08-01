@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthTimeout } from "@/lib/withAuthTimeout";
 
 async function siteOrigin(): Promise<string> {
   const host = (await headers()).get("host") ?? "localhost:3000";
@@ -35,13 +36,21 @@ export async function signIn(
   const password = String(formData.get("password") ?? "");
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await withAuthTimeout(supabase.auth.signInWithPassword({ email, password }), 15000, {
+    user: null,
+    session: null,
+    weakPassword: null,
+  });
 
   if (error) {
     return { error: friendlyAuthError(error.message) };
   }
 
-  const { data: isAdmin } = await supabase.rpc("is_platform_admin");
+  // Same failure mode as the reset-password flow: this RPC runs right
+  // between a successful sign-in and the redirect, so if it hangs the
+  // browser is left stuck on /login looking signed-in-but-frozen. Default
+  // to a non-admin dashboard on timeout — the far more common case.
+  const { data: isAdmin } = await withAuthTimeout(supabase.rpc("is_platform_admin"), 8000, null);
   redirect(isAdmin ? "/admin" : "/dashboard");
 }
 
@@ -58,14 +67,18 @@ export async function signUp(
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { name },
-      emailRedirectTo: `${await siteOrigin()}/auth/confirm`,
-    },
-  });
+  const { data, error } = await withAuthTimeout(
+    supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name },
+        emailRedirectTo: `${await siteOrigin()}/auth/confirm`,
+      },
+    }),
+    15000,
+    { user: null, session: null }
+  );
 
   if (error) {
     return { error: friendlyAuthError(error.message) };
@@ -103,9 +116,13 @@ export async function requestPasswordReset(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${await siteOrigin()}/auth/recovery`,
-  });
+  const { error } = await withAuthTimeout(
+    supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${await siteOrigin()}/auth/recovery`,
+    }),
+    15000,
+    null
+  );
 
   if (error) {
     return { error: friendlyAuthError(error.message) };
@@ -125,11 +142,15 @@ export async function resendConfirmation(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.resend({
-    type: "signup",
-    email,
-    options: { emailRedirectTo: `${await siteOrigin()}/auth/confirm` },
-  });
+  const { error } = await withAuthTimeout(
+    supabase.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: `${await siteOrigin()}/auth/confirm` },
+    }),
+    15000,
+    { user: null, session: null, messageId: null }
+  );
 
   if (error) {
     return { error: friendlyAuthError(error.message) };

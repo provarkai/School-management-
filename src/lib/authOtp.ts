@@ -1,21 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthTimeout } from "@/lib/withAuthTimeout";
 import type { EmailOtpType } from "@supabase/supabase-js";
-
-/** Bounds a Supabase auth network call so a slow/hanging response from
- * Supabase's servers can't leave the request (and the browser waiting on
- * it) hanging indefinitely — resolves to a timeout "error" instead. */
-export function withAuthTimeout<T extends { error: unknown }>(
-  promise: PromiseLike<T>,
-  ms: number
-): Promise<T | { error: Error }> {
-  return Promise.race([
-    Promise.resolve(promise),
-    new Promise<{ error: Error }>((resolve) =>
-      setTimeout(() => resolve({ error: new Error("timed out") }), ms)
-    ),
-  ]);
-}
 
 /**
  * Shared handler for the two link shapes Supabase's auth emails can produce
@@ -32,10 +18,17 @@ export async function handleAuthEmailLink(request: Request, successPath: string)
   const supabase = await createClient();
 
   if (tokenHash && type) {
-    const { error } = await withAuthTimeout(supabase.auth.verifyOtp({ type, token_hash: tokenHash }), 15000);
+    const { error } = await withAuthTimeout(
+      supabase.auth.verifyOtp({ type, token_hash: tokenHash }),
+      15000,
+      { user: null, session: null }
+    );
     if (!error) return NextResponse.redirect(`${origin}${successPath}`);
   } else if (code) {
-    const { error } = await withAuthTimeout(supabase.auth.exchangeCodeForSession(code), 15000);
+    const { error } = await withAuthTimeout(supabase.auth.exchangeCodeForSession(code), 15000, {
+      user: null,
+      session: null,
+    });
     if (!error) return NextResponse.redirect(`${origin}${successPath}`);
   }
 

@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { withAuthTimeout } from "@/lib/withAuthTimeout";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/parent/login"];
 
@@ -87,11 +88,11 @@ export async function updateSession(request: NextRequest) {
     // Same account can only be staff OR a parent (the signup trigger creates
     // exactly one of the two rows) — figure out which so we don't bounce a
     // parent back toward the staff dashboard (or vice versa) in a loop.
-    const { data: staffProfile } = await supabase
-      .from("app_users")
-      .select("id")
-      .eq("id", user.id)
-      .maybeSingle();
+    const { data: staffProfile } = await withAuthTimeout(
+      supabase.from("app_users").select("id").eq("id", user.id).maybeSingle(),
+      8000,
+      null
+    );
 
     return NextResponse.redirect(new URL(staffProfile ? "/dashboard" : "/parent", request.url));
   }

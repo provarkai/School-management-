@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { withAuthTimeout } from "@/lib/authOtp";
+import { withAuthTimeout } from "@/lib/withAuthTimeout";
 
 export interface ResetPasswordState {
   error?: string;
@@ -24,29 +24,32 @@ export async function setNewPassword(
 
   const supabase = await createClient();
 
-  const userResult = await withAuthTimeout(supabase.auth.getUser(), 8000);
-  const user = "data" in userResult ? userResult.data.user : null;
+  const { data: userData } = await withAuthTimeout(supabase.auth.getUser(), 8000, { user: null });
+  const user = userData.user;
   if (!user) {
     return { error: "Your session expired before this could be saved — request a new reset link." };
   }
 
-  const { error } = await withAuthTimeout(supabase.auth.updateUser({ password }), 15000);
+  const { error } = await withAuthTimeout(supabase.auth.updateUser({ password }), 15000, { user: null });
   if (error) {
     return { error: error.message };
   }
 
   // Same account can only be staff OR a parent — figure out which so the
-  // reset doesn't strand a parent trying to reach a staff-only route.
-  const { data: staffProfile } = await supabase
-    .from("app_users")
-    .select("id")
-    .eq("id", user.id)
-    .maybeSingle();
+  // reset doesn't strand a parent trying to reach a staff-only route. Both
+  // of these are plain network calls too (not auth calls, but still able to
+  // hang the same way) — bounded so a slow Supabase moment here can't leave
+  // the password successfully changed but the page stuck forever.
+  const { data: staffProfile } = await withAuthTimeout(
+    supabase.from("app_users").select("id").eq("id", user.id).maybeSingle(),
+    8000,
+    null
+  );
 
   if (!staffProfile) {
     redirect("/parent");
   }
 
-  const { data: isAdmin } = await supabase.rpc("is_platform_admin");
+  const { data: isAdmin } = await withAuthTimeout(supabase.rpc("is_platform_admin"), 8000, null);
   redirect(isAdmin ? "/admin" : "/dashboard");
 }

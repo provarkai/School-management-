@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { withAuthTimeout } from "@/lib/authOtp";
+import { withAuthTimeout } from "@/lib/withAuthTimeout";
 import type { AppUser, School } from "@/lib/types";
 
 export interface CurrentUser {
@@ -26,8 +26,8 @@ export async function requireUser(): Promise<CurrentUser> {
   // once in the page itself), so an unbounded call here is the single
   // biggest place a slow/unresponsive Supabase auth server can turn into
   // the whole app appearing to hang after a successful sign-in.
-  const userResult = await withAuthTimeout(supabase.auth.getUser(), 8000);
-  const user = "data" in userResult ? userResult.data.user : null;
+  const { data } = await withAuthTimeout(supabase.auth.getUser(), 8000, { user: null });
+  const user = data.user;
 
   if (!user) {
     redirect("/login");
