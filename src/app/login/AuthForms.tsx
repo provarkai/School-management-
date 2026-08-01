@@ -8,6 +8,7 @@ import {
   requestPasswordReset,
   type AuthActionState,
 } from "./actions";
+import { PasswordInput } from "@/components/PasswordInput";
 
 const initialState: AuthActionState = {};
 
@@ -189,17 +190,24 @@ function Field({
   value?: string;
   onChange?: (value: string) => void;
 }) {
+  const inputClassName =
+    "mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500";
+
   return (
     <label className="block text-sm font-medium text-zinc-700">
       {label}
-      <input
-        name={name}
-        type={type}
-        required={required}
-        value={value}
-        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-        className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
-      />
+      {type === "password" ? (
+        <PasswordInput name={name} required={required} className={inputClassName} />
+      ) : (
+        <input
+          name={name}
+          type={type}
+          required={required}
+          value={value}
+          onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+          className={inputClassName}
+        />
+      )}
       {hint && <span className="mt-1 block text-xs font-normal text-zinc-400">{hint}</span>}
     </label>
   );

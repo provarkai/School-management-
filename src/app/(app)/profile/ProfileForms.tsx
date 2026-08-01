@@ -11,6 +11,7 @@ import {
 } from "./actions";
 import type { Term } from "@/lib/types";
 import { QUICK_LINK_CATALOG, MAX_QUICK_LINKS } from "@/lib/quickLinks";
+import { PasswordInput } from "@/components/PasswordInput";
 
 const initialState: ProfileFormState = {};
 
@@ -244,9 +245,8 @@ export function ChangePasswordForm() {
       )}
       <label className="block text-sm font-medium text-zinc-700">
         New password
-        <input
+        <PasswordInput
           name="password"
-          type="password"
           required
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         />
@@ -254,9 +254,8 @@ export function ChangePasswordForm() {
       </label>
       <label className="block text-sm font-medium text-zinc-700">
         Confirm new password
-        <input
+        <PasswordInput
           name="confirm_password"
-          type="password"
           required
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         />

@@ -1,4 +1,5 @@
 import { EXPORT_DATASETS } from "@/lib/schoolExport";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export function SchoolExportForm({ error }: { error?: string }) {
   return (
@@ -23,9 +24,8 @@ export function SchoolExportForm({ error }: { error?: string }) {
       </div>
       <label className="block max-w-xs text-sm font-medium text-zinc-700">
         Confirm your password
-        <input
+        <PasswordInput
           name="password"
-          type="password"
           required
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         />
