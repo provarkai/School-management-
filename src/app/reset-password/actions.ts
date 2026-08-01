@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthTimeout } from "@/lib/authOtp";
 
 export interface ResetPasswordState {
   error?: string;
@@ -23,14 +24,13 @@ export async function setNewPassword(
 
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userResult = await withAuthTimeout(supabase.auth.getUser(), 8000);
+  const user = "data" in userResult ? userResult.data.user : null;
   if (!user) {
-    redirect("/login");
+    return { error: "Your session expired before this could be saved — request a new reset link." };
   }
 
-  const { error } = await supabase.auth.updateUser({ password });
+  const { error } = await withAuthTimeout(supabase.auth.updateUser({ password }), 15000);
   if (error) {
     return { error: error.message };
   }
