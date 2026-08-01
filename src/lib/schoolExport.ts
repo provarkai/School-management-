@@ -34,6 +34,17 @@ const NOTICE_COLUMNS: ReportColumn[] = [
   { key: "created_at", label: "Posted" },
 ];
 
+const EXPENSE_COLUMNS: ReportColumn[] = [
+  { key: "expense_date", label: "Date" },
+  { key: "category", label: "Category" },
+  { key: "vendor", label: "Vendor" },
+  { key: "description", label: "Note" },
+  { key: "campus", label: "Campus" },
+  { key: "amount", label: "Amount" },
+  { key: "session", label: "Session" },
+  { key: "term", label: "Term" },
+];
+
 export const EXPORT_DATASETS: ExportDataset[] = [
   {
     key: "students",
@@ -111,6 +122,30 @@ export const EXPORT_DATASETS: ExportDataset[] = [
         .eq("school_id", schoolId)
         .order("created_at", { ascending: false });
       return data ?? [];
+    },
+  },
+  {
+    key: "expenses",
+    label: "Expenses",
+    columns: EXPENSE_COLUMNS,
+    fetch: async (supabase, schoolId) => {
+      const { data } = await supabase
+        .from("expenses")
+        .select(
+          "amount, expense_date, vendor, description, session, term, expense_categories(name), campuses(name)"
+        )
+        .eq("school_id", schoolId)
+        .order("expense_date", { ascending: false });
+      return (data ?? []).map((e) => ({
+        expense_date: e.expense_date,
+        category: (e.expense_categories as unknown as { name: string } | null)?.name ?? "",
+        vendor: e.vendor ?? "",
+        description: e.description ?? "",
+        campus: (e.campuses as unknown as { name: string } | null)?.name ?? "",
+        amount: Number(e.amount),
+        session: e.session,
+        term: e.term,
+      }));
     },
   },
 ];

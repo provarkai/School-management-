@@ -89,6 +89,7 @@ export const GROUPS: NavGroup[] = [
     label: "Finance",
     items: [
       { href: "/fees", label: "Fees", emoji: "💵", managerOnly: true },
+      { href: "/expenses", label: "Expenses", emoji: "🧾", managerOnly: true },
       { href: "/payroll", label: "Payroll", emoji: "💼", literalProprietorOnly: true },
     ],
   },
