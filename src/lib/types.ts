@@ -1,7 +1,7 @@
 export type Role = "proprietor" | "teacher" | "staff";
 export type NoticeAudience = "all" | "teachers" | "staff";
 export type Term = "1" | "2" | "3";
-export type StudentStatus = "active" | "withdrawn";
+export type StudentStatus = "active" | "withdrawn" | "graduated";
 export type AttendanceStatus = "present" | "absent" | "late";
 export type PaymentMethod = "cash" | "transfer" | "paystack";
 export type FeeStatus = "paid" | "partial" | "owing";

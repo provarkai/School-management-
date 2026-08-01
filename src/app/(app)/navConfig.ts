@@ -109,6 +109,7 @@ export const GROUPS: NavGroup[] = [
     items: [
       { href: "/staff", label: "Staff", emoji: "👥", managerOnly: true },
       { href: "/classes", label: "Classes", emoji: "🏫", managerOnly: true },
+      { href: "/promotion", label: "Session Promotion", emoji: "🔁", managerOnly: true },
       { href: "/campuses", label: "Campuses", emoji: "🏢", managerOnly: true },
     ],
   },

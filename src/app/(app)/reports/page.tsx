@@ -7,6 +7,7 @@ const STATUS_OPTIONS: Record<string, { value: string; label: string }[]> = {
   students: [
     { value: "active", label: "Active" },
     { value: "withdrawn", label: "Withdrawn" },
+    { value: "graduated", label: "Graduated" },
   ],
   fees: [
     { value: "owing", label: "Owing" },
