@@ -3,6 +3,7 @@ import { requireLiteralProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { SalaryForm } from "./SalaryForm";
 import { GeneratePayrollForm } from "./GeneratePayrollForm";
+import { DeductionTypesManager } from "./DeductionTypesManager";
 import { proprietorTitle } from "@/lib/format";
 import type { Gender } from "@/lib/types";
 
@@ -19,7 +20,7 @@ export default async function PayrollPage() {
   const { profile } = await requireLiteralProprietor();
   const supabase = await createClient();
 
-  const [{ data: staff }, { data: salaries }, { data: runs }] = await Promise.all([
+  const [{ data: staff }, { data: salaries }, { data: runs }, { data: deductionTypes }] = await Promise.all([
     supabase
       .from("app_users")
       .select("id, name, role, gender")
@@ -34,6 +35,11 @@ export default async function PayrollPage() {
       .select("id, period, status, paid_at")
       .eq("school_id", profile.school_id ?? "")
       .order("period", { ascending: false }),
+    supabase
+      .from("deduction_types")
+      .select("id, name")
+      .eq("school_id", profile.school_id ?? "")
+      .order("name"),
   ]);
 
   const salaryByStaffId = new Map((salaries ?? []).map((s) => [s.staff_id, Number(s.monthly_salary)]));
@@ -70,6 +76,8 @@ export default async function PayrollPage() {
           </table>
         </div>
       </section>
+
+      <DeductionTypesManager deductionTypes={deductionTypes ?? []} />
 
       <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-zinc-900">Run payroll</h2>

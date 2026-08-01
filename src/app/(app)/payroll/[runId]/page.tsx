@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireLiteralProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
-import { DeductionForm } from "./DeductionForm";
+import { EntryDeductions } from "./EntryDeductions";
 import { MarkPaidButton } from "./MarkPaidButton";
 
 export default async function PayrollRunPage({
@@ -24,11 +24,33 @@ export default async function PayrollRunPage({
 
   if (!run) notFound();
 
-  const { data: entries } = await supabase
-    .from("payroll_entries")
-    .select("id, staff_id, base_salary, deductions, deduction_reason, net_pay, app_users(name)")
-    .eq("payroll_run_id", runId)
-    .order("created_at");
+  const [{ data: entries }, { data: deductionTypes }, { data: deductionRows }] = await Promise.all([
+    supabase
+      .from("payroll_entries")
+      .select("id, staff_id, base_salary, deductions, net_pay, app_users(name)")
+      .eq("payroll_run_id", runId)
+      .order("created_at"),
+    supabase
+      .from("deduction_types")
+      .select("id, name")
+      .eq("school_id", profile.school_id ?? "")
+      .order("name"),
+    supabase
+      .from("payroll_entry_deductions")
+      .select("id, amount, payroll_entry_id, deduction_types(name)")
+      .eq("school_id", profile.school_id ?? ""),
+  ]);
+
+  const lineItemsByEntry = new Map<string, { id: string; amount: number; typeName: string }[]>();
+  for (const row of deductionRows ?? []) {
+    const list = lineItemsByEntry.get(row.payroll_entry_id) ?? [];
+    list.push({
+      id: row.id,
+      amount: Number(row.amount),
+      typeName: (row.deduction_types as unknown as { name: string } | null)?.name ?? "—",
+    });
+    lineItemsByEntry.set(row.payroll_entry_id, list);
+  }
 
   const rows = (entries ?? []).map((e) => ({
     ...e,
@@ -45,6 +67,8 @@ export default async function PayrollRunPage({
     { base: 0, deductions: 0, net: 0 }
   );
 
+  const editable = run.status === "draft";
+
   return (
     <div className="max-w-2xl space-y-6">
       <div>
@@ -56,6 +80,16 @@ export default async function PayrollRunPage({
           {run.status === "paid" ? `Paid on ${run.paid_at?.slice(0, 10)}` : "Draft — deductions can still be edited"}
         </p>
       </div>
+
+      {editable && (deductionTypes ?? []).length === 0 && (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          No deduction types set up yet —{" "}
+          <Link href="/payroll" className="font-medium underline">
+            add some on the Payroll page
+          </Link>{" "}
+          before recording deductions here.
+        </p>
+      )}
 
       <div className="grid grid-cols-3 gap-4">
         <SummaryStat label="Total base" value={naira(totals.base)} />
@@ -78,27 +112,19 @@ export default async function PayrollRunPage({
                   <span className="font-medium text-zinc-900">{naira(Number(entry.net_pay))}</span>
                 </p>
               </div>
-              {run.status === "draft" ? (
-                <DeductionForm
-                  entryId={entry.id}
-                  runId={run.id}
-                  currentDeductions={Number(entry.deductions)}
-                  currentReason={entry.deduction_reason}
-                />
-              ) : (
-                Number(entry.deductions) > 0 && (
-                  <p className="text-xs text-zinc-500">
-                    Deduction: {naira(Number(entry.deductions))}
-                    {entry.deduction_reason ? ` — ${entry.deduction_reason}` : ""}
-                  </p>
-                )
-              )}
+              <EntryDeductions
+                entryId={entry.id}
+                runId={run.id}
+                editable={editable}
+                lineItems={lineItemsByEntry.get(entry.id) ?? []}
+                deductionTypes={deductionTypes ?? []}
+              />
             </div>
           ))}
         </div>
       )}
 
-      {run.status === "draft" && rows.length > 0 && <MarkPaidButton runId={run.id} />}
+      {editable && rows.length > 0 && <MarkPaidButton runId={run.id} />}
     </div>
   );
 }

@@ -100,13 +100,35 @@ export interface DeductionFormState {
   success?: string;
 }
 
-export async function setPayrollEntryDeduction(
+type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
+
+// payroll_entries.deductions / deduction_reason are what net_pay (a
+// generated column) is computed from, so they're kept as a cached
+// sum/summary of the entry's line items in payroll_entry_deductions
+// rather than typed directly.
+async function recomputeEntryDeductions(supabase: SupabaseClient, entryId: string) {
+  const { data: lineItems } = await supabase
+    .from("payroll_entry_deductions")
+    .select("amount, deduction_types(name)")
+    .eq("payroll_entry_id", entryId);
+
+  const total = (lineItems ?? []).reduce((sum, d) => sum + Number(d.amount), 0);
+  const reason =
+    (lineItems ?? [])
+      .map((d) => (d.deduction_types as unknown as { name: string } | null)?.name)
+      .filter(Boolean)
+      .join(", ") || null;
+
+  await supabase.from("payroll_entries").update({ deductions: total, deduction_reason: reason }).eq("id", entryId);
+}
+
+export async function addPayrollDeduction(
   entryId: string,
   runId: string,
   _prevState: DeductionFormState,
   formData: FormData
 ): Promise<DeductionFormState> {
-  await requireLiteralProprietor();
+  const { profile } = await requireLiteralProprietor();
   const supabase = await createClient();
 
   const { data: run } = await supabase.from("payroll_runs").select("status").eq("id", runId).single();
@@ -114,22 +136,82 @@ export async function setPayrollEntryDeduction(
     return { error: "This payroll run has already been paid — deductions are locked." };
   }
 
-  const deductions = Number(formData.get("deductions"));
-  const reason = String(formData.get("deduction_reason") ?? "").trim() || null;
+  const deductionTypeId = String(formData.get("deduction_type_id") ?? "");
+  const amount = Number(formData.get("amount"));
 
-  if (!Number.isFinite(deductions) || deductions < 0) {
-    return { error: "Enter a valid deduction amount." };
+  if (!deductionTypeId) {
+    return { error: "Choose a deduction type." };
+  }
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { error: "Enter a valid amount." };
   }
 
-  const { error } = await supabase
-    .from("payroll_entries")
-    .update({ deductions, deduction_reason: reason })
-    .eq("id", entryId);
+  const { error } = await supabase.from("payroll_entry_deductions").insert({
+    school_id: profile.school_id,
+    payroll_entry_id: entryId,
+    deduction_type_id: deductionTypeId,
+    amount,
+  });
 
   if (error) return { error: error.message };
 
+  await recomputeEntryDeductions(supabase, entryId);
+
   revalidatePath(`/payroll/${runId}`);
-  return { success: "Deduction saved." };
+  return { success: "Deduction added." };
+}
+
+export async function removePayrollDeduction(deductionId: string, entryId: string, runId: string) {
+  await requireLiteralProprietor();
+  const supabase = await createClient();
+
+  const { data: run } = await supabase.from("payroll_runs").select("status").eq("id", runId).single();
+  if (run?.status !== "draft") {
+    throw new Error("This payroll run has already been paid — deductions are locked.");
+  }
+
+  const { error } = await supabase.from("payroll_entry_deductions").delete().eq("id", deductionId);
+  if (error) throw new Error(error.message);
+
+  await recomputeEntryDeductions(supabase, entryId);
+  revalidatePath(`/payroll/${runId}`);
+}
+
+export interface DeductionTypeFormState {
+  error?: string;
+}
+
+export async function createDeductionType(
+  _prevState: DeductionTypeFormState,
+  formData: FormData
+): Promise<DeductionTypeFormState> {
+  const { profile } = await requireLiteralProprietor();
+  const name = String(formData.get("name") ?? "").trim();
+
+  if (!name) {
+    return { error: "Deduction type name is required." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("deduction_types").insert({ school_id: profile.school_id, name });
+
+  if (error) {
+    if (error.code === "23505") {
+      return { error: `"${name}" is already in the deduction type list.` };
+    }
+    return { error: error.message };
+  }
+
+  revalidatePath("/payroll");
+  return {};
+}
+
+export async function deleteDeductionType(typeId: string) {
+  await requireLiteralProprietor();
+  const supabase = await createClient();
+  const { error } = await supabase.from("deduction_types").delete().eq("id", typeId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/payroll");
 }
 
 export async function markPayrollRunPaid(runId: string) {
