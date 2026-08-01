@@ -108,6 +108,7 @@ export const GROUPS: NavGroup[] = [
     label: "Admin",
     items: [
       { href: "/staff", label: "Staff", emoji: "👥", managerOnly: true },
+      { href: "/staff-attendance", label: "Staff Attendance", emoji: "🕒", managerOnly: true },
       { href: "/classes", label: "Classes", emoji: "🏫", managerOnly: true },
       { href: "/promotion", label: "Session Promotion", emoji: "🔁", managerOnly: true },
       { href: "/campuses", label: "Campuses", emoji: "🏢", managerOnly: true },

@@ -45,6 +45,12 @@ const EXPENSE_COLUMNS: ReportColumn[] = [
   { key: "term", label: "Term" },
 ];
 
+const STAFF_ATTENDANCE_COLUMNS: ReportColumn[] = [
+  { key: "date", label: "Date" },
+  { key: "staff_name", label: "Staff" },
+  { key: "status", label: "Status" },
+];
+
 const ADMISSIONS_COLUMNS: ReportColumn[] = [
   { key: "full_name", label: "Name" },
   { key: "desired_class", label: "Desired Class" },
@@ -156,6 +162,23 @@ export const EXPORT_DATASETS: ExportDataset[] = [
         amount: Number(e.amount),
         session: e.session,
         term: e.term,
+      }));
+    },
+  },
+  {
+    key: "staff_attendance",
+    label: "Staff attendance",
+    columns: STAFF_ATTENDANCE_COLUMNS,
+    fetch: async (supabase, schoolId) => {
+      const { data } = await supabase
+        .from("staff_attendance")
+        .select("date, status, app_users(name)")
+        .eq("school_id", schoolId)
+        .order("date", { ascending: false });
+      return (data ?? []).map((row) => ({
+        date: row.date,
+        staff_name: (row.app_users as unknown as { name: string } | null)?.name ?? "",
+        status: row.status,
       }));
     },
   },
