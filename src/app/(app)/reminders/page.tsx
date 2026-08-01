@@ -2,7 +2,6 @@ import Link from "next/link";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { RemindersTable } from "./RemindersTable";
-import { GeneralAnnouncementForm } from "./GeneralAnnouncementForm";
 
 export default async function RemindersPage({
   searchParams,
@@ -58,7 +57,11 @@ export default async function RemindersPage({
         <h1 className="text-2xl font-bold text-zinc-900">Reminders</h1>
         <p className="text-sm text-zinc-500">
           Fee reminders sum a student&apos;s balance across every fee type (school fees, PTA
-          levy, etc). Use the general announcement below for anything else.
+          levy, etc). For anything else — closures, PTA meetings, events — use{" "}
+          <Link href="/broadcasts" className="font-medium underline">
+            Broadcasts
+          </Link>
+          .
         </p>
       </div>
 
@@ -90,16 +93,6 @@ export default async function RemindersPage({
         </div>
 
         <RemindersTable students={owing} />
-      </section>
-
-      <section className="space-y-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          General announcement
-        </h2>
-        <p className="text-sm text-zinc-500">
-          Send any other message to parents — events, closures, PTA meetings — not tied to fees.
-        </p>
-        <GeneralAnnouncementForm classes={classes ?? []} />
       </section>
     </div>
   );
