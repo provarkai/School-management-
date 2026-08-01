@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthTimeout } from "@/lib/authOtp";
 
 /**
  * Loads the signed-in user and confirms they're a platform admin. Redirects
@@ -8,9 +9,8 @@ import { createClient } from "@/lib/supabase/server";
  */
 export async function requirePlatformAdmin(): Promise<{ authId: string }> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userResult = await withAuthTimeout(supabase.auth.getUser(), 8000);
+  const user = "data" in userResult ? userResult.data.user : null;
 
   if (!user) {
     redirect("/login");

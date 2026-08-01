@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthTimeout } from "@/lib/authOtp";
 
 export interface ParentProfile {
   id: string;
@@ -32,9 +33,8 @@ export interface CurrentParent {
  */
 export async function requireParent(): Promise<CurrentParent> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userResult = await withAuthTimeout(supabase.auth.getUser(), 8000);
+  const user = "data" in userResult ? userResult.data.user : null;
 
   if (!user) {
     redirect("/parent/login");
