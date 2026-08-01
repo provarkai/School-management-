@@ -10,6 +10,18 @@ async function siteOrigin(): Promise<string> {
   return `${protocol}://${host}`;
 }
 
+// Supabase's auth API sometimes returns an error response with no
+// recognizable message field (e.g. when the underlying SMTP send fails
+// server-side) — the client library falls back to JSON.stringify-ing the
+// raw body, which shows up as a literal "{}" with nothing useful in it.
+// Swap that for a message that actually points at the real cause.
+function friendlyAuthError(message: string): string {
+  if (!message || message.trim().startsWith("{") || message.trim().startsWith("[")) {
+    return "Something went wrong sending that email — most likely the mail server rejected it. Check your Supabase SMTP configuration and try again.";
+  }
+  return message;
+}
+
 export interface AuthActionState {
   error?: string;
   message?: string;
@@ -26,7 +38,7 @@ export async function signIn(
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return { error: error.message };
+    return { error: friendlyAuthError(error.message) };
   }
 
   const { data: isAdmin } = await supabase.rpc("is_platform_admin");
@@ -56,7 +68,7 @@ export async function signUp(
   });
 
   if (error) {
-    return { error: error.message };
+    return { error: friendlyAuthError(error.message) };
   }
 
   // Supabase deliberately doesn't return an error for an email that's
@@ -96,7 +108,7 @@ export async function requestPasswordReset(
   });
 
   if (error) {
-    return { error: error.message };
+    return { error: friendlyAuthError(error.message) };
   }
 
   return { message: "Password reset email sent — check your inbox (and spam folder)." };
@@ -120,7 +132,7 @@ export async function resendConfirmation(
   });
 
   if (error) {
-    return { error: error.message };
+    return { error: friendlyAuthError(error.message) };
   }
 
   return { message: "Confirmation email resent — check your inbox (and spam folder)." };
