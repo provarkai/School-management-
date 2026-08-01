@@ -10,10 +10,14 @@ export default function ParentLoginPage() {
           Track your child&apos;s fees, attendance and results
         </p>
       </div>
+      <p className="mb-4 w-full max-w-sm rounded-md bg-zinc-100 px-3 py-2 text-center text-sm text-zinc-600">
+        This is for parents/guardians tracking a child&apos;s school account. School staff
+        (proprietors, teachers, admin)?{" "}
+        <Link href="/login" className="font-medium text-zinc-900 hover:underline">
+          Go to the staff login →
+        </Link>
+      </p>
       <ParentAuthForms />
-      <Link href="/login" className="mt-6 text-xs text-zinc-400 hover:text-zinc-600">
-        School staff? Sign in here →
-      </Link>
     </div>
   );
 }

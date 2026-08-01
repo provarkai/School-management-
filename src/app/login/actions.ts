@@ -36,14 +36,29 @@ export async function signIn(
   const password = String(formData.get("password") ?? "");
 
   const supabase = await createClient();
-  const { error } = await withAuthTimeout(supabase.auth.signInWithPassword({ email, password }), 15000, {
-    user: null,
-    session: null,
-    weakPassword: null,
-  });
+  const { data: signInData, error } = await withAuthTimeout(
+    supabase.auth.signInWithPassword({ email, password }),
+    15000,
+    { user: null, session: null, weakPassword: null }
+  );
 
   if (error) {
     return { error: friendlyAuthError(error.message) };
+  }
+
+  // A parent who mistakes this for the parent portal will have valid
+  // credentials (same auth.users table) but no app_users row — catch that
+  // here and route them to where their account actually lives instead of
+  // leaving them to land on a staff dashboard that immediately bounces
+  // them with no explanation.
+  const { data: staffProfile } = await withAuthTimeout(
+    supabase.from("app_users").select("id").eq("id", signInData.user!.id).maybeSingle(),
+    8000,
+    null
+  );
+
+  if (!staffProfile) {
+    redirect("/parent");
   }
 
   // Same failure mode as the reset-password flow: this RPC runs right

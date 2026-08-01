@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { withAuthTimeout } from "@/lib/withAuthTimeout";
 
 export interface AuthActionState {
   error?: string;
@@ -16,10 +17,28 @@ export async function parentSignIn(
   const password = String(formData.get("password") ?? "");
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data: signInData, error } = await withAuthTimeout(
+    supabase.auth.signInWithPassword({ email, password }),
+    15000,
+    { user: null, session: null, weakPassword: null }
+  );
 
   if (error) {
     return { error: error.message };
+  }
+
+  // Mirror of the staff sign-in's check: a school staff member who mistakes
+  // this for the school manager login will have valid credentials but no
+  // parent row — send them to their actual dashboard instead of leaving
+  // them stuck on a parent portal with no children linked.
+  const { data: parentProfile } = await withAuthTimeout(
+    supabase.from("parents").select("id").eq("id", signInData.user!.id).maybeSingle(),
+    8000,
+    null
+  );
+
+  if (!parentProfile) {
+    redirect("/dashboard");
   }
 
   redirect("/parent");

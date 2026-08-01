@@ -24,10 +24,14 @@ export default async function LoginPage({
           or sign in directly if you already confirmed your email.
         </p>
       )}
+      <p className="mb-4 w-full max-w-sm rounded-md bg-zinc-100 px-3 py-2 text-center text-sm text-zinc-600">
+        This is for school staff (proprietors, teachers, admin). Parent tracking your
+        child&apos;s fees or results?{" "}
+        <Link href="/parent/login" className="font-medium text-zinc-900 hover:underline">
+          Go to the parent portal →
+        </Link>
+      </p>
       <AuthForms />
-      <Link href="/parent/login" className="mt-6 text-xs text-zinc-400 hover:text-zinc-600">
-        Parent? Sign in to the parent portal →
-      </Link>
     </div>
   );
 }
