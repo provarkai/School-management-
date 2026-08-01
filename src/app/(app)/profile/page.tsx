@@ -92,7 +92,7 @@ export default async function SettingsPage({
           <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-zinc-900">Photo</h3>
             <AvatarUploader
-              userId={authId}
+              pathPrefix={authId}
               name={profile.name}
               initialUrl={profile.photo_url}
               onSave={saveProfilePhoto}

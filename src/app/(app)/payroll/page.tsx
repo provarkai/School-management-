@@ -71,7 +71,15 @@ export default async function PayrollPage() {
                   key={person.id}
                   data-search-row={`${person.name} ${roleLabel(person.role, person.gender)}`}
                 >
-                  <td className="px-4 py-2 text-zinc-900">{person.name}</td>
+                  <td className="px-4 py-2 text-zinc-900">
+                    {person.role === "proprietor" ? (
+                      person.name
+                    ) : (
+                      <Link href={`/staff/${person.id}`} className="font-medium hover:underline">
+                        {person.name}
+                      </Link>
+                    )}
+                  </td>
                   <td className="px-4 py-2 text-zinc-500">{roleLabel(person.role, person.gender)}</td>
                   <td className="px-4 py-2">
                     <SalaryForm staffId={person.id} currentSalary={salaryByStaffId.get(person.id) ?? 0} />

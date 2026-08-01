@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { getStaffPerformance } from "@/lib/staffPerformance";
@@ -70,7 +71,11 @@ export default async function StaffPerformancePage() {
             >
               <div className="mb-3 flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold text-zinc-900">{r.name}</p>
+                  <p className="text-sm font-semibold text-zinc-900">
+                    <Link href={`/staff/${r.staffId}`} className="hover:underline">
+                      {r.name}
+                    </Link>
+                  </p>
                   <p className="text-xs text-zinc-400">
                     {r.jobTitle || ROLE_LABELS[r.role] || r.role}
                   </p>

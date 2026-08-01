@@ -128,7 +128,11 @@ export default async function StudentsPage({
                       .filter(Boolean)
                       .join(" ")}
                   >
-                    <td className="px-4 py-2 font-medium text-zinc-900">{s.full_name}</td>
+                    <td className="px-4 py-2 font-medium text-zinc-900">
+                      <Link href={`/students/${s.id}`} className="hover:underline">
+                        {s.full_name}
+                      </Link>
+                    </td>
                     <td className="px-4 py-2 text-zinc-500">{className}</td>
                     <td className="px-4 py-2 text-zinc-500">{s.parent_name ?? "—"}</td>
                     <td className="px-4 py-2 text-zinc-500">{s.parent_phone ?? "—"}</td>

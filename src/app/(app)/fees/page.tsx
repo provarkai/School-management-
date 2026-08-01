@@ -206,7 +206,11 @@ export default async function FeesPage({
               const cls = student.class_id ? classNameById.get(student.class_id) ?? "—" : "—";
               return (
                 <tr key={student.id} data-search-row={`${student.full_name} ${cls}`}>
-                  <td className="px-4 py-2 font-medium text-zinc-900">{student.full_name}</td>
+                  <td className="px-4 py-2 font-medium text-zinc-900">
+                    <Link href={`/students/${student.id}`} className="hover:underline">
+                      {student.full_name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-2 text-zinc-500">{cls}</td>
                   <td className="px-4 py-2 text-right text-zinc-500">
                     {fee ? naira(fee.amount_expected) : "—"}

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { sendBulkReminders, type BulkReminderResult } from "./actions";
 import { naira } from "@/lib/format";
@@ -100,7 +101,11 @@ export function RemindersTable({ students }: { students: OwingStudent[] }) {
                     onChange={() => toggle(s.id)}
                   />
                 </td>
-                <td className="px-4 py-2 font-medium text-zinc-900">{s.full_name}</td>
+                <td className="px-4 py-2 font-medium text-zinc-900">
+                  <Link href={`/students/${s.id}`} className="hover:underline">
+                    {s.full_name}
+                  </Link>
+                </td>
                 <td className="px-4 py-2 text-zinc-500">{s.className}</td>
                 <td className="px-4 py-2 text-zinc-500">{s.parent_phone ?? "—"}</td>
                 <td className="px-4 py-2 text-right font-medium text-red-600">

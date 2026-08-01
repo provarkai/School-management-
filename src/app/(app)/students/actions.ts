@@ -10,6 +10,21 @@ export interface StudentFormState {
   error?: string;
 }
 
+export async function saveStudentPhoto(studentId: string, url: string): Promise<void> {
+  const { profile } = await requireProprietor();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("students")
+    .update({ photo_url: url })
+    .eq("id", studentId)
+    .eq("school_id", profile.school_id ?? "");
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath("/students");
+}
+
 export async function createStudent(
   _prevState: StudentFormState,
   formData: FormData

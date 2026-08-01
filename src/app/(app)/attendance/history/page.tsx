@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { ExportLinks } from "@/components/ExportLinks";
@@ -154,7 +155,11 @@ export default async function AttendanceHistoryPage({
                         data-search-row={`${studentName} ${r.date} ${r.status}`}
                       >
                         <td className="px-3 py-1.5 text-zinc-500">{r.date}</td>
-                        <td className="px-3 py-1.5 text-zinc-900">{studentName}</td>
+                        <td className="px-3 py-1.5 text-zinc-900">
+                          <Link href={`/students/${r.student_id}`} className="hover:underline">
+                            {studentName}
+                          </Link>
+                        </td>
                         <td className="px-3 py-1.5 capitalize text-zinc-500">{r.status}</td>
                       </tr>
                     );

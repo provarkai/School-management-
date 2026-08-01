@@ -95,7 +95,15 @@ export default async function StaffPage() {
                     size="sm"
                   />
                 </td>
-                <td className="px-4 py-2 text-zinc-900">{person.name}</td>
+                <td className="px-4 py-2 text-zinc-900">
+                  {person.role === "proprietor" ? (
+                    person.name
+                  ) : (
+                    <Link href={`/staff/${person.id}`} className="font-medium hover:underline">
+                      {person.name}
+                    </Link>
+                  )}
+                </td>
                 <td className="px-4 py-2 text-zinc-500">{person.email}</td>
                 <td className="px-4 py-2 text-zinc-500">{person.phone ?? "—"}</td>
                 <td className="px-4 py-2 text-zinc-500">

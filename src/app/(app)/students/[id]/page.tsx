@@ -10,6 +10,9 @@ import { BehaviorRecord } from "./BehaviorRecord";
 import { CustomFieldValuesForm } from "./CustomFieldValuesForm";
 import { DocumentUploadForm } from "./DocumentUploadForm";
 import { DocumentsList } from "./DocumentsList";
+import { AvatarUploader } from "@/components/AvatarUploader";
+import { Avatar } from "@/components/Avatar";
+import { saveStudentPhoto } from "../actions";
 
 export default async function StudentDetailPage({
   params,
@@ -23,7 +26,7 @@ export default async function StudentDetailPage({
   const { data: student } = await supabase
     .from("students")
     .select(
-      "id, school_id, full_name, class_id, date_of_birth, parent_name, parent_phone, parent_email, admission_date, status, access_token"
+      "id, school_id, full_name, class_id, date_of_birth, parent_name, parent_phone, parent_email, admission_date, status, access_token, photo_url"
     )
     .eq("id", id)
     .single();
@@ -92,9 +95,21 @@ export default async function StudentDetailPage({
 
   return (
     <div className="max-w-lg space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-900">{student.full_name}</h1>
-        <p className="text-sm text-zinc-500">{klass?.name ?? "No class assigned"}</p>
+      <div className="flex items-center gap-4">
+        {isManager ? (
+          <AvatarUploader
+            pathPrefix={`students/${student.id}`}
+            name={student.full_name}
+            initialUrl={student.photo_url}
+            onSave={saveStudentPhoto.bind(null, student.id)}
+          />
+        ) : (
+          <Avatar url={student.photo_url} name={student.full_name} size="lg" />
+        )}
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900">{student.full_name}</h1>
+          <p className="text-sm text-zinc-500">{klass?.name ?? "No class assigned"}</p>
+        </div>
       </div>
 
       <dl className="grid grid-cols-2 gap-4 rounded-lg border border-zinc-200 bg-white p-5 text-sm shadow-sm">

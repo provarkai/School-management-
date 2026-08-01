@@ -15,7 +15,7 @@ export default async function ParentProfilePage() {
       <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-zinc-900">Photo</h2>
         <AvatarUploader
-          userId={authId}
+          pathPrefix={authId}
           name={parent.name}
           initialUrl={parent.photo_url}
           onSave={saveParentProfilePhoto}

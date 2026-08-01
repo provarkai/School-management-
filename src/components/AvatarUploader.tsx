@@ -5,12 +5,14 @@ import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "./Avatar";
 
 export function AvatarUploader({
-  userId,
+  pathPrefix,
   name,
   initialUrl,
   onSave,
 }: {
-  userId: string;
+  /** Storage folder the photo is uploaded under, e.g. an auth uid for a
+   * self-service profile photo, or `students/{studentId}` for a student. */
+  pathPrefix: string;
   name: string;
   initialUrl: string | null;
   onSave: (url: string) => Promise<void>;
@@ -27,7 +29,7 @@ export function AvatarUploader({
 
     const supabase = createClient();
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const path = `${userId}/avatar.${ext}`;
+    const path = `${pathPrefix}/avatar.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from("avatars")
