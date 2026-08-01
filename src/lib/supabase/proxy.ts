@@ -47,9 +47,31 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // supabase.auth.getUser() can, in rare cases (a stale/invalid refresh
+  // token colliding with a transient hiccup on Supabase's end), retry
+  // internally with backoff for up to ~30s — and since this middleware runs
+  // on every navigation, that turns into the whole app appearing to hang
+  // until the browser's cookies are cleared by hand. Bound the wait, and if
+  // it's exceeded, drop whatever Supabase auth cookies are on the request
+  // so the *next* request starts clean instead of repeating the same stall.
+  let timedOut = false;
+  const user = await Promise.race([
+    supabase.auth.getUser().then(({ data }) => data.user),
+    new Promise<null>((resolve) =>
+      setTimeout(() => {
+        timedOut = true;
+        resolve(null);
+      }, 8000)
+    ),
+  ]).catch(() => null);
+
+  if (timedOut) {
+    for (const cookie of request.cookies.getAll()) {
+      if (cookie.name.startsWith("sb-")) {
+        response.cookies.delete(cookie.name);
+      }
+    }
+  }
 
   const { pathname } = request.nextUrl;
   const isParentArea = pathname.startsWith("/parent");
