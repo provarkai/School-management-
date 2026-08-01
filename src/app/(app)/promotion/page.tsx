@@ -17,26 +17,33 @@ export default async function PromotionPage() {
   const session = school?.current_session ?? "";
   const term = school?.current_term ?? "1";
 
-  const [{ data: classes }, { data: students }] = await Promise.all([
-    supabase
-      .from("classes")
-      .select("id, name")
-      .eq("school_id", profile.school_id ?? "")
-      .eq("session", session)
-      .eq("term", term)
-      .order("name"),
-    supabase
-      .from("students")
-      .select("id, class_id")
-      .eq("school_id", profile.school_id ?? "")
-      .eq("status", "active"),
-  ]);
+  const { data: students } = await supabase
+    .from("students")
+    .select("id, class_id")
+    .eq("school_id", profile.school_id ?? "")
+    .eq("status", "active");
 
   const countByClass = new Map<string, number>();
+  let unassignedCount = 0;
   for (const s of students ?? []) {
-    if (!s.class_id) continue;
+    if (!s.class_id) {
+      unassignedCount++;
+      continue;
+    }
     countByClass.set(s.class_id, (countByClass.get(s.class_id) ?? 0) + 1);
   }
+
+  // Derived from where active students actually sit, not a session/term
+  // filter on classes — classes aren't reliably recreated every term, so a
+  // student left behind in an older-term class row would otherwise be
+  // silently excluded from promotion.
+  const classIds = Array.from(countByClass.keys());
+  const { data: classes } = await supabase
+    .from("classes")
+    .select("id, name")
+    .eq("school_id", profile.school_id ?? "")
+    .in("id", classIds.length > 0 ? classIds : [""])
+    .order("name");
 
   const promotionClasses: PromotionClass[] = (classes ?? []).map((c) => ({
     id: c.id,
@@ -54,9 +61,16 @@ export default async function PromotionPage() {
         </p>
       </div>
 
+      {unassignedCount > 0 && (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {unassignedCount} active student{unassignedCount === 1 ? " has" : "s have"} no class
+          assigned and won&rsquo;t be promoted — assign them a class first if they should move up.
+        </p>
+      )}
+
       {promotionClasses.length === 0 ? (
         <p className="rounded-lg border border-zinc-200 bg-white p-5 text-sm text-zinc-400 shadow-sm">
-          No classes found for the current term.
+          No active students are assigned to a class yet.
         </p>
       ) : (
         <PromotionForm classes={promotionClasses} suggestedSession={suggestNextSession(session)} />

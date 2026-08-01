@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SalaryForm } from "./SalaryForm";
 import { GeneratePayrollForm } from "./GeneratePayrollForm";
 import { DeductionTypesManager } from "./DeductionTypesManager";
+import { TableSearch } from "@/components/TableSearch";
 import { proprietorTitle } from "@/lib/format";
 import type { Gender } from "@/lib/types";
 
@@ -53,7 +54,9 @@ export default async function PayrollPage() {
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">Staff salaries</h2>
-        <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
+        <div data-search-scope className="space-y-3">
+          <TableSearch placeholder="Search staff…" />
+          <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
           <table className="min-w-full divide-y divide-zinc-200 text-sm">
             <thead className="bg-zinc-50">
               <tr>
@@ -64,7 +67,10 @@ export default async function PayrollPage() {
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {(staff ?? []).map((person) => (
-                <tr key={person.id}>
+                <tr
+                  key={person.id}
+                  data-search-row={`${person.name} ${roleLabel(person.role, person.gender)}`}
+                >
                   <td className="px-4 py-2 text-zinc-900">{person.name}</td>
                   <td className="px-4 py-2 text-zinc-500">{roleLabel(person.role, person.gender)}</td>
                   <td className="px-4 py-2">
@@ -74,6 +80,7 @@ export default async function PayrollPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </section>
 

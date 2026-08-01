@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { TableSearch } from "@/components/TableSearch";
 import { AddProspectForm } from "./AddProspectForm";
 import { ProspectCard, type Prospect } from "./ProspectCard";
 import { PROSPECT_STATUSES, STATUS_LABELS, type ProspectStatus } from "./statuses";
@@ -87,9 +88,23 @@ export default async function AdmissionsPage({
           for {session} yet.
         </p>
       ) : (
-        <div className="space-y-3">
+        <div data-search-scope className="space-y-3">
+          <TableSearch placeholder="Search prospects…" />
           {prospects.map((p) => (
-            <ProspectCard key={p.id} prospect={p} classes={classes ?? []} />
+            <div
+              key={p.id}
+              data-search-row={[
+                p.full_name,
+                p.desired_class,
+                p.parent_name,
+                p.parent_phone,
+                p.parent_email,
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              <ProspectCard prospect={p} classes={classes ?? []} />
+            </div>
           ))}
         </div>
       )}

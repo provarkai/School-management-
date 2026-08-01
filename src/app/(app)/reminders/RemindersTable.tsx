@@ -16,6 +16,13 @@ export function RemindersTable({ students }: { students: OwingStudent[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set(students.map((s) => s.id)));
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<BulkReminderResult | null>(null);
+  const [query, setQuery] = useState("");
+
+  const filtered = query
+    ? students.filter((s) =>
+        `${s.full_name} ${s.className}`.toLowerCase().includes(query.trim().toLowerCase())
+      )
+    : students;
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -58,6 +65,14 @@ export function RemindersTable({ students }: { students: OwingStudent[] }) {
         </div>
       )}
 
+      <input
+        type="search"
+        placeholder="Search owing students…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        className="w-full max-w-xs rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+      />
+
       <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-zinc-200 text-sm">
           <thead className="bg-zinc-50">
@@ -76,7 +91,7 @@ export function RemindersTable({ students }: { students: OwingStudent[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
-            {students.map((s) => (
+            {filtered.map((s) => (
               <tr key={s.id}>
                 <td className="px-4 py-2">
                   <input
@@ -93,10 +108,10 @@ export function RemindersTable({ students }: { students: OwingStudent[] }) {
                 </td>
               </tr>
             ))}
-            {students.length === 0 && (
+            {filtered.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-zinc-400">
-                  No students are currently owing.
+                  {students.length === 0 ? "No students are currently owing." : "No matches."}
                 </td>
               </tr>
             )}

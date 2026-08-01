@@ -5,6 +5,7 @@ import { NewClassForm } from "./NewClassForm";
 import { ClassTeacherSelect } from "./ClassTeacherSelect";
 import { ClassCampusSelect } from "./ClassCampusSelect";
 import { CampusFilter } from "../CampusFilter";
+import { TableSearch } from "@/components/TableSearch";
 
 export default async function ClassesPage({
   searchParams,
@@ -53,7 +54,9 @@ export default async function ClassesPage({
 
       <NewClassForm teachers={teachers ?? []} campuses={campuses ?? []} />
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
+      <div data-search-scope className="space-y-3">
+        <TableSearch placeholder="Search classes…" />
+        <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-zinc-200 text-sm">
           <thead className="bg-zinc-50">
             <tr>
@@ -68,7 +71,7 @@ export default async function ClassesPage({
           </thead>
           <tbody className="divide-y divide-zinc-100">
             {classes.map((c) => (
-              <tr key={c.id}>
+              <tr key={c.id} data-search-row={c.name}>
                 <td className="px-4 py-2 font-medium text-zinc-900">{c.name}</td>
                 <td className="px-4 py-2 text-zinc-500">
                   {studentCountByClass.get(c.id) ?? 0}
@@ -108,6 +111,7 @@ export default async function ClassesPage({
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

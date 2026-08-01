@@ -13,7 +13,7 @@ export async function promoteSession(
   _prevState: PromotionFormState,
   formData: FormData
 ): Promise<PromotionFormState> {
-  const { profile, school } = await requireProprietor();
+  const { profile } = await requireProprietor();
   const supabase = await createClient();
 
   const newSession = String(formData.get("new_session") ?? "").trim();
@@ -21,18 +21,32 @@ export async function promoteSession(
     return { error: "Enter the new session, e.g. 2026/2027." };
   }
 
-  const currentSession = school?.current_session ?? "";
-  const currentTerm = school?.current_term ?? "1";
+  // Derived from where active students actually sit (class_id), not from a
+  // session/term match on the classes table — classes aren't reliably
+  // recreated every term, so filtering by the school's current term missed
+  // students still sitting in an older-term class row.
+  const { data: activeStudents } = await supabase
+    .from("students")
+    .select("class_id")
+    .eq("school_id", profile.school_id ?? "")
+    .eq("status", "active");
+
+  const classIds = Array.from(
+    new Set((activeStudents ?? []).map((s) => s.class_id).filter((id): id is string => !!id))
+  );
+
+  if (classIds.length === 0) {
+    return { error: "No active students are assigned to a class yet." };
+  }
 
   const { data: classes } = await supabase
     .from("classes")
     .select("id, name, teacher_id, campus_id")
     .eq("school_id", profile.school_id ?? "")
-    .eq("session", currentSession)
-    .eq("term", currentTerm);
+    .in("id", classIds);
 
   if (!classes || classes.length === 0) {
-    return { error: "No classes found for the current term to promote." };
+    return { error: "No classes found to promote." };
   }
 
   const targetClassIdByName = new Map<string, string>();

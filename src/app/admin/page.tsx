@@ -2,6 +2,7 @@ import { requirePlatformAdmin } from "@/lib/current-admin";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import { SchoolStatusButton } from "./SchoolStatusButton";
+import { TableSearch } from "@/components/TableSearch";
 import type { SchoolStatus } from "@/lib/types";
 
 interface SchoolRow {
@@ -84,7 +85,9 @@ export default async function AdminDashboardPage() {
         <StatCard label="Signups this month" value={String(totals.signups_this_month)} />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
+      <div data-search-scope className="space-y-3">
+        <TableSearch placeholder="Search schools…" />
+        <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-zinc-200 text-sm">
           <thead className="bg-zinc-50">
             <tr>
@@ -102,7 +105,7 @@ export default async function AdminDashboardPage() {
             {((schools ?? []) as SchoolRow[]).map((school) => {
               const stats = statsBySchoolId.get(school.id);
               return (
-                <tr key={school.id}>
+                <tr key={school.id} data-search-row={`${school.name} ${school.status}`}>
                   <td className="px-4 py-2 font-medium text-zinc-900">{school.name}</td>
                   <td className="px-4 py-2 text-zinc-500">
                     {school.current_session} · Term {school.current_term}
@@ -139,6 +142,7 @@ export default async function AdminDashboardPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       <div>

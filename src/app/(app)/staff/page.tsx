@@ -7,6 +7,7 @@ import { TeacherSubjectSelect } from "./TeacherSubjectSelect";
 import { TeacherCampusSelect } from "./TeacherCampusSelect";
 import { StaffJobTitleInput } from "./StaffJobTitleInput";
 import { SchoolAdminToggle } from "./SchoolAdminToggle";
+import { TableSearch } from "@/components/TableSearch";
 import { proprietorTitle } from "@/lib/format";
 import type { Gender } from "@/lib/types";
 
@@ -52,7 +53,9 @@ export default async function StaffPage() {
 
       <AddTeacherForm subjects={subjects} campuses={campuses ?? []} />
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
+      <div data-search-scope className="space-y-3">
+        <TableSearch placeholder="Search staff…" />
+        <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-zinc-200 text-sm">
           <thead className="bg-zinc-50">
             <tr>
@@ -72,7 +75,19 @@ export default async function StaffPage() {
           </thead>
           <tbody className="divide-y divide-zinc-100">
             {(staff ?? []).map((person) => (
-              <tr key={person.id}>
+              <tr
+                key={person.id}
+                data-search-row={[
+                  person.name,
+                  person.email,
+                  person.phone,
+                  roleLabel(person.role, person.gender),
+                  person.subject,
+                  person.job_title,
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
                 <td className="px-4 py-2">
                   <Avatar
                     url={person.role === "proprietor" ? null : person.photo_url}
@@ -123,6 +138,7 @@ export default async function StaffPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { getStaffPerformance } from "@/lib/staffPerformance";
 import { BarChart } from "@/components/BarChart";
+import { TableSearch } from "@/components/TableSearch";
 
 const ROLE_LABELS: Record<string, string> = {
   teacher: "Teacher",
@@ -58,9 +59,15 @@ export default async function StaffPerformancePage() {
           No teaching or non-teaching staff on record yet.
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div data-search-scope className="space-y-4">
+          <TableSearch placeholder="Search staff…" />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {rows.map((r) => (
-            <div key={r.staffId} className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+            <div
+              key={r.staffId}
+              data-search-row={`${r.name} ${r.jobTitle ?? ""} ${r.classesTaught.join(" ")}`}
+              className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm"
+            >
               <div className="mb-3 flex items-start justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold text-zinc-900">{r.name}</p>
@@ -98,6 +105,7 @@ export default async function StaffPerformancePage() {
               </dl>
             </div>
           ))}
+          </div>
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@ import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import { ExportLinks } from "@/components/ExportLinks";
+import { TableSearch } from "@/components/TableSearch";
 import { CategoriesManager } from "./CategoriesManager";
 import { AddExpenseForm } from "./AddExpenseForm";
 import { DeleteExpenseButton } from "./DeleteExpenseButton";
@@ -189,7 +190,9 @@ export default async function ExpensesPage({
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
+      <div data-search-scope className="space-y-3">
+        <TableSearch placeholder="Search expenses…" />
+        <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-zinc-200 text-sm">
           <thead className="bg-zinc-50">
             <tr>
@@ -206,7 +209,19 @@ export default async function ExpensesPage({
           </thead>
           <tbody className="divide-y divide-zinc-100">
             {expenses.map((e) => (
-              <tr key={e.id}>
+              <tr
+                key={e.id}
+                data-search-row={[
+                  e.expense_date,
+                  e.expense_categories?.name,
+                  e.vendor,
+                  e.description,
+                  e.campuses?.name,
+                  e.app_users?.name,
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
                 <td className="px-4 py-2 text-zinc-500">{e.expense_date}</td>
                 <td className="px-4 py-2 font-medium text-zinc-900">
                   {e.expense_categories?.name ?? "—"}
@@ -235,6 +250,7 @@ export default async function ExpensesPage({
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

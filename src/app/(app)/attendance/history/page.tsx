@@ -1,6 +1,7 @@
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { ExportLinks } from "@/components/ExportLinks";
+import { TableSearch } from "@/components/TableSearch";
 
 export default async function AttendanceHistoryPage({
   searchParams,
@@ -133,27 +134,34 @@ export default async function AttendanceHistoryPage({
           <summary className="cursor-pointer font-medium text-zinc-700">
             Per-student detail
           </summary>
-          <div className="mt-3 overflow-x-auto rounded-md border border-zinc-100">
-            <table className="min-w-full divide-y divide-zinc-100 text-sm">
-              <thead className="bg-zinc-50">
-                <tr>
-                  <th className="px-3 py-2 text-left font-medium text-zinc-500">Date</th>
-                  <th className="px-3 py-2 text-left font-medium text-zinc-500">Student</th>
-                  <th className="px-3 py-2 text-left font-medium text-zinc-500">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100">
-                {rows.map((r, i) => (
-                  <tr key={`${r.student_id}-${r.date}-${i}`}>
-                    <td className="px-3 py-1.5 text-zinc-500">{r.date}</td>
-                    <td className="px-3 py-1.5 text-zinc-900">
-                      {studentNameById.get(r.student_id) ?? "—"}
-                    </td>
-                    <td className="px-3 py-1.5 capitalize text-zinc-500">{r.status}</td>
+          <div data-search-scope className="mt-3 space-y-2">
+            <TableSearch placeholder="Search student…" />
+            <div className="overflow-x-auto rounded-md border border-zinc-100">
+              <table className="min-w-full divide-y divide-zinc-100 text-sm">
+                <thead className="bg-zinc-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-zinc-500">Date</th>
+                    <th className="px-3 py-2 text-left font-medium text-zinc-500">Student</th>
+                    <th className="px-3 py-2 text-left font-medium text-zinc-500">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {rows.map((r, i) => {
+                    const studentName = studentNameById.get(r.student_id) ?? "—";
+                    return (
+                      <tr
+                        key={`${r.student_id}-${r.date}-${i}`}
+                        data-search-row={`${studentName} ${r.date} ${r.status}`}
+                      >
+                        <td className="px-3 py-1.5 text-zinc-500">{r.date}</td>
+                        <td className="px-3 py-1.5 text-zinc-900">{studentName}</td>
+                        <td className="px-3 py-1.5 capitalize text-zinc-500">{r.status}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </details>
       )}

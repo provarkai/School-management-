@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import type { FeeStatus } from "@/lib/types";
 import { ExportLinks } from "@/components/ExportLinks";
+import { TableSearch } from "@/components/TableSearch";
 import { FeeTypesManager } from "./FeeTypesManager";
 import { SetClassFeeForm } from "./SetClassFeeForm";
 
@@ -184,7 +185,9 @@ export default async function FeesPage({
         <FilterLink label="Paid" href={query({ status: "paid" })} active={statusFilter === "paid"} />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
+      <div data-search-scope className="space-y-3">
+        <TableSearch placeholder="Search students…" />
+        <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-zinc-200 text-sm">
           <thead className="bg-zinc-50">
             <tr>
@@ -200,12 +203,11 @@ export default async function FeesPage({
           <tbody className="divide-y divide-zinc-100">
             {rows.map(({ student, fee }) => {
               const status = fee?.status ?? "unset";
+              const cls = student.class_id ? classNameById.get(student.class_id) ?? "—" : "—";
               return (
-                <tr key={student.id}>
+                <tr key={student.id} data-search-row={`${student.full_name} ${cls}`}>
                   <td className="px-4 py-2 font-medium text-zinc-900">{student.full_name}</td>
-                  <td className="px-4 py-2 text-zinc-500">
-                    {student.class_id ? classNameById.get(student.class_id) ?? "—" : "—"}
-                  </td>
+                  <td className="px-4 py-2 text-zinc-500">{cls}</td>
                   <td className="px-4 py-2 text-right text-zinc-500">
                     {fee ? naira(fee.amount_expected) : "—"}
                   </td>
@@ -242,6 +244,7 @@ export default async function FeesPage({
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

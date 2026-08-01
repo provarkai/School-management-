@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { CampusFilter } from "../CampusFilter";
 import { EnrollmentStats } from "./EnrollmentStats";
+import { TableSearch } from "@/components/TableSearch";
 
 export default async function StudentsPage({
   searchParams,
@@ -104,45 +105,54 @@ export default async function StudentsPage({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-zinc-200 text-sm">
-          <thead className="bg-zinc-50">
-            <tr>
-              <th className="px-4 py-2 text-left font-medium text-zinc-500">Name</th>
-              <th className="px-4 py-2 text-left font-medium text-zinc-500">Class</th>
-              <th className="px-4 py-2 text-left font-medium text-zinc-500">Parent</th>
-              <th className="px-4 py-2 text-left font-medium text-zinc-500">Parent phone</th>
-              <th className="px-4 py-2" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100">
-            {students.map((s) => (
-              <tr key={s.id}>
-                <td className="px-4 py-2 font-medium text-zinc-900">{s.full_name}</td>
-                <td className="px-4 py-2 text-zinc-500">
-                  {s.class_id ? classNameById.get(s.class_id) ?? "—" : "—"}
-                </td>
-                <td className="px-4 py-2 text-zinc-500">{s.parent_name ?? "—"}</td>
-                <td className="px-4 py-2 text-zinc-500">{s.parent_phone ?? "—"}</td>
-                <td className="px-4 py-2 text-right">
-                  <Link
-                    href={`/students/${s.id}`}
-                    className="font-medium text-zinc-600 hover:text-zinc-900"
-                  >
-                    View →
-                  </Link>
-                </td>
-              </tr>
-            ))}
-            {students.length === 0 && (
+      <div data-search-scope className="space-y-3">
+        <TableSearch placeholder="Search students…" />
+        <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
+          <table className="min-w-full divide-y divide-zinc-200 text-sm">
+            <thead className="bg-zinc-50">
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-zinc-400">
-                  No students found.
-                </td>
+                <th className="px-4 py-2 text-left font-medium text-zinc-500">Name</th>
+                <th className="px-4 py-2 text-left font-medium text-zinc-500">Class</th>
+                <th className="px-4 py-2 text-left font-medium text-zinc-500">Parent</th>
+                <th className="px-4 py-2 text-left font-medium text-zinc-500">Parent phone</th>
+                <th className="px-4 py-2" />
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {students.map((s) => {
+                const className = s.class_id ? classNameById.get(s.class_id) ?? "—" : "—";
+                return (
+                  <tr
+                    key={s.id}
+                    data-search-row={[s.full_name, className, s.parent_name, s.parent_phone]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <td className="px-4 py-2 font-medium text-zinc-900">{s.full_name}</td>
+                    <td className="px-4 py-2 text-zinc-500">{className}</td>
+                    <td className="px-4 py-2 text-zinc-500">{s.parent_name ?? "—"}</td>
+                    <td className="px-4 py-2 text-zinc-500">{s.parent_phone ?? "—"}</td>
+                    <td className="px-4 py-2 text-right">
+                      <Link
+                        href={`/students/${s.id}`}
+                        className="font-medium text-zinc-600 hover:text-zinc-900"
+                      >
+                        View →
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+              {students.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-6 text-center text-zinc-400">
+                    No students found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
