@@ -61,7 +61,6 @@ export const GROUPS: NavGroup[] = [
     id: "students",
     label: "Students",
     items: [
-      { href: "/admissions", label: "Admissions", emoji: "🎓", managerOnly: true },
       { href: "/students", label: "Students", emoji: "🧑‍🎓", roles: ["teacher"], managerOnly: true },
       { href: "/attendance", label: "Attendance", emoji: "✅", roles: ["teacher"], managerOnly: true },
       { href: "/assignments", label: "Assignments", emoji: "📝", roles: ["teacher"], managerOnly: true },
@@ -74,7 +73,7 @@ export const GROUPS: NavGroup[] = [
     items: [
       { href: "/subjects", label: "Subjects", emoji: "📘", managerOnly: true },
       { href: "/timetable", label: "Timetable", emoji: "🗓️", roles: ["teacher"], managerOnly: true },
-      { href: "/calendar", label: "Calendar", emoji: "📅", roles: ["teacher", "staff"], managerOnly: true },
+      { href: "/classes", label: "Classes", emoji: "🏫", managerOnly: true },
     ],
   },
   {
@@ -93,7 +92,6 @@ export const GROUPS: NavGroup[] = [
       { href: "/staff", label: "Staff", emoji: "👥", managerOnly: true },
       { href: "/staff-attendance", label: "Staff Attendance", emoji: "🕒", managerOnly: true },
       { href: "/staff-performance", label: "Staff Performance", emoji: "🧑‍🏫", managerOnly: true },
-      { href: "/payroll", label: "Payroll", emoji: "💼", managerOnly: true },
     ],
   },
   {
@@ -102,6 +100,7 @@ export const GROUPS: NavGroup[] = [
     items: [
       { href: "/fees", label: "Fees", emoji: "💵", managerOnly: true },
       { href: "/expenses", label: "Expenses", emoji: "🧾", managerOnly: true },
+      { href: "/payroll", label: "Payroll", emoji: "💼", managerOnly: true },
     ],
   },
   {
@@ -117,7 +116,8 @@ export const GROUPS: NavGroup[] = [
     id: "admin",
     label: "Admin",
     items: [
-      { href: "/classes", label: "Classes", emoji: "🏫", managerOnly: true },
+      { href: "/admissions", label: "Admissions", emoji: "🎓", managerOnly: true },
+      { href: "/calendar", label: "Calendar", emoji: "📅", roles: ["teacher", "staff"], managerOnly: true },
       { href: "/promotion", label: "Session Promotion", emoji: "🔁", managerOnly: true },
       { href: "/campuses", label: "Campuses", emoji: "🏢", managerOnly: true },
     ],
