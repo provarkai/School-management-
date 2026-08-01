@@ -45,6 +45,17 @@ const EXPENSE_COLUMNS: ReportColumn[] = [
   { key: "term", label: "Term" },
 ];
 
+const ADMISSIONS_COLUMNS: ReportColumn[] = [
+  { key: "full_name", label: "Name" },
+  { key: "desired_class", label: "Desired Class" },
+  { key: "parent_name", label: "Parent" },
+  { key: "parent_phone", label: "Phone" },
+  { key: "parent_email", label: "Email" },
+  { key: "status", label: "Status" },
+  { key: "entrance_test_score", label: "Test Score" },
+  { key: "session", label: "Session" },
+];
+
 export const EXPORT_DATASETS: ExportDataset[] = [
   {
     key: "students",
@@ -145,6 +156,28 @@ export const EXPORT_DATASETS: ExportDataset[] = [
         amount: Number(e.amount),
         session: e.session,
         term: e.term,
+      }));
+    },
+  },
+  {
+    key: "admissions",
+    label: "Admissions",
+    columns: ADMISSIONS_COLUMNS,
+    fetch: async (supabase, schoolId) => {
+      const { data } = await supabase
+        .from("admission_prospects")
+        .select("full_name, desired_class, parent_name, parent_phone, parent_email, status, entrance_test_score, session")
+        .eq("school_id", schoolId)
+        .order("created_at", { ascending: false });
+      return (data ?? []).map((p) => ({
+        full_name: p.full_name,
+        desired_class: p.desired_class ?? "",
+        parent_name: p.parent_name ?? "",
+        parent_phone: p.parent_phone ?? "",
+        parent_email: p.parent_email ?? "",
+        status: p.status,
+        entrance_test_score: p.entrance_test_score ?? "",
+        session: p.session,
       }));
     },
   },
