@@ -26,9 +26,9 @@ export function GroupTabs({ role, isManager }: { role: Role; isManager: boolean 
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition ${
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-t-md border-b-2 px-3 py-2 text-sm font-semibold transition ${
                 active
-                  ? style.tabActive
+                  ? `${style.tabActive} ${style.tabActiveBg}`
                   : `border-transparent text-zinc-500 ${style.tabHover}`
               }`}
             >

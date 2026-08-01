@@ -85,9 +85,9 @@ export default async function StaffProfilePage({
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-xs text-zinc-400">{label}</dt>
-      <dd className="mt-0.5 font-medium text-zinc-900">{value}</dd>
+      <dd className="mt-0.5 break-words font-medium text-zinc-900">{value}</dd>
     </div>
   );
 }

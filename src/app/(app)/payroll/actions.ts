@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireLiteralProprietor } from "@/lib/current-user";
+import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 
 export interface SalaryFormState {
@@ -15,7 +15,7 @@ export async function setStaffSalary(
   _prevState: SalaryFormState,
   formData: FormData
 ): Promise<SalaryFormState> {
-  const { profile } = await requireLiteralProprietor();
+  const { profile } = await requireProprietor();
   const supabase = await createClient();
 
   const amount = Number(formData.get("monthly_salary"));
@@ -44,7 +44,7 @@ export async function generatePayrollRun(
   _prevState: PayrollRunFormState,
   formData: FormData
 ): Promise<PayrollRunFormState> {
-  const { profile } = await requireLiteralProprietor();
+  const { profile } = await requireProprietor();
   const supabase = await createClient();
 
   const period = String(formData.get("period") ?? "").trim();
@@ -128,7 +128,7 @@ export async function addPayrollDeduction(
   _prevState: DeductionFormState,
   formData: FormData
 ): Promise<DeductionFormState> {
-  const { profile } = await requireLiteralProprietor();
+  const { profile } = await requireProprietor();
   const supabase = await createClient();
 
   const { data: run } = await supabase.from("payroll_runs").select("status").eq("id", runId).single();
@@ -162,7 +162,7 @@ export async function addPayrollDeduction(
 }
 
 export async function removePayrollDeduction(deductionId: string, entryId: string, runId: string) {
-  await requireLiteralProprietor();
+  await requireProprietor();
   const supabase = await createClient();
 
   const { data: run } = await supabase.from("payroll_runs").select("status").eq("id", runId).single();
@@ -185,7 +185,7 @@ export async function createDeductionType(
   _prevState: DeductionTypeFormState,
   formData: FormData
 ): Promise<DeductionTypeFormState> {
-  const { profile } = await requireLiteralProprietor();
+  const { profile } = await requireProprietor();
   const name = String(formData.get("name") ?? "").trim();
 
   if (!name) {
@@ -207,7 +207,7 @@ export async function createDeductionType(
 }
 
 export async function deleteDeductionType(typeId: string) {
-  await requireLiteralProprietor();
+  await requireProprietor();
   const supabase = await createClient();
   const { error } = await supabase.from("deduction_types").delete().eq("id", typeId);
   if (error) throw new Error(error.message);
@@ -215,7 +215,7 @@ export async function deleteDeductionType(typeId: string) {
 }
 
 export async function markPayrollRunPaid(runId: string) {
-  await requireLiteralProprietor();
+  await requireProprietor();
   const supabase = await createClient();
   const { error } = await supabase
     .from("payroll_runs")

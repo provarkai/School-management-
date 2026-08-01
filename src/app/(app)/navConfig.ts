@@ -8,9 +8,6 @@ export interface NavItem {
   roles?: Role[];
   /** Visible to the proprietor and any staff delegated admin rights. */
   managerOnly?: boolean;
-  /** Visible to the literal proprietor only — never a delegated admin
-   * (payroll/salary data). */
-  literalProprietorOnly?: boolean;
   /** Visible to every signed-in role, no filtering. */
   alwaysVisible?: boolean;
 }
@@ -24,6 +21,9 @@ export interface GroupStyle {
   openText: string;
   /** In-page tab: active underline + text. */
   tabActive: string;
+  /** In-page tab: active background fill, so the selected tab reads clearly
+   * against the others instead of relying on color/underline alone. */
+  tabActiveBg: string;
   /** In-page tab: hover underline + text. */
   tabHover: string;
 }
@@ -46,6 +46,7 @@ export const PINNED_STYLE: GroupStyle = {
   activeText: "text-white",
   openText: "text-sky-600",
   tabActive: "border-sky-600 text-sky-600",
+  tabActiveBg: "bg-sky-50",
   tabHover: "hover:border-sky-300 hover:text-sky-600",
 };
 
@@ -82,8 +83,17 @@ export const GROUPS: NavGroup[] = [
     items: [
       { href: "/assistant", label: "AI Assistant", emoji: "🤖", roles: ["teacher"], managerOnly: true },
       { href: "/analytics", label: "Analytics", emoji: "📈", managerOnly: true },
-      { href: "/staff-performance", label: "Staff Performance", emoji: "🧑‍🏫", managerOnly: true },
       { href: "/reports", label: "Reports", emoji: "🧾", managerOnly: true },
+    ],
+  },
+  {
+    id: "staff",
+    label: "Staff",
+    items: [
+      { href: "/staff", label: "Staff", emoji: "👥", managerOnly: true },
+      { href: "/staff-attendance", label: "Staff Attendance", emoji: "🕒", managerOnly: true },
+      { href: "/staff-performance", label: "Staff Performance", emoji: "🧑‍🏫", managerOnly: true },
+      { href: "/payroll", label: "Payroll", emoji: "💼", managerOnly: true },
     ],
   },
   {
@@ -92,7 +102,6 @@ export const GROUPS: NavGroup[] = [
     items: [
       { href: "/fees", label: "Fees", emoji: "💵", managerOnly: true },
       { href: "/expenses", label: "Expenses", emoji: "🧾", managerOnly: true },
-      { href: "/payroll", label: "Payroll", emoji: "💼", literalProprietorOnly: true },
     ],
   },
   {
@@ -108,8 +117,6 @@ export const GROUPS: NavGroup[] = [
     id: "admin",
     label: "Admin",
     items: [
-      { href: "/staff", label: "Staff", emoji: "👥", managerOnly: true },
-      { href: "/staff-attendance", label: "Staff Attendance", emoji: "🕒", managerOnly: true },
       { href: "/classes", label: "Classes", emoji: "🏫", managerOnly: true },
       { href: "/promotion", label: "Session Promotion", emoji: "🔁", managerOnly: true },
       { href: "/campuses", label: "Campuses", emoji: "🏢", managerOnly: true },
@@ -123,7 +130,8 @@ export const GROUP_STYLES: Record<string, GroupStyle> = {
     activeBg: "bg-blue-600",
     activeText: "text-white",
     openText: "text-blue-600",
-    tabActive: "border-blue-600 text-blue-600",
+    tabActive: "border-blue-600 text-blue-700",
+    tabActiveBg: "bg-blue-50",
     tabHover: "hover:border-blue-300 hover:text-blue-600",
   },
   academics: {
@@ -131,7 +139,8 @@ export const GROUP_STYLES: Record<string, GroupStyle> = {
     activeBg: "bg-purple-600",
     activeText: "text-white",
     openText: "text-purple-600",
-    tabActive: "border-purple-600 text-purple-600",
+    tabActive: "border-purple-600 text-purple-700",
+    tabActiveBg: "bg-purple-50",
     tabHover: "hover:border-purple-300 hover:text-purple-600",
   },
   insights: {
@@ -139,15 +148,26 @@ export const GROUP_STYLES: Record<string, GroupStyle> = {
     activeBg: "bg-indigo-600",
     activeText: "text-white",
     openText: "text-indigo-600",
-    tabActive: "border-indigo-600 text-indigo-600",
+    tabActive: "border-indigo-600 text-indigo-700",
+    tabActiveBg: "bg-indigo-50",
     tabHover: "hover:border-indigo-300 hover:text-indigo-600",
+  },
+  staff: {
+    emoji: "🧑‍💼",
+    activeBg: "bg-teal-600",
+    activeText: "text-white",
+    openText: "text-teal-600",
+    tabActive: "border-teal-600 text-teal-700",
+    tabActiveBg: "bg-teal-50",
+    tabHover: "hover:border-teal-300 hover:text-teal-600",
   },
   finance: {
     emoji: "💰",
     activeBg: "bg-emerald-600",
     activeText: "text-white",
     openText: "text-emerald-600",
-    tabActive: "border-emerald-600 text-emerald-600",
+    tabActive: "border-emerald-600 text-emerald-700",
+    tabActiveBg: "bg-emerald-50",
     tabHover: "hover:border-emerald-300 hover:text-emerald-600",
   },
   notifications: {
@@ -155,7 +175,8 @@ export const GROUP_STYLES: Record<string, GroupStyle> = {
     activeBg: "bg-amber-500",
     activeText: "text-white",
     openText: "text-amber-600",
-    tabActive: "border-amber-500 text-amber-600",
+    tabActive: "border-amber-500 text-amber-700",
+    tabActiveBg: "bg-amber-50",
     tabHover: "hover:border-amber-300 hover:text-amber-600",
   },
   admin: {
@@ -163,7 +184,8 @@ export const GROUP_STYLES: Record<string, GroupStyle> = {
     activeBg: "bg-rose-600",
     activeText: "text-white",
     openText: "text-rose-600",
-    tabActive: "border-rose-600 text-rose-600",
+    tabActive: "border-rose-600 text-rose-700",
+    tabActiveBg: "bg-rose-50",
     tabHover: "hover:border-rose-300 hover:text-rose-600",
   },
 };
@@ -172,7 +194,6 @@ export const PINNED_BOTTOM: NavItem[] = [SETTINGS_ITEM];
 
 export function isVisible(item: NavItem, role: Role, isManager: boolean): boolean {
   if (item.alwaysVisible) return true;
-  if (item.literalProprietorOnly) return role === "proprietor";
   if (item.managerOnly && isManager) return true;
   return item.roles?.includes(role) ?? false;
 }

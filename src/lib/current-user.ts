@@ -8,10 +8,11 @@ export interface CurrentUser {
   profile: AppUser;
   school: School | null;
   /** True for the literal proprietor OR a staff member delegated admin
-   * rights. Use this for "run the school" access checks; use
-   * profile.role === "proprietor" directly only when the literal owner
-   * specifically (not a delegate) must be the one, e.g. payroll or granting
-   * admin status itself. */
+   * rights. A delegated admin has equal operational power to the
+   * proprietor (including payroll/salaries) — use this for essentially
+   * every "run the school" access check; use profile.role === "proprietor"
+   * directly only for granting/revoking admin status itself, which stays
+   * reserved for the literal owner. */
   isManager: boolean;
 }
 
@@ -76,9 +77,9 @@ export async function requireProprietor(): Promise<CurrentUser> {
   return current;
 }
 
-/** Allows only the literal proprietor — for the most sensitive actions
- * (payroll, granting/revoking admin status), which a delegated admin should
- * not be able to reach even though they pass requireProprietor(). */
+/** Allows only the literal proprietor — reserved for granting/revoking
+ * admin status itself, which a delegated admin should not be able to reach
+ * even though they pass requireProprietor(). */
 export async function requireLiteralProprietor(): Promise<CurrentUser> {
   const current = await requireUser();
   if (current.profile.role !== "proprietor") {

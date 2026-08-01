@@ -194,9 +194,9 @@ export default async function StudentDetailPage({
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-xs font-medium uppercase tracking-wide text-zinc-400">{label}</dt>
-      <dd className="mt-0.5 capitalize text-zinc-900">{value}</dd>
+      <dd className="mt-0.5 break-words capitalize text-zinc-900">{value}</dd>
     </div>
   );
 }
