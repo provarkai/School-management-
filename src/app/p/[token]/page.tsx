@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
@@ -36,7 +37,7 @@ export default async function ParentViewPage({
   const session = school?.current_session ?? "";
   const term = (school?.current_term ?? "1") as Term;
 
-  const [{ data: fees }, { data: attendance }, { data: results }] = await Promise.all([
+  const [{ data: fees }, { data: attendance }, { data: results }, { data: exams }] = await Promise.all([
     supabase
       .from("fee_summary")
       .select("fee_type_id, fee_type_name, amount_expected, amount_paid, balance, status")
@@ -55,7 +56,27 @@ export default async function ParentViewPage({
       .eq("session", session)
       .eq("term", term)
       .order("subject"),
+    student.class_id
+      ? supabase
+          .from("exams")
+          .select("id, title, subject, status")
+          .eq("class_id", student.class_id)
+          .eq("session", session)
+          .eq("term", term)
+          .in("status", ["published", "closed"])
+      : Promise.resolve({ data: [] }),
   ]);
+
+  const examIds = (exams ?? []).map((e) => e.id);
+  const { data: attempts } =
+    examIds.length > 0
+      ? await supabase
+          .from("exam_attempts")
+          .select("exam_id, submitted_at, score, max_score")
+          .eq("student_id", student.id)
+          .in("exam_id", examIds)
+      : { data: [] };
+  const attemptByExam = new Map((attempts ?? []).map((a) => [a.exam_id, a]));
 
   const attendanceRows = attendance ?? [];
   const present = attendanceRows.filter((a) => a.status === "present").length;
@@ -143,6 +164,42 @@ export default async function ParentViewPage({
           </table>
         )}
       </section>
+
+      {(exams ?? []).length > 0 && (
+        <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold text-zinc-900">Exams</h2>
+          <ul className="space-y-2">
+            {(exams ?? []).map((e) => {
+              const attempt = attemptByExam.get(e.id);
+              const statusLabel = attempt?.submitted_at
+                ? `Submitted · ${attempt.score}/${attempt.max_score}`
+                : attempt
+                  ? "In progress"
+                  : e.status === "closed"
+                    ? "Closed"
+                    : "Not started";
+              return (
+                <li key={e.id} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="text-zinc-900">
+                    {e.title}
+                    {e.subject ? ` (${e.subject})` : ""}
+                  </span>
+                  {attempt || e.status === "published" ? (
+                    <Link
+                      href={`/p/${token}/exams/${e.id}`}
+                      className="shrink-0 text-xs font-medium text-zinc-600 hover:text-zinc-900"
+                    >
+                      {statusLabel} →
+                    </Link>
+                  ) : (
+                    <span className="shrink-0 text-xs text-zinc-400">{statusLabel}</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       <p className="text-center text-xs text-zinc-400">
         This is a read-only summary shared by {school?.name}. Contact the school office with

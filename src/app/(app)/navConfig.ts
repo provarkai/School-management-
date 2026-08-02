@@ -65,6 +65,7 @@ export const GROUPS: NavGroup[] = [
       { href: "/attendance", label: "Attendance", emoji: "✅", roles: ["teacher"], managerOnly: true },
       { href: "/assignments", label: "Assignments", emoji: "📝", roles: ["teacher"], managerOnly: true },
       { href: "/resources", label: "Resources", emoji: "📎", roles: ["teacher"], managerOnly: true },
+      { href: "/exams", label: "Exams", emoji: "📋", roles: ["teacher"], managerOnly: true },
       { href: "/report-cards", label: "Report cards", emoji: "📄", roles: ["teacher"], managerOnly: true },
     ],
   },
