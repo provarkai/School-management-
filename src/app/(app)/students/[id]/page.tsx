@@ -13,6 +13,7 @@ import { DocumentsList } from "./DocumentsList";
 import { AvatarUploader } from "@/components/AvatarUploader";
 import { Avatar } from "@/components/Avatar";
 import { saveStudentPhoto } from "../actions";
+import { StudentRecordForm, type StudentRecord } from "./StudentRecordForm";
 
 export default async function StudentDetailPage({
   params,
@@ -26,7 +27,7 @@ export default async function StudentDetailPage({
   const { data: student } = await supabase
     .from("students")
     .select(
-      "id, school_id, full_name, class_id, date_of_birth, parent_name, parent_phone, parent_email, admission_date, status, access_token, photo_url"
+      "id, school_id, full_name, class_id, date_of_birth, parent_name, parent_phone, parent_email, admission_date, status, access_token, photo_url, admission_number, gender, address, guardian_name, guardian_phone, guardian_relationship, blood_group, genotype, allergies, emergency_contact_name, emergency_contact_phone"
     )
     .eq("id", id)
     .single();
@@ -120,6 +121,10 @@ export default async function StudentDetailPage({
         <Info label="Parent email" value={student.parent_email ?? "—"} />
         <Info label="Status" value={student.status} />
       </dl>
+
+      {isManager && (
+        <StudentRecordForm studentId={student.id} record={student as unknown as StudentRecord} />
+      )}
 
       <CustomFieldValuesForm
         studentId={student.id}

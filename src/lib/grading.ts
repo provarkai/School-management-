@@ -10,9 +10,17 @@ export const GRADE_POINTS: Record<string, number> = {
   F: 0,
 };
 
-export function computeGPA(results: { grade: string | null }[]): number | null {
+/**
+ * `pointsByLetter` lets a school with configured grade_bands supply its own
+ * scale (a 4.0 scale, or letters outside A–F). Omitting it keeps the fixed
+ * 5-point scale, so every existing caller is unaffected.
+ */
+export function computeGPA(
+  results: { grade: string | null }[],
+  pointsByLetter: Record<string, number> = GRADE_POINTS
+): number | null {
   const points = results
-    .map((r) => (r.grade ? GRADE_POINTS[r.grade] : undefined))
+    .map((r) => (r.grade ? pointsByLetter[r.grade] : undefined))
     .filter((p): p is number => p !== undefined);
 
   if (points.length === 0) return null;

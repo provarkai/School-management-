@@ -25,6 +25,59 @@ export async function saveStudentPhoto(studentId: string, url: string): Promise<
   revalidatePath("/students");
 }
 
+export interface StudentRecordState {
+  error?: string;
+  success?: string;
+}
+
+/** Extended student record — identity, contact and medical details that
+ * don't fit the create form but matter for ID cards, transfer certificates
+ * and emergencies. */
+export async function updateStudentRecord(
+  studentId: string,
+  _prevState: StudentRecordState,
+  formData: FormData
+): Promise<StudentRecordState> {
+  const { profile } = await requireProprietor();
+
+  const gender = String(formData.get("gender") ?? "").trim() || null;
+  if (gender !== null && gender !== "male" && gender !== "female") {
+    return { error: "Choose a valid gender." };
+  }
+
+  const text = (key: string) => String(formData.get(key) ?? "").trim() || null;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("students")
+    .update({
+      admission_number: text("admission_number"),
+      gender,
+      address: text("address"),
+      guardian_name: text("guardian_name"),
+      guardian_phone: text("guardian_phone"),
+      guardian_relationship: text("guardian_relationship"),
+      blood_group: text("blood_group"),
+      genotype: text("genotype"),
+      allergies: text("allergies"),
+      emergency_contact_name: text("emergency_contact_name"),
+      emergency_contact_phone: text("emergency_contact_phone"),
+    })
+    .eq("id", studentId)
+    .eq("school_id", profile.school_id ?? "");
+
+  if (error) {
+    if (error.code === "23505") {
+      return { error: "That admission number is already in use by another student." };
+    }
+    return { error: error.message };
+  }
+
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath("/students");
+  return { success: "Record updated." };
+}
+
 export async function createStudent(
   _prevState: StudentFormState,
   formData: FormData
@@ -38,9 +91,15 @@ export async function createStudent(
   const parentPhone = String(formData.get("parent_phone") ?? "").trim() || null;
   const parentEmail = String(formData.get("parent_email") ?? "").trim().toLowerCase() || null;
   const admissionDate = String(formData.get("admission_date") ?? "") || undefined;
+  const admissionNumber = String(formData.get("admission_number") ?? "").trim() || null;
+  const gender = String(formData.get("gender") ?? "").trim() || null;
+  const address = String(formData.get("address") ?? "").trim() || null;
 
   if (!fullName) {
     return { error: "Student name is required." };
+  }
+  if (gender !== null && gender !== "male" && gender !== "female") {
+    return { error: "Choose a valid gender." };
   }
 
   const supabase = await createClient();
@@ -54,12 +113,21 @@ export async function createStudent(
       parent_name: parentName,
       parent_phone: parentPhone,
       parent_email: parentEmail,
+      admission_number: admissionNumber,
+      gender,
+      address,
       ...(admissionDate ? { admission_date: admissionDate } : {}),
     })
     .select("id")
     .single();
 
   if (error) {
+    // The partial unique index on (school_id, admission_number) is the most
+    // likely thing a proprietor trips here, and the raw Postgres text is
+    // unreadable.
+    if (error.code === "23505" && admissionNumber) {
+      return { error: `Admission number "${admissionNumber}" is already in use.` };
+    }
     return { error: error.message };
   }
 
