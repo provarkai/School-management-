@@ -30,8 +30,14 @@ export default async function ParentChildPage({
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const [{ data: fees }, { data: attendance }, { data: results }, { data: events }, { data: assignments }] =
-    await Promise.all([
+  const [
+    { data: fees },
+    { data: attendance },
+    { data: results },
+    { data: events },
+    { data: assignments },
+    { data: resourceRows },
+  ] = await Promise.all([
     supabase
       .from("fee_summary")
       .select("fee_type_id, fee_type_name, amount_expected, amount_paid, balance, status")
@@ -66,7 +72,25 @@ export default async function ParentChildPage({
           .order("due_date")
           .limit(10)
       : Promise.resolve({ data: [] }),
+    child.class_id
+      ? supabase
+          .from("learning_resources")
+          .select("id, subject, title, description, file_path, file_name, external_url, created_at")
+          .eq("class_id", child.class_id)
+          .order("created_at", { ascending: false })
+          .limit(10)
+      : Promise.resolve({ data: [] }),
   ]);
+
+  const resources = await Promise.all(
+    (resourceRows ?? []).map(async (r) => {
+      if (!r.file_path) return { ...r, viewUrl: r.external_url as string | null };
+      const { data: signed } = await supabase.storage
+        .from("learning-resources")
+        .createSignedUrl(r.file_path, 3600);
+      return { ...r, viewUrl: signed?.signedUrl ?? null };
+    })
+  );
 
   const attendanceRows = attendance ?? [];
   const present = attendanceRows.filter((a) => a.status === "present").length;
@@ -180,6 +204,35 @@ export default async function ParentChildPage({
                   {a.subject ? ` (${a.subject})` : ""}
                 </span>
                 <span className="shrink-0 text-xs text-zinc-400">Due {a.due_date}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {resources.length > 0 && (
+        <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold text-zinc-900">Learning resources</h2>
+          <ul className="space-y-2">
+            {resources.map((r) => (
+              <li key={r.id} className="text-sm">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-zinc-900">
+                    {r.title}
+                    {r.subject ? ` (${r.subject})` : ""}
+                  </span>
+                  <span className="shrink-0 text-xs text-zinc-400">{r.created_at.slice(0, 10)}</span>
+                </div>
+                {r.viewUrl && (
+                  <a
+                    href={r.viewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-medium text-zinc-600 hover:text-zinc-900"
+                  >
+                    {r.file_name ? `Download ${r.file_name}` : "Open link"} →
+                  </a>
+                )}
               </li>
             ))}
           </ul>
