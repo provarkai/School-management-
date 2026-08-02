@@ -2,6 +2,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { ReportCardDocument } from "@/lib/pdf/ReportCardDocument";
+import { getReportCardExtras } from "@/lib/reportCardData";
 import { computeClassRanking } from "@/lib/ranking";
 import { proprietorTitle } from "@/lib/format";
 import type { Term } from "@/lib/types";
@@ -26,7 +27,7 @@ export async function GET(
 
   const { data: student } = await supabase
     .from("students")
-    .select("full_name, class_id")
+    .select("full_name, class_id, admission_number")
     .eq("id", studentId)
     .single();
 
@@ -40,25 +41,26 @@ export async function GET(
 
   const term = school.current_term as Term;
 
-  const { data: results } = await supabase
-    .from("results")
-    .select("subject, ca_score, exam_score, total, grade")
-    .eq("student_id", studentId)
-    .eq("session", school.current_session)
-    .eq("term", term)
-    .order("subject");
-
-  const ranking = student.class_id
-    ? (await computeClassRanking(supabase, student.class_id, school.current_session, term)).get(studentId) ?? null
-    : null;
-
-  const { data: remarks } = await supabase
-    .from("report_remarks")
-    .select("teacher_remark, principal_remark")
-    .eq("student_id", studentId)
-    .eq("session", school.current_session)
-    .eq("term", term)
-    .maybeSingle();
+  const [extras, rankingMap, { data: remarks }] = await Promise.all([
+    getReportCardExtras(
+      supabase,
+      school.id,
+      studentId,
+      student.class_id,
+      school.current_session,
+      term
+    ),
+    student.class_id
+      ? computeClassRanking(supabase, student.class_id, school.current_session, term)
+      : Promise.resolve(new Map()),
+    supabase
+      .from("report_remarks")
+      .select("teacher_remark, principal_remark")
+      .eq("student_id", studentId)
+      .eq("session", school.current_session)
+      .eq("term", term)
+      .maybeSingle(),
+  ]);
 
   const buffer = await renderToBuffer(
     ReportCardDocument({
@@ -70,16 +72,14 @@ export async function GET(
         current_session: school.current_session,
         proprietorLabel: proprietorTitle(proprietor?.gender ?? null),
       },
-      student: { full_name: student.full_name, className: klass?.name ?? "—" },
+      student: {
+        full_name: student.full_name,
+        className: klass?.name ?? "—",
+        admissionNumber: student.admission_number,
+      },
       term,
-      results: (results ?? []).map((r) => ({
-        subject: r.subject,
-        ca_score: Number(r.ca_score),
-        exam_score: Number(r.exam_score),
-        total: Number(r.total),
-        grade: r.grade,
-      })),
-      ranking,
+      extras,
+      ranking: rankingMap.get(studentId) ?? null,
       remarks: remarks
         ? { teacher: remarks.teacher_remark, principal: remarks.principal_remark }
         : null,

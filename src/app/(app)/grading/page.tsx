@@ -2,12 +2,13 @@ import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { ComponentsManager, type Component } from "./ComponentsManager";
 import { GradeBandsManager, type GradeBand } from "./GradeBandsManager";
+import { TraitsManager, type Trait } from "./TraitsManager";
 
 export default async function GradingPage() {
   const { profile } = await requireProprietor();
   const supabase = await createClient();
 
-  const [{ data: components }, { data: bands }] = await Promise.all([
+  const [{ data: components }, { data: bands }, { data: traits }] = await Promise.all([
     supabase
       .from("assessment_components")
       .select("id, name, kind, max_score")
@@ -18,6 +19,11 @@ export default async function GradingPage() {
       .select("id, letter, min_score")
       .eq("school_id", profile.school_id ?? "")
       .order("min_score", { ascending: false }),
+    supabase
+      .from("report_card_traits")
+      .select("id, name, domain")
+      .eq("school_id", profile.school_id ?? "")
+      .order("position"),
   ]);
 
   return (
@@ -33,6 +39,7 @@ export default async function GradingPage() {
 
       <ComponentsManager components={(components ?? []) as Component[]} />
       <GradeBandsManager bands={(bands ?? []) as GradeBand[]} />
+      <TraitsManager traits={(traits ?? []) as Trait[]} />
     </div>
   );
 }

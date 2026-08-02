@@ -2,6 +2,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { BulkReportCardDocument, type ReportCardData } from "@/lib/pdf/ReportCardDocument";
+import { getReportCardExtras } from "@/lib/reportCardData";
 import { computeClassRanking } from "@/lib/ranking";
 import { proprietorTitle } from "@/lib/format";
 import type { Term } from "@/lib/types";
@@ -35,7 +36,7 @@ export async function GET(
 
   const { data: students } = await supabase
     .from("students")
-    .select("id, full_name")
+    .select("id, full_name, admission_number")
     .eq("class_id", classId)
     .eq("status", "active")
     .order("full_name");
@@ -45,14 +46,15 @@ export async function GET(
 
   const cards: ReportCardData[] = await Promise.all(
     (students ?? []).map(async (student) => {
-      const [{ data: results }, { data: remarks }] = await Promise.all([
-        supabase
-          .from("results")
-          .select("subject, ca_score, exam_score, total, grade")
-          .eq("student_id", student.id)
-          .eq("session", school.current_session)
-          .eq("term", term)
-          .order("subject"),
+      const [extras, { data: remarks }] = await Promise.all([
+        getReportCardExtras(
+          supabase,
+          school.id,
+          student.id,
+          classId,
+          school.current_session,
+          term
+        ),
         supabase
           .from("report_remarks")
           .select("teacher_remark, principal_remark")
@@ -71,15 +73,13 @@ export async function GET(
           current_session: school.current_session,
           proprietorLabel,
         },
-        student: { full_name: student.full_name, className: klass.name },
+        student: {
+          full_name: student.full_name,
+          className: klass.name,
+          admissionNumber: student.admission_number,
+        },
         term,
-        results: (results ?? []).map((r) => ({
-          subject: r.subject,
-          ca_score: Number(r.ca_score),
-          exam_score: Number(r.exam_score),
-          total: Number(r.total),
-          grade: r.grade,
-        })),
+        extras,
         ranking: ranking.get(student.id) ?? null,
         remarks: remarks
           ? { teacher: remarks.teacher_remark, principal: remarks.principal_remark }

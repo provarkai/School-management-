@@ -99,3 +99,51 @@ export async function deleteGradeBand(bandId: string) {
   if (error) throw new Error(error.message);
   revalidatePath("/grading");
 }
+
+export async function addTrait(
+  _prevState: GradingFormState,
+  formData: FormData
+): Promise<GradingFormState> {
+  const { profile } = await requireProprietor();
+
+  const name = String(formData.get("name") ?? "").trim();
+  const domain = String(formData.get("domain") ?? "");
+
+  if (!name) return { error: "Enter a trait name." };
+  if (domain !== "affective" && domain !== "psychomotor") {
+    return { error: "Choose affective or psychomotor." };
+  }
+
+  const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from("report_card_traits")
+    .select("position")
+    .eq("school_id", profile.school_id ?? "")
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { error } = await supabase.from("report_card_traits").insert({
+    school_id: profile.school_id,
+    name,
+    domain,
+    position: (existing?.position ?? -1) + 1,
+  });
+
+  if (error) {
+    if (error.code === "23505") return { error: `"${name}" already exists.` };
+    return { error: error.message };
+  }
+
+  revalidatePath("/grading");
+  return {};
+}
+
+export async function deleteTrait(traitId: string) {
+  await requireProprietor();
+  const supabase = await createClient();
+  const { error } = await supabase.from("report_card_traits").delete().eq("id", traitId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/grading");
+}

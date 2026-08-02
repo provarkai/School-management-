@@ -101,6 +101,14 @@ export default async function ReportCardsPage({
             </Link>
           )}
           {selectedClassId && (
+            <Link
+              href={`/report-cards/traits?class=${selectedClassId}`}
+              className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
+            >
+              Behaviour &amp; skills
+            </Link>
+          )}
+          {selectedClassId && (
             <a
               href={`/report-cards/pdf/class/${selectedClassId}`}
               className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
