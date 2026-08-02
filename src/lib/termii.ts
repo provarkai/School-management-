@@ -7,8 +7,6 @@
  * so the reminders flow is fully testable before real credentials exist.
  */
 
-export type ReminderChannel = "whatsapp" | "sms" | "generic";
-
 export interface SendResult {
   phone: string;
   ok: boolean;

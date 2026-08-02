@@ -221,15 +221,3 @@ export async function setSchoolAdmin(staffId: string, isAdmin: boolean) {
   if (error) throw new Error(error.message);
   revalidatePath("/staff");
 }
-
-export async function assignClassTeacher(classId: string, teacherId: string | null) {
-  await requireProprietor();
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("classes")
-    .update({ teacher_id: teacherId })
-    .eq("id", classId);
-
-  if (error) throw new Error(error.message);
-  revalidatePath("/classes");
-}
