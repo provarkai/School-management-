@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { QuestionForm } from "./QuestionForm";
 import { DeleteQuestionButton } from "./DeleteQuestionButton";
 import { StatusButtons } from "./StatusButtons";
+import { PushScoresForm } from "./PushScoresForm";
 
 export default async function ExamDetailPage({
   params,
@@ -12,7 +13,7 @@ export default async function ExamDetailPage({
   params: Promise<{ examId: string }>;
 }) {
   const { examId } = await params;
-  await requireUser();
+  const { profile } = await requireUser();
   const supabase = await createClient();
 
   const { data: exam } = await supabase
@@ -25,7 +26,7 @@ export default async function ExamDetailPage({
 
   const className = (exam.classes as unknown as { name: string } | null)?.name ?? "—";
 
-  const [{ data: questions }, { data: attemptRows }] = await Promise.all([
+  const [{ data: questions }, { data: attemptRows }, { data: subjectRows }] = await Promise.all([
     supabase
       .from("exam_questions")
       .select("id, position, question_text, options, correct_option, points")
@@ -36,12 +37,17 @@ export default async function ExamDetailPage({
       .select("id, started_at, submitted_at, score, max_score, students(full_name)")
       .eq("exam_id", examId)
       .order("submitted_at", { ascending: false, nullsFirst: false }),
+    supabase.from("subjects").select("name").eq("school_id", profile.school_id ?? "").order("name"),
   ]);
+
+  const subjects = (subjectRows ?? []).map((s) => s.name);
 
   const attempts = (attemptRows ?? []).map((a) => ({
     ...a,
     studentName: (a.students as unknown as { full_name: string } | null)?.full_name ?? "—",
   }));
+
+  const submittedCount = attempts.filter((a) => a.submitted_at).length;
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -102,6 +108,17 @@ export default async function ExamDetailPage({
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
           Results ({attempts.length})
         </h2>
+        {submittedCount > 0 && subjects.length > 0 && (
+          <div className="mb-4">
+            <PushScoresForm
+              examId={exam.id}
+              subjects={subjects}
+              defaultSubject={exam.subject && subjects.includes(exam.subject) ? exam.subject : ""}
+              submittedCount={submittedCount}
+            />
+          </div>
+        )}
+
         {attempts.length === 0 ? (
           <p className="rounded-lg border border-zinc-200 bg-white p-5 text-sm text-zinc-400 shadow-sm">
             No students have taken this exam yet.

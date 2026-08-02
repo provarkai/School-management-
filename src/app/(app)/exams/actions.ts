@@ -116,3 +116,102 @@ export async function deleteQuestion(questionId: string, examId: string) {
   if (error) throw new Error(error.message);
   revalidatePath(`/exams/${examId}`);
 }
+
+export interface PushScoresState {
+  error?: string;
+  success?: string;
+}
+
+/**
+ * Copies an exam's auto-graded scores into the `results` table so they flow
+ * through to report cards, instead of a teacher re-typing every one.
+ *
+ * `results` splits a subject into ca_score (out of 40) and exam_score (out
+ * of 60), while an attempt is a single number out of max_score — so the
+ * teacher picks which half this exam fills, and the score is scaled into it.
+ */
+export async function pushExamScores(
+  examId: string,
+  _prevState: PushScoresState,
+  formData: FormData
+): Promise<PushScoresState> {
+  const { profile } = await requireUser();
+  const supabase = await createClient();
+
+  const subject = String(formData.get("subject") ?? "").trim();
+  const slot = String(formData.get("slot") ?? "");
+
+  if (!subject) return { error: "Choose the subject these scores belong to." };
+  if (slot !== "ca" && slot !== "exam") return { error: "Choose CA or Exam." };
+
+  const slotMax = slot === "ca" ? 40 : 60;
+
+  const { data: exam } = await supabase
+    .from("exams")
+    .select("id, session, term")
+    .eq("id", examId)
+    .single();
+
+  if (!exam) return { error: "Exam not found." };
+
+  const { data: attempts } = await supabase
+    .from("exam_attempts")
+    .select("student_id, score, max_score")
+    .eq("exam_id", examId)
+    .not("submitted_at", "is", null);
+
+  // Students who never sat the exam are skipped rather than written as a
+  // zero — an absent student isn't the same as one who scored nothing.
+  const scored = (attempts ?? []).filter(
+    (a) => a.score !== null && a.max_score !== null && Number(a.max_score) > 0
+  );
+
+  if (scored.length === 0) {
+    return { error: "No submitted attempts to push yet." };
+  }
+
+  const studentIds = scored.map((a) => a.student_id);
+
+  // Read-merge-write rather than a partial upsert: the other half of the
+  // subject's score may already have been entered by hand, and it must
+  // survive this push untouched.
+  const { data: existing } = await supabase
+    .from("results")
+    .select("student_id, ca_score, exam_score")
+    .eq("school_id", profile.school_id ?? "")
+    .eq("subject", subject)
+    .eq("session", exam.session)
+    .eq("term", exam.term)
+    .in("student_id", studentIds);
+
+  const existingByStudent = new Map((existing ?? []).map((r) => [r.student_id, r]));
+
+  const rows = scored.map((a) => {
+    const scaled = Math.round((Number(a.score) / Number(a.max_score)) * slotMax * 100) / 100;
+    const prior = existingByStudent.get(a.student_id);
+    return {
+      school_id: profile.school_id,
+      student_id: a.student_id,
+      subject,
+      session: exam.session,
+      term: exam.term,
+      ca_score: slot === "ca" ? scaled : Number(prior?.ca_score ?? 0),
+      exam_score: slot === "exam" ? scaled : Number(prior?.exam_score ?? 0),
+    };
+  });
+
+  const { error } = await supabase
+    .from("results")
+    .upsert(rows, { onConflict: "student_id,subject,session,term" });
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/exams/${examId}`);
+  revalidatePath("/report-cards");
+
+  return {
+    success: `Pushed ${rows.length} score${rows.length === 1 ? "" : "s"} into ${subject} (${
+      slot === "ca" ? "CA" : "Exam"
+    }).`,
+  };
+}
