@@ -1,5 +1,4 @@
 import type { createClient } from "@/lib/supabase/server";
-import { computeGPA } from "@/lib/grading";
 import type { Term } from "@/lib/types";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
@@ -59,7 +58,6 @@ export async function getFinancialTrend(
 export interface AcademicTrendPoint {
   label: string;
   averageScore: number;
-  gpa: number | null;
 }
 
 export async function getAcademicTrend(
@@ -68,38 +66,28 @@ export async function getAcademicTrend(
 ): Promise<AcademicTrendPoint[]> {
   const { data } = await supabase
     .from("results")
-    .select("session, term, total, grade")
+    .select("session, term, total")
     .eq("school_id", schoolId);
 
-  const byPeriod = new Map<
-    string,
-    PeriodKey & { totals: number[]; grades: { grade: string | null }[] }
-  >();
+  const byPeriod = new Map<string, PeriodKey & { totals: number[] }>();
   for (const row of data ?? []) {
     const key = `${row.session}|${row.term}`;
     const existing = byPeriod.get(key);
     if (existing) {
       existing.totals.push(Number(row.total));
-      existing.grades.push({ grade: row.grade });
     } else {
       byPeriod.set(key, {
         session: row.session,
         term: row.term as Term,
         totals: [Number(row.total)],
-        grades: [{ grade: row.grade }],
       });
     }
   }
 
-  return sortPeriodsAsc(Array.from(byPeriod.values())).map((p) => {
-    const entry = byPeriod.get(`${p.session}|${p.term}`)!;
-    const averageScore = entry.totals.reduce((s, t) => s + t, 0) / entry.totals.length;
-    return {
-      label: periodLabel(p),
-      averageScore,
-      gpa: computeGPA(entry.grades),
-    };
-  });
+  return sortPeriodsAsc(Array.from(byPeriod.values())).map((p) => ({
+    label: periodLabel(p),
+    averageScore: p.totals.reduce((s, t) => s + t, 0) / p.totals.length,
+  }));
 }
 
 export interface AttendanceTrendPoint {

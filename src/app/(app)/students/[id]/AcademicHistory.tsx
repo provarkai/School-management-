@@ -1,5 +1,5 @@
 import { naira } from "@/lib/format";
-import { computeGPA } from "@/lib/grading";
+import { computeAverage } from "@/lib/grading";
 import { TERM_LABELS, type Term } from "@/lib/types";
 
 interface ResultRow {
@@ -75,7 +75,7 @@ export function AcademicHistory({
         periods.map(({ session, term }) => {
           const termResults = results.filter((r) => r.session === session && r.term === term);
           const termFees = fees.filter((f) => f.session === session && f.term === term);
-          const gpa = computeGPA(termResults);
+          const average = computeAverage(termResults);
 
           return (
             <section
@@ -86,8 +86,10 @@ export function AcademicHistory({
                 <h2 className="text-sm font-semibold text-zinc-900">
                   {session} · {TERM_LABELS[term as Term] ?? `Term ${term}`}
                 </h2>
-                {gpa !== null && (
-                  <span className="text-xs font-medium text-zinc-500">GPA: {gpa.toFixed(2)}/5</span>
+                {average !== null && (
+                  <span className="text-xs font-medium text-zinc-500">
+                    Average: {average.toFixed(1)}%
+                  </span>
                 )}
               </div>
 

@@ -78,16 +78,14 @@ export default async function AnalyticsPage() {
                   <tr className="border-b border-zinc-100 text-left text-xs text-zinc-400">
                     <th className="py-1 font-medium">Term</th>
                     <th className="py-1 text-right font-medium">Average score</th>
-                    <th className="py-1 text-right font-medium">Average GPA</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-50">
                   {academic.map((a) => (
                     <tr key={a.label}>
                       <td className="py-1.5 text-zinc-900">{a.label}</td>
-                      <td className="py-1.5 text-right text-zinc-500">{a.averageScore.toFixed(1)}%</td>
                       <td className="py-1.5 text-right font-medium text-zinc-900">
-                        {a.gpa !== null ? `${a.gpa.toFixed(2)}/5` : "—"}
+                        {a.averageScore.toFixed(1)}%
                       </td>
                     </tr>
                   ))}

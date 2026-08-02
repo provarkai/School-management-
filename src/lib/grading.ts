@@ -1,20 +1,10 @@
-// Standard 5-point WAEC-style grade scale, derived from the letter grade
-// set_result_grade() already computes in Postgres (0001_functions.sql):
-// A (>=70), B (>=60), C (>=50), D (>=45), E (>=40), F (else).
-export const GRADE_POINTS: Record<string, number> = {
-  A: 5,
-  B: 4,
-  C: 3,
-  D: 2,
-  E: 1,
-  F: 0,
-};
-
-export function computeGPA(results: { grade: string | null }[]): number | null {
-  const points = results
-    .map((r) => (r.grade ? GRADE_POINTS[r.grade] : undefined))
-    .filter((p): p is number => p !== undefined);
-
-  if (points.length === 0) return null;
-  return points.reduce((sum, p) => sum + p, 0) / points.length;
+// Primary and secondary schools report a termly average percentage, not a
+// tertiary-style grade point average. Every subject total is already out of
+// 100 (CA 40 + exam 60), so the mean of the totals is the average percentage.
+// Letter grades (A–F) still come from set_result_grade() in Postgres
+// (0002_functions.sql) and are shown per subject on the report card.
+export function computeAverage(results: { total: number }[]): number | null {
+  if (results.length === 0) return null;
+  const sum = results.reduce((acc, r) => acc + Number(r.total), 0);
+  return sum / results.length;
 }
