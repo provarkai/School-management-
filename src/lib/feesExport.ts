@@ -1,3 +1,4 @@
+import { fetchAllRows } from "@/lib/fetchAll";
 import type { createClient } from "@/lib/supabase/server";
 import type { FeeStatus } from "@/lib/types";
 
@@ -42,22 +43,31 @@ export async function fetchFeesExportRows(
     })(),
   ]);
 
-  let feeSummaryQuery = supabase
-    .from("fee_summary")
-    .select("student_id, amount_expected, amount_paid, balance, status")
-    .eq("school_id", schoolId)
-    .eq("session", session)
-    .eq("term", term);
-  if (typeFilter) feeSummaryQuery = feeSummaryQuery.eq("fee_type_id", typeFilter);
-
-  const { data: feeSummaries } = await feeSummaryQuery;
+  // Read in full: an export that quietly stopped at the first page would
+  // hand the school a spreadsheet missing students, with no sign of it.
+  const feeSummaries = await fetchAllRows<{
+    student_id: string;
+    amount_expected: number;
+    amount_paid: number;
+    balance: number;
+    status: string;
+  }>((from, to) => {
+    let query = supabase
+      .from("fee_summary")
+      .select("student_id, amount_expected, amount_paid, balance, status")
+      .eq("school_id", schoolId)
+      .eq("session", session)
+      .eq("term", term);
+    if (typeFilter) query = query.eq("fee_type_id", typeFilter);
+    return query.order("fee_record_id").range(from, to);
+  });
 
   const classNameById = new Map((classes ?? []).map((c) => [c.id, c.name]));
   const feeByStudent = new Map<
     string,
     { amount_expected: number; amount_paid: number; balance: number; status: FeeStatus }
   >();
-  for (const f of feeSummaries ?? []) {
+  for (const f of feeSummaries) {
     const existing = feeByStudent.get(f.student_id);
     if (!existing) {
       feeByStudent.set(f.student_id, {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fetchAllRows } from "@/lib/fetchAll";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { CampusFilter } from "../CampusFilter";
@@ -14,36 +15,51 @@ export default async function StudentsPage({
   const { class: classFilter, campus: campusFilter } = await searchParams;
   const supabase = await createClient();
 
-  const [{ data: classes }, { data: campuses }, studentsQuery, { data: enrollmentRows }] =
-    await Promise.all([
-      supabase.from("classes").select("id, name, campus_id").order("name"),
-      supabase
-        .from("campuses")
-        .select("id, name")
-        .eq("school_id", profile.school_id ?? "")
-        .order("name"),
-      (async () => {
-        let query = supabase
-          .from("students")
-          .select("id, full_name, class_id, parent_name, parent_phone, status")
-          .order("full_name");
-        if (classFilter) query = query.eq("class_id", classFilter);
-        return query;
-      })(),
-      isManager
-        ? supabase.from("students").select("admission_date, status")
-        : Promise.resolve({ data: null }),
-    ]);
+  // The roster is read in full rather than one request's worth: a school
+  // past a few hundred students would otherwise find pupils simply missing
+  // from the list, with no error to explain it.
+  const [{ data: classes }, { data: campuses }, studentsRaw, enrollmentRows] = await Promise.all([
+    supabase.from("classes").select("id, name, campus_id").order("name"),
+    supabase
+      .from("campuses")
+      .select("id, name")
+      .eq("school_id", profile.school_id ?? "")
+      .order("name"),
+    fetchAllRows<{
+      id: string;
+      full_name: string;
+      class_id: string | null;
+      parent_name: string | null;
+      parent_phone: string | null;
+      status: string;
+    }>((from, to) => {
+      let query = supabase
+        .from("students")
+        .select("id, full_name, class_id, parent_name, parent_phone, status")
+        .order("full_name")
+        .order("id");
+      if (classFilter) query = query.eq("class_id", classFilter);
+      return query.range(from, to);
+    }),
+    isManager
+      ? fetchAllRows<{ admission_date: string; status: string }>((from, to) =>
+          supabase
+            .from("students")
+            .select("admission_date, status")
+            .order("id")
+            .range(from, to)
+        )
+      : Promise.resolve(null),
+  ]);
 
   const classNameById = new Map((classes ?? []).map((c) => [c.id, c.name]));
   const classesInCampus = campusFilter
     ? new Set((classes ?? []).filter((c) => c.campus_id === campusFilter).map((c) => c.id))
     : null;
 
-  const { data: studentsRaw } = studentsQuery;
   const students = classesInCampus
-    ? (studentsRaw ?? []).filter((s) => s.class_id && classesInCampus.has(s.class_id))
-    : studentsRaw ?? [];
+    ? studentsRaw.filter((s) => s.class_id && classesInCampus.has(s.class_id))
+    : studentsRaw;
 
   return (
     <div className="space-y-6">

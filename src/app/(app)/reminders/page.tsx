@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fetchAllRows } from "@/lib/fetchAll";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { RemindersTable } from "./RemindersTable";
@@ -15,23 +16,47 @@ export default async function RemindersPage({
   const session = school?.current_session ?? "";
   const term = school?.current_term ?? "1";
 
-  const [{ data: fees }, { data: students }, { data: classes }] = await Promise.all([
-    supabase
-      .from("fee_summary")
-      .select("student_id, balance, fee_type_name, status")
-      .eq("school_id", profile.school_id ?? "")
-      .eq("session", session)
-      .eq("term", term)
-      .neq("status", "paid"),
-    supabase.from("students").select("id, full_name, class_id, parent_phone").eq("status", "active"),
+  // Both lists are one row per student (per fee type, for fees), so they
+  // outgrow a single request — and a parent missing from this list is a
+  // parent who never gets chased.
+  const [fees, students, { data: classes }] = await Promise.all([
+    fetchAllRows<{
+      student_id: string;
+      balance: number;
+      fee_type_name: string;
+      status: string;
+    }>((from, to) =>
+      supabase
+        .from("fee_summary")
+        .select("student_id, balance, fee_type_name, status")
+        .eq("school_id", profile.school_id ?? "")
+        .eq("session", session)
+        .eq("term", term)
+        .neq("status", "paid")
+        .order("fee_record_id")
+        .range(from, to)
+    ),
+    fetchAllRows<{
+      id: string;
+      full_name: string;
+      class_id: string | null;
+      parent_phone: string | null;
+    }>((from, to) =>
+      supabase
+        .from("students")
+        .select("id, full_name, class_id, parent_phone")
+        .eq("status", "active")
+        .order("id")
+        .range(from, to)
+    ),
     supabase.from("classes").select("id, name"),
   ]);
 
-  const studentById = new Map((students ?? []).map((s) => [s.id, s]));
+  const studentById = new Map(students.map((s) => [s.id, s]));
   const classNameById = new Map((classes ?? []).map((c) => [c.id, c.name]));
 
   const balanceByStudent = new Map<string, number>();
-  for (const f of fees ?? []) {
+  for (const f of fees) {
     if (Number(f.balance) <= 0) continue;
     balanceByStudent.set(f.student_id, (balanceByStudent.get(f.student_id) ?? 0) + Number(f.balance));
   }

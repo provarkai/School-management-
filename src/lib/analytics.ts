@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { Term } from "@/lib/types";
+import { fetchAllRows } from "@/lib/fetchAll";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -29,13 +30,22 @@ export async function getFinancialTrend(
   supabase: SupabaseClient,
   schoolId: string
 ): Promise<FinancialTrendPoint[]> {
-  const { data } = await supabase
-    .from("fee_summary")
-    .select("session, term, amount_expected, amount_paid")
-    .eq("school_id", schoolId);
+  const data = await fetchAllRows<{
+    session: string;
+    term: string;
+    amount_expected: number;
+    amount_paid: number;
+  }>((from, to) =>
+    supabase
+      .from("fee_summary")
+      .select("session, term, amount_expected, amount_paid")
+      .eq("school_id", schoolId)
+      .order("fee_record_id")
+      .range(from, to)
+  );
 
   const byPeriod = new Map<string, FinancialTrendPoint & PeriodKey>();
-  for (const row of data ?? []) {
+  for (const row of data) {
     const key = `${row.session}|${row.term}`;
     const existing = byPeriod.get(key);
     if (existing) {
@@ -89,17 +99,25 @@ export async function getProfitAndLoss(
   const sinceDate = since.toISOString().slice(0, 10);
   const sinceMonth = sinceDate.slice(0, 7);
 
-  const [{ data: payments }, { data: expenses }, { data: runs }] = await Promise.all([
-    supabase
-      .from("fee_payments")
-      .select("amount, payment_date")
-      .eq("school_id", schoolId)
-      .gte("payment_date", sinceDate),
-    supabase
-      .from("expenses")
-      .select("amount, expense_date")
-      .eq("school_id", schoolId)
-      .gte("expense_date", sinceDate),
+  const [payments, expenses, { data: runs }] = await Promise.all([
+    fetchAllRows<{ amount: number; payment_date: string }>((from, to) =>
+      supabase
+        .from("fee_payments")
+        .select("amount, payment_date")
+        .eq("school_id", schoolId)
+        .gte("payment_date", sinceDate)
+        .order("id")
+        .range(from, to)
+    ),
+    fetchAllRows<{ amount: number; expense_date: string }>((from, to) =>
+      supabase
+        .from("expenses")
+        .select("amount, expense_date")
+        .eq("school_id", schoolId)
+        .gte("expense_date", sinceDate)
+        .order("id")
+        .range(from, to)
+    ),
     supabase
       .from("payroll_runs")
       .select("id, period")
@@ -109,15 +127,18 @@ export async function getProfitAndLoss(
   ]);
 
   // A draft run hasn't cost the school anything yet, so only paid runs are
-  // fetched above and only their entries are summed here.
+  // fetched above and only their entries are summed here. At most one run
+  // per month, so the run list itself never needs paging — the entries do,
+  // one row per staff member per run.
   const runIds = (runs ?? []).map((r) => r.id);
-  const { data: entries } =
-    runIds.length > 0
-      ? await supabase
-          .from("payroll_entries")
-          .select("payroll_run_id, net_pay")
-          .in("payroll_run_id", runIds)
-      : { data: [] };
+  const entries = await fetchAllRows<{ payroll_run_id: string; net_pay: number }>((from, to) =>
+    supabase
+      .from("payroll_entries")
+      .select("payroll_run_id, net_pay")
+      .in("payroll_run_id", runIds.length > 0 ? runIds : [""])
+      .order("id")
+      .range(from, to)
+  );
 
   const periodByRun = new Map((runs ?? []).map((r) => [r.id, r.period]));
 
@@ -135,15 +156,15 @@ export async function getProfitAndLoss(
   }
   const byKey = new Map(buckets.map((b) => [b.key, b]));
 
-  for (const p of payments ?? []) {
+  for (const p of payments) {
     const bucket = byKey.get(p.payment_date.slice(0, 7));
     if (bucket) bucket.income += Number(p.amount);
   }
-  for (const e of expenses ?? []) {
+  for (const e of expenses) {
     const bucket = byKey.get(e.expense_date.slice(0, 7));
     if (bucket) bucket.expenses += Number(e.amount);
   }
-  for (const entry of entries ?? []) {
+  for (const entry of entries) {
     const period = periodByRun.get(entry.payroll_run_id);
     const bucket = period ? byKey.get(period) : undefined;
     if (bucket) bucket.payroll += Number(entry.net_pay);
@@ -165,16 +186,25 @@ export async function getAcademicTrend(
   supabase: SupabaseClient,
   schoolId: string
 ): Promise<AcademicTrendPoint[]> {
-  const { data } = await supabase
-    .from("results")
-    .select("session, term, total, grade")
-    .eq("school_id", schoolId);
+  const data = await fetchAllRows<{
+    session: string;
+    term: string;
+    total: number;
+    grade: string | null;
+  }>((from, to) =>
+    supabase
+      .from("results")
+      .select("session, term, total, grade")
+      .eq("school_id", schoolId)
+      .order("id")
+      .range(from, to)
+  );
 
   const byPeriod = new Map<
     string,
     PeriodKey & { totals: number[]; grades: { grade: string | null }[] }
   >();
-  for (const row of data ?? []) {
+  for (const row of data) {
     const key = `${row.session}|${row.term}`;
     const existing = byPeriod.get(key);
     if (existing) {
@@ -205,42 +235,57 @@ export interface AttendanceTrendPoint {
   rate: number | null;
 }
 
+function localDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+}
+
 export async function getAttendanceTrend(
   supabase: SupabaseClient,
   schoolId: string,
   months = 12
 ): Promise<AttendanceTrendPoint[]> {
   const now = new Date();
-  const since = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
 
-  const { data } = await supabase
-    .from("attendance")
-    .select("date, status")
-    .eq("school_id", schoolId)
-    .gte("date", since.toISOString().slice(0, 10));
-
-  const buckets: { key: string; label: string; present: number; total: number }[] = [];
+  const buckets = [];
   for (let i = months - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const first = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    // Day 0 of the next month is the last day of this one.
+    const last = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
     buckets.push({
-      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
-      label: `${MONTH_LABELS[d.getMonth()]} ${d.getFullYear()}`,
-      present: 0,
-      total: 0,
+      label: `${MONTH_LABELS[first.getMonth()]} ${first.getFullYear()}`,
+      start: localDate(first),
+      end: localDate(last),
     });
   }
-  const byKey = new Map(buckets.map((b) => [b.key, b]));
 
-  for (const row of data ?? []) {
-    const key = row.date.slice(0, 7);
-    const bucket = byKey.get(key);
-    if (!bucket) continue;
-    bucket.total++;
-    if (row.status === "present") bucket.present++;
-  }
+  // Counted in the database rather than read back as rows: a year of
+  // attendance for a few hundred students is tens of thousands of rows,
+  // far past what one request returns, and none of them are needed
+  // individually — only how many there are.
+  return Promise.all(
+    buckets.map(async (b) => {
+      const [{ count: total }, { count: present }] = await Promise.all([
+        supabase
+          .from("attendance")
+          .select("*", { count: "exact", head: true })
+          .eq("school_id", schoolId)
+          .gte("date", b.start)
+          .lte("date", b.end),
+        supabase
+          .from("attendance")
+          .select("*", { count: "exact", head: true })
+          .eq("school_id", schoolId)
+          .eq("status", "present")
+          .gte("date", b.start)
+          .lte("date", b.end),
+      ]);
 
-  return buckets.map((b) => ({
-    label: b.label,
-    rate: b.total ? Math.round((b.present / b.total) * 100) : null,
-  }));
+      return {
+        label: b.label,
+        rate: total ? Math.round(((present ?? 0) / total) * 100) : null,
+      };
+    })
+  );
 }

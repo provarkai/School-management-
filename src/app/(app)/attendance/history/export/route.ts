@@ -1,3 +1,4 @@
+import { fetchAllRows } from "@/lib/fetchAll";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { parseExportFormat, exportRows } from "@/lib/export";
@@ -20,21 +21,25 @@ export async function GET(request: Request) {
     return exportRows(format, [], [], "attendance", schoolInfo);
   }
 
-  const [{ data: attendance }, { data: students }, { data: klass }] = await Promise.all([
-    supabase
-      .from("attendance")
-      .select("date, status, student_id")
-      .eq("class_id", classId)
-      .gte("date", fromDate)
-      .lte("date", toDate)
-      .order("date", { ascending: false }),
+  const [attendance, { data: students }, { data: klass }] = await Promise.all([
+    fetchAllRows<{ date: string; status: string; student_id: string }>((from, to) =>
+      supabase
+        .from("attendance")
+        .select("date, status, student_id")
+        .eq("class_id", classId)
+        .gte("date", fromDate)
+        .lte("date", toDate)
+        .order("date", { ascending: false })
+        .order("id")
+        .range(from, to)
+    ),
     supabase.from("students").select("id, full_name").eq("class_id", classId),
     supabase.from("classes").select("name").eq("id", classId).single(),
   ]);
 
   const nameById = new Map((students ?? []).map((s) => [s.id, s.full_name]));
 
-  const rows = (attendance ?? []).map((r) => ({
+  const rows = attendance.map((r) => ({
     date: r.date,
     student_name: nameById.get(r.student_id) ?? "",
     status: r.status,

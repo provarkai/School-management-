@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fetchAllRows } from "@/lib/fetchAll";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { ExportLinks } from "@/components/ExportLinks";
@@ -24,17 +25,24 @@ export default async function AttendanceHistoryPage({
   let studentNameById = new Map<string, string>();
 
   if (selectedClassId) {
-    const [{ data: attendance }, { data: students }] = await Promise.all([
-      supabase
-        .from("attendance")
-        .select("date, status, student_id")
-        .eq("class_id", selectedClassId)
-        .gte("date", fromDate)
-        .lte("date", toDate)
-        .order("date", { ascending: false }),
+    // One row per student per school day: a full term for one class runs
+    // past what a single request returns, and the missing days would just
+    // vanish from the history without a word.
+    const [attendance, { data: students }] = await Promise.all([
+      fetchAllRows<{ date: string; status: string; student_id: string }>((from, to) =>
+        supabase
+          .from("attendance")
+          .select("date, status, student_id")
+          .eq("class_id", selectedClassId)
+          .gte("date", fromDate)
+          .lte("date", toDate)
+          .order("date", { ascending: false })
+          .order("id")
+          .range(from, to)
+      ),
       supabase.from("students").select("id, full_name").eq("class_id", selectedClassId),
     ]);
-    rows = attendance ?? [];
+    rows = attendance;
     studentNameById = new Map((students ?? []).map((s) => [s.id, s.full_name]));
   }
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { fetchAllRowsByIds } from "@/lib/fetchAll";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { feeReminderTemplate, sendReminderMessage } from "@/lib/termii";
@@ -20,27 +21,45 @@ export async function sendBulkReminders(studentIds: string[]): Promise<BulkRemin
   const session = school?.current_session ?? "";
   const term = (school?.current_term ?? "1") as Term;
 
-  const [{ data: students }, { data: fees }] = await Promise.all([
-    supabase
-      .from("students")
-      .select("id, full_name, parent_name, parent_phone")
-      .in("id", studentIds),
-    supabase
-      .from("fee_summary")
-      .select("student_id, balance")
-      .in("student_id", studentIds)
-      .eq("session", session)
-      .eq("term", term),
+  // Chunked and paged: "select all" on a large school sends more ids than
+  // fit in one request, and anyone dropped would simply never be messaged
+  // while the run still reported success.
+  const [students, fees] = await Promise.all([
+    fetchAllRowsByIds<{
+      id: string;
+      full_name: string;
+      parent_name: string | null;
+      parent_phone: string | null;
+    }>(studentIds, (chunk, from, to) =>
+      supabase
+        .from("students")
+        .select("id, full_name, parent_name, parent_phone")
+        .in("id", chunk)
+        .order("id")
+        .range(from, to)
+    ),
+    fetchAllRowsByIds<{ student_id: string; balance: number }>(
+      studentIds,
+      (chunk, from, to) =>
+        supabase
+          .from("fee_summary")
+          .select("student_id, balance")
+          .in("student_id", chunk)
+          .eq("session", session)
+          .eq("term", term)
+          .order("fee_record_id")
+          .range(from, to)
+    ),
   ]);
 
-  const balanceByStudent = new Map((fees ?? []).map((f) => [f.student_id, Number(f.balance)]));
+  const balanceByStudent = new Map(fees.map((f) => [f.student_id, Number(f.balance)]));
 
   let sent = 0;
   let skippedNoPhone = 0;
   const failed: { studentName: string; error: string }[] = [];
   let mocked = false;
 
-  for (const student of students ?? []) {
+  for (const student of students) {
     if (!student.parent_phone) {
       skippedNoPhone++;
       continue;

@@ -1,6 +1,21 @@
 import type { createClient } from "@/lib/supabase/server";
+import { fetchAllRows, fetchAllRowsByIds } from "@/lib/fetchAll";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
+
+/** Names for the student ids a report row set references. Chunked because
+ * a report can easily span every student in the school, and the id list
+ * travels in the URL. */
+async function fetchStudentNames(
+  supabase: SupabaseClient,
+  studentIds: string[]
+): Promise<{ id: string; full_name: string }[]> {
+  return fetchAllRowsByIds<{ id: string; full_name: string }>(
+    studentIds,
+    (chunk, from, to) =>
+      supabase.from("students").select("id, full_name").in("id", chunk).order("id").range(from, to)
+  );
+}
 
 export type ReportSourceKey = "students" | "fees" | "attendance" | "results";
 
@@ -93,16 +108,27 @@ export async function fetchReportRows(
     const { data: classes } = await supabase.from("classes").select("id, name").eq("school_id", schoolId);
     const classNameById = new Map((classes ?? []).map((c) => [c.id, c.name]));
 
-    let query = supabase
-      .from("students")
-      .select("full_name, class_id, date_of_birth, parent_name, parent_phone, admission_date, status")
-      .eq("school_id", schoolId)
-      .order("full_name");
-    if (filters.classId) query = query.eq("class_id", filters.classId);
-    if (filters.status) query = query.eq("status", filters.status);
+    const data = await fetchAllRows<{
+      full_name: string;
+      class_id: string | null;
+      date_of_birth: string | null;
+      parent_name: string | null;
+      parent_phone: string | null;
+      admission_date: string;
+      status: string;
+    }>((from, to) => {
+      let query = supabase
+        .from("students")
+        .select("full_name, class_id, date_of_birth, parent_name, parent_phone, admission_date, status")
+        .eq("school_id", schoolId)
+        .order("full_name")
+        .order("id");
+      if (filters.classId) query = query.eq("class_id", filters.classId);
+      if (filters.status) query = query.eq("status", filters.status);
+      return query.range(from, to);
+    });
 
-    const { data } = await query;
-    return (data ?? []).map((s) => ({
+    return data.map((s) => ({
       full_name: s.full_name,
       class: s.class_id ? classNameById.get(s.class_id) ?? "" : "",
       date_of_birth: s.date_of_birth ?? "",
@@ -114,22 +140,31 @@ export async function fetchReportRows(
   }
 
   if (source === "fees") {
-    let query = supabase
-      .from("fee_summary")
-      .select("student_id, fee_type_name, session, term, amount_expected, amount_paid, balance, status")
-      .eq("school_id", schoolId);
-    if (filters.session) query = query.eq("session", filters.session);
-    if (filters.term) query = query.eq("term", filters.term);
-    if (filters.status) query = query.eq("status", filters.status);
+    const data = await fetchAllRows<{
+      student_id: string;
+      fee_type_name: string;
+      session: string;
+      term: string;
+      amount_expected: number;
+      amount_paid: number;
+      balance: number;
+      status: string;
+    }>((from, to) => {
+      let query = supabase
+        .from("fee_summary")
+        .select("student_id, fee_type_name, session, term, amount_expected, amount_paid, balance, status")
+        .eq("school_id", schoolId);
+      if (filters.session) query = query.eq("session", filters.session);
+      if (filters.term) query = query.eq("term", filters.term);
+      if (filters.status) query = query.eq("status", filters.status);
+      return query.order("fee_record_id").range(from, to);
+    });
 
-    const { data } = await query;
-    const studentIds = [...new Set((data ?? []).map((r) => r.student_id))];
-    const { data: students } = studentIds.length
-      ? await supabase.from("students").select("id, full_name").in("id", studentIds)
-      : { data: [] };
-    const nameById = new Map((students ?? []).map((s) => [s.id, s.full_name]));
+    const studentIds = [...new Set(data.map((r) => r.student_id))];
+    const students = await fetchStudentNames(supabase, studentIds);
+    const nameById = new Map(students.map((s) => [s.id, s.full_name]));
 
-    return (data ?? []).map((r) => ({
+    return data.map((r) => ({
       student_name: nameById.get(r.student_id) ?? "",
       fee_type_name: r.fee_type_name,
       session: r.session,
@@ -142,31 +177,37 @@ export async function fetchReportRows(
   }
 
   if (source === "attendance") {
-    let query = supabase
-      .from("attendance")
-      .select("student_id, class_id, date, status")
-      .eq("school_id", schoolId)
-      .order("date", { ascending: false });
-    if (filters.classId) query = query.eq("class_id", filters.classId);
-    if (filters.status) query = query.eq("status", filters.status);
-    if (filters.dateFrom) query = query.gte("date", filters.dateFrom);
-    if (filters.dateTo) query = query.lte("date", filters.dateTo);
+    const data = await fetchAllRows<{
+      student_id: string;
+      class_id: string;
+      date: string;
+      status: string;
+    }>((from, to) => {
+      let query = supabase
+        .from("attendance")
+        .select("student_id, class_id, date, status")
+        .eq("school_id", schoolId)
+        .order("date", { ascending: false })
+        .order("id");
+      if (filters.classId) query = query.eq("class_id", filters.classId);
+      if (filters.status) query = query.eq("status", filters.status);
+      if (filters.dateFrom) query = query.gte("date", filters.dateFrom);
+      if (filters.dateTo) query = query.lte("date", filters.dateTo);
+      return query.range(from, to);
+    });
 
-    const { data } = await query;
-    const studentIds = [...new Set((data ?? []).map((r) => r.student_id))];
-    const classIds = [...new Set((data ?? []).map((r) => r.class_id))];
-    const [{ data: students }, { data: classes }] = await Promise.all([
-      studentIds.length
-        ? supabase.from("students").select("id, full_name").in("id", studentIds)
-        : Promise.resolve({ data: [] }),
+    const studentIds = [...new Set(data.map((r) => r.student_id))];
+    const classIds = [...new Set(data.map((r) => r.class_id))];
+    const [students, { data: classes }] = await Promise.all([
+      fetchStudentNames(supabase, studentIds),
       classIds.length
         ? supabase.from("classes").select("id, name").in("id", classIds)
         : Promise.resolve({ data: [] }),
     ]);
-    const nameById = new Map((students ?? []).map((s) => [s.id, s.full_name]));
+    const nameById = new Map(students.map((s) => [s.id, s.full_name]));
     const classNameById = new Map((classes ?? []).map((c) => [c.id, c.name]));
 
-    return (data ?? []).map((r) => ({
+    return data.map((r) => ({
       student_name: nameById.get(r.student_id) ?? "",
       class: classNameById.get(r.class_id) ?? "",
       date: r.date,
@@ -175,23 +216,33 @@ export async function fetchReportRows(
   }
 
   // results
-  let query = supabase
-    .from("results")
-    .select("student_id, subject, session, term, ca_score, exam_score, total, grade")
-    .eq("school_id", schoolId)
-    .order("subject");
-  if (filters.session) query = query.eq("session", filters.session);
-  if (filters.term) query = query.eq("term", filters.term);
-  if (filters.subject) query = query.eq("subject", filters.subject);
+  const data = await fetchAllRows<{
+    student_id: string;
+    subject: string;
+    session: string;
+    term: string;
+    ca_score: number | null;
+    exam_score: number | null;
+    total: number;
+    grade: string | null;
+  }>((from, to) => {
+    let query = supabase
+      .from("results")
+      .select("student_id, subject, session, term, ca_score, exam_score, total, grade")
+      .eq("school_id", schoolId)
+      .order("subject")
+      .order("id");
+    if (filters.session) query = query.eq("session", filters.session);
+    if (filters.term) query = query.eq("term", filters.term);
+    if (filters.subject) query = query.eq("subject", filters.subject);
+    return query.range(from, to);
+  });
 
-  const { data } = await query;
-  const studentIds = [...new Set((data ?? []).map((r) => r.student_id))];
-  const { data: students } = studentIds.length
-    ? await supabase.from("students").select("id, full_name").in("id", studentIds)
-    : { data: [] };
-  const nameById = new Map((students ?? []).map((s) => [s.id, s.full_name]));
+  const studentIds = [...new Set(data.map((r) => r.student_id))];
+  const students = await fetchStudentNames(supabase, studentIds);
+  const nameById = new Map(students.map((s) => [s.id, s.full_name]));
 
-  return (data ?? []).map((r) => ({
+  return data.map((r) => ({
     student_name: nameById.get(r.student_id) ?? "",
     subject: r.subject,
     session: r.session,

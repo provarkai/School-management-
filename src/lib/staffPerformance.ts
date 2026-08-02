@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import type { Role, Term } from "@/lib/types";
+import { fetchAllRowsByIds } from "@/lib/fetchAll";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -69,59 +70,82 @@ export async function getStaffPerformance(
   const studentList = students ?? [];
   const studentIds = studentList.map((s) => s.id);
 
-  const [{ data: results }, { data: attendance }, { data: assignments }, { data: incidents }] =
-    await Promise.all([
+  // Every one of these grows with the size of the school — a term's
+  // results and a term's attendance both run well past what a single
+  // request returns — so they're read in full rather than trusting one
+  // page of each.
+  const [results, attendance, assignments, incidents] = await Promise.all([
+    fetchAllRowsByIds<{ student_id: string; total: number }>(studentIds, (chunk, from, to) =>
       supabase
         .from("results")
         .select("student_id, total")
         .eq("school_id", schoolId)
         .eq("session", session)
         .eq("term", term)
-        .in("student_id", studentIds.length > 0 ? studentIds : [""]),
+        .in("student_id", chunk)
+        .order("id")
+        .range(from, to)
+    ),
+    fetchAllRowsByIds<{ class_id: string; date: string }>(classIds, (chunk, from, to) =>
       supabase
         .from("attendance")
         .select("class_id, date")
         .eq("school_id", schoolId)
-        .in("class_id", classIds.length > 0 ? classIds : [""]),
-      supabase
-        .from("assignments")
-        .select("created_by, class_id")
-        .eq("school_id", schoolId)
-        .in("class_id", classIds.length > 0 ? classIds : [""]),
-      supabase
-        .from("behavior_incidents")
-        .select("recorded_by, category, student_id")
-        .eq("school_id", schoolId)
-        .in("student_id", studentIds.length > 0 ? studentIds : [""]),
-    ]);
+        .in("class_id", chunk)
+        .order("id")
+        .range(from, to)
+    ),
+    fetchAllRowsByIds<{ created_by: string | null; class_id: string }>(
+      classIds,
+      (chunk, from, to) =>
+        supabase
+          .from("assignments")
+          .select("created_by, class_id")
+          .eq("school_id", schoolId)
+          .in("class_id", chunk)
+          .order("id")
+          .range(from, to)
+    ),
+    fetchAllRowsByIds<{ recorded_by: string | null; category: string; student_id: string }>(
+      studentIds,
+      (chunk, from, to) =>
+        supabase
+          .from("behavior_incidents")
+          .select("recorded_by, category, student_id")
+          .eq("school_id", schoolId)
+          .in("student_id", chunk)
+          .order("id")
+          .range(from, to)
+    ),
+  ]);
 
   // Distinct dates any class marked attendance this term — the denominator
   // every teacher's own marking rate can be judged against.
-  const schoolWideDays = new Set((attendance ?? []).map((a) => a.date)).size;
+  const schoolWideDays = new Set(attendance.map((a) => a.date)).size;
 
   const daysByClass = new Map<string, Set<string>>();
-  for (const row of attendance ?? []) {
+  for (const row of attendance) {
     const set = daysByClass.get(row.class_id) ?? new Set<string>();
     set.add(row.date);
     daysByClass.set(row.class_id, set);
   }
 
   const resultsByStudent = new Map<string, number[]>();
-  for (const row of results ?? []) {
+  for (const row of results) {
     const list = resultsByStudent.get(row.student_id) ?? [];
     list.push(Number(row.total));
     resultsByStudent.set(row.student_id, list);
   }
 
   const assignmentCountByStaff = new Map<string, number>();
-  for (const row of assignments ?? []) {
+  for (const row of assignments) {
     if (!row.created_by) continue;
     assignmentCountByStaff.set(row.created_by, (assignmentCountByStaff.get(row.created_by) ?? 0) + 1);
   }
 
   const meritsByStaff = new Map<string, number>();
   const demeritsByStaff = new Map<string, number>();
-  for (const row of incidents ?? []) {
+  for (const row of incidents) {
     if (!row.recorded_by) continue;
     const map = row.category === "merit" ? meritsByStaff : demeritsByStaff;
     map.set(row.recorded_by, (map.get(row.recorded_by) ?? 0) + 1);

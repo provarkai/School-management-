@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { fetchAllRowsByIds } from "@/lib/fetchAll";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -27,49 +28,31 @@ export interface StudentAssessment {
   reason: string;
 }
 
-/** Student ids per request. Keeps the `in(...)` filter — which travels in
- * the URL — well short of any proxy's URL length limit. */
-const ID_CHUNK = 100;
-/** PostgREST's default cap. A whole school's session results run well past
- * it (students x subjects x 3 terms), so pages are read until one comes
- * back short rather than trusting a single request to return everything. */
-const PAGE_SIZE = 1000;
-
 interface ResultRow {
   student_id: string;
   subject: string;
   total: number;
 }
 
+/** A whole school's session results run well past what a single request
+ * returns (students x subjects x 3 terms), and a short read would mark
+ * students for repeat on partial scores. */
 async function fetchSessionResults(
   supabase: SupabaseClient,
   schoolId: string,
   session: string,
   studentIds: string[]
 ): Promise<ResultRow[]> {
-  const rows: ResultRow[] = [];
-
-  for (let i = 0; i < studentIds.length; i += ID_CHUNK) {
-    const chunk = studentIds.slice(i, i + ID_CHUNK);
-    let offset = 0;
-
-    for (;;) {
-      const { data, error } = await supabase
-        .from("results")
-        .select("student_id, subject, total")
-        .eq("school_id", schoolId)
-        .eq("session", session)
-        .in("student_id", chunk)
-        .range(offset, offset + PAGE_SIZE - 1);
-
-      if (error || !data) break;
-      rows.push(...(data as ResultRow[]));
-      if (data.length < PAGE_SIZE) break;
-      offset += PAGE_SIZE;
-    }
-  }
-
-  return rows;
+  return fetchAllRowsByIds<ResultRow>(studentIds, (chunk, from, to) =>
+    supabase
+      .from("results")
+      .select("student_id, subject, total")
+      .eq("school_id", schoolId)
+      .eq("session", session)
+      .in("student_id", chunk)
+      .order("id")
+      .range(from, to)
+  );
 }
 
 /**

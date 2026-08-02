@@ -1,3 +1,4 @@
+import { fetchAllRows, fetchAllRowsByIds } from "@/lib/fetchAll";
 import { createAdminClient } from "@/lib/supabase/server";
 import { feeReminderTemplate, sendReminderMessage } from "@/lib/termii";
 import { naira } from "@/lib/format";
@@ -34,29 +35,44 @@ export async function GET(request: Request) {
   for (const school of schools ?? []) {
     const term = school.current_term as Term;
 
-    const { data: fees } = await supabase
-      .from("fee_summary")
-      .select("student_id, balance")
-      .eq("school_id", school.id)
-      .eq("session", school.current_session)
-      .eq("term", term)
-      .neq("status", "paid");
+    // Read in full — a short read here means some parents simply never
+    // get their reminder, with nothing in the logs to say so.
+    const fees = await fetchAllRows<{ student_id: string; balance: number }>((from, to) =>
+      supabase
+        .from("fee_summary")
+        .select("student_id, balance")
+        .eq("school_id", school.id)
+        .eq("session", school.current_session)
+        .eq("term", term)
+        .neq("status", "paid")
+        .order("fee_record_id")
+        .range(from, to)
+    );
 
     const balanceByStudent = new Map<string, number>();
-    for (const f of fees ?? []) {
+    for (const f of fees) {
       if (Number(f.balance) <= 0) continue;
       balanceByStudent.set(f.student_id, (balanceByStudent.get(f.student_id) ?? 0) + Number(f.balance));
     }
     const owingStudentIds = Array.from(balanceByStudent.keys());
     if (owingStudentIds.length === 0) continue;
 
-    const { data: students } = await supabase
-      .from("students")
-      .select("id, full_name, parent_name, parent_phone")
-      .in("id", owingStudentIds)
-      .eq("status", "active");
+    const students = await fetchAllRowsByIds<{
+      id: string;
+      full_name: string;
+      parent_name: string | null;
+      parent_phone: string | null;
+    }>(owingStudentIds, (chunk, from, to) =>
+      supabase
+        .from("students")
+        .select("id, full_name, parent_name, parent_phone")
+        .in("id", chunk)
+        .eq("status", "active")
+        .order("id")
+        .range(from, to)
+    );
 
-    for (const student of students ?? []) {
+    for (const student of students) {
       if (!student.parent_phone) {
         totalSkipped++;
         continue;

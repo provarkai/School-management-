@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fetchAllRows } from "@/lib/fetchAll";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
@@ -47,15 +48,26 @@ export default async function FeesPage({
 
   const typeFilter = typeParam === "all" ? null : typeParam || feeTypes?.[0]?.id || null;
 
-  let feeSummaryQuery = supabase
-    .from("fee_summary")
-    .select("student_id, fee_type_id, amount_expected, amount_paid, balance, status")
-    .eq("school_id", profile.school_id ?? "")
-    .eq("session", session)
-    .eq("term", term);
-  if (typeFilter) feeSummaryQuery = feeSummaryQuery.eq("fee_type_id", typeFilter);
-
-  const { data: feeSummaries } = await feeSummaryQuery;
+  // One row per student per fee type — a few hundred students already
+  // exceeds what a single request returns, and the missing rows would
+  // silently show as "not set" against those students.
+  const feeSummaries = await fetchAllRows<{
+    student_id: string;
+    fee_type_id: string;
+    amount_expected: number;
+    amount_paid: number;
+    balance: number;
+    status: string;
+  }>((from, to) => {
+    let query = supabase
+      .from("fee_summary")
+      .select("student_id, fee_type_id, amount_expected, amount_paid, balance, status")
+      .eq("school_id", profile.school_id ?? "")
+      .eq("session", session)
+      .eq("term", term);
+    if (typeFilter) query = query.eq("fee_type_id", typeFilter);
+    return query.order("fee_record_id").range(from, to);
+  });
 
   const { data: students } = studentsQuery;
   const classNameById = new Map((classes ?? []).map((c) => [c.id, c.name]));
@@ -67,7 +79,7 @@ export default async function FeesPage({
     string,
     { amount_expected: number; amount_paid: number; balance: number; status: FeeStatus }
   >();
-  for (const f of feeSummaries ?? []) {
+  for (const f of feeSummaries) {
     const existing = feeByStudent.get(f.student_id);
     if (!existing) {
       feeByStudent.set(f.student_id, {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fetchAllRows } from "@/lib/fetchAll";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
@@ -20,7 +21,7 @@ export default async function ExpensesPage({
   const session = school?.current_session ?? "";
   const term = school?.current_term ?? "1";
 
-  const [{ data: categories }, { data: campuses }, { data: feeRows }] = await Promise.all([
+  const [{ data: categories }, { data: campuses }, feeRows] = await Promise.all([
     supabase
       .from("expense_categories")
       .select("id, name, termly_budget")
@@ -31,12 +32,19 @@ export default async function ExpensesPage({
       .select("id, name")
       .eq("school_id", profile.school_id ?? "")
       .order("name"),
-    supabase
-      .from("fee_summary")
-      .select("amount_paid")
-      .eq("school_id", profile.school_id ?? "")
-      .eq("session", session)
-      .eq("term", term),
+    // One row per student per fee type: past a few hundred students this
+    // is more than a single request returns, and a short read would
+    // under-report collections against the budget.
+    fetchAllRows<{ amount_paid: number }>((from, to) =>
+      supabase
+        .from("fee_summary")
+        .select("amount_paid")
+        .eq("school_id", profile.school_id ?? "")
+        .eq("session", session)
+        .eq("term", term)
+        .order("fee_record_id")
+        .range(from, to)
+    ),
   ]);
 
   let expensesQuery = supabase
@@ -67,7 +75,7 @@ export default async function ExpensesPage({
   const expenses = (expenseRows ?? []) as unknown as ExpenseRow[];
 
   const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
-  const feesCollected = (feeRows ?? []).reduce((sum, r) => sum + Number(r.amount_paid), 0);
+  const feesCollected = feeRows.reduce((sum, r) => sum + Number(r.amount_paid), 0);
   const netPosition = feesCollected - totalExpenses;
 
   const actualByCategory = new Map<string, number>();

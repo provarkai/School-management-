@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fetchAllRows } from "@/lib/fetchAll";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
@@ -151,33 +152,37 @@ export default async function DashboardPage({
       if (campusClassIds) query = query.in("class_id", campusClassIds.length ? campusClassIds : ["00000000-0000-0000-0000-000000000000"]);
       return query;
     })(),
-    (() => {
+    // Both of these carry one row per student (per fee type, in the fee
+    // case), so they outgrow a single request well before the school
+    // outgrows the app — and a short read would quietly understate the
+    // term's collections on the front page.
+    fetchAllRows<{ amount_expected: number; amount_paid: number }>((from, to) => {
       let query = supabase
         .from("fee_summary")
         .select("amount_expected, amount_paid")
         .eq("session", school?.current_session ?? "")
         .eq("term", school?.current_term ?? "1");
       if (campusStudentIds) query = query.in("student_id", campusStudentIds.length ? campusStudentIds : ["00000000-0000-0000-0000-000000000000"]);
-      return query;
-    })(),
-    (() => {
+      return query.order("fee_record_id").range(from, to);
+    }),
+    fetchAllRows<{ status: string }>((from, to) => {
       let query = supabase
         .from("attendance")
         .select("status")
         .eq("date", new Date().toISOString().slice(0, 10));
       if (campusClassIds) query = query.in("class_id", campusClassIds.length ? campusClassIds : ["00000000-0000-0000-0000-000000000000"]);
-      return query;
-    })(),
+      return query.order("id").range(from, to);
+    }),
   ]);
 
-  const expected = (feeRows.data ?? []).reduce((sum, r) => sum + Number(r.amount_expected), 0);
-  const collected = (feeRows.data ?? []).reduce((sum, r) => sum + Number(r.amount_paid), 0);
-  const owingCount = (feeRows.data ?? []).filter(
+  const expected = feeRows.reduce((sum, r) => sum + Number(r.amount_expected), 0);
+  const collected = feeRows.reduce((sum, r) => sum + Number(r.amount_paid), 0);
+  const owingCount = feeRows.filter(
     (r) => Number(r.amount_paid) < Number(r.amount_expected)
   ).length;
 
-  const present = (todaysAttendance.data ?? []).filter((a) => a.status === "present").length;
-  const marked = todaysAttendance.data?.length ?? 0;
+  const present = todaysAttendance.filter((a) => a.status === "present").length;
+  const marked = todaysAttendance.length;
   const attendanceRate = marked ? Math.round((present / marked) * 100) : null;
 
   const widgets: Record<string, React.ReactNode> = {

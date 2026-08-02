@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/fetchAll";
 import { REPORT_SOURCES, fetchReportRows, type ReportColumn } from "@/lib/reports";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
@@ -113,12 +114,22 @@ export const EXPORT_DATASETS: ExportDataset[] = [
     label: "Behavior records",
     columns: BEHAVIOR_COLUMNS,
     fetch: async (supabase, schoolId) => {
-      const { data } = await supabase
-        .from("behavior_incidents")
-        .select("category, severity, description, incident_date, students(full_name)")
-        .eq("school_id", schoolId)
-        .order("incident_date", { ascending: false });
-      return (data ?? []).map((i) => ({
+      const data = await fetchAllRows<{
+        category: string;
+        severity: string;
+        description: string;
+        incident_date: string;
+        students: unknown;
+      }>((from, to) =>
+        supabase
+          .from("behavior_incidents")
+          .select("category, severity, description, incident_date, students(full_name)")
+          .eq("school_id", schoolId)
+          .order("incident_date", { ascending: false })
+          .order("id")
+          .range(from, to)
+      );
+      return data.map((i) => ({
         student_name:
           (i.students as unknown as { full_name: string } | null)?.full_name ?? "",
         category: i.category,
@@ -133,12 +144,15 @@ export const EXPORT_DATASETS: ExportDataset[] = [
     label: "Notices",
     columns: NOTICE_COLUMNS,
     fetch: async (supabase, schoolId) => {
-      const { data } = await supabase
-        .from("staff_notices")
-        .select("title, body, audience, created_at")
-        .eq("school_id", schoolId)
-        .order("created_at", { ascending: false });
-      return data ?? [];
+      return fetchAllRows<Record<string, unknown>>((from, to) =>
+        supabase
+          .from("staff_notices")
+          .select("title, body, audience, created_at")
+          .eq("school_id", schoolId)
+          .order("created_at", { ascending: false })
+          .order("id")
+          .range(from, to)
+      );
     },
   },
   {
@@ -146,14 +160,27 @@ export const EXPORT_DATASETS: ExportDataset[] = [
     label: "Expenses",
     columns: EXPENSE_COLUMNS,
     fetch: async (supabase, schoolId) => {
-      const { data } = await supabase
-        .from("expenses")
-        .select(
-          "amount, expense_date, vendor, description, session, term, expense_categories(name), campuses(name)"
-        )
-        .eq("school_id", schoolId)
-        .order("expense_date", { ascending: false });
-      return (data ?? []).map((e) => ({
+      const data = await fetchAllRows<{
+        amount: number;
+        expense_date: string;
+        vendor: string | null;
+        description: string | null;
+        session: string;
+        term: string;
+        expense_categories: unknown;
+        campuses: unknown;
+      }>((from, to) =>
+        supabase
+          .from("expenses")
+          .select(
+            "amount, expense_date, vendor, description, session, term, expense_categories(name), campuses(name)"
+          )
+          .eq("school_id", schoolId)
+          .order("expense_date", { ascending: false })
+          .order("id")
+          .range(from, to)
+      );
+      return data.map((e) => ({
         expense_date: e.expense_date,
         category: (e.expense_categories as unknown as { name: string } | null)?.name ?? "",
         vendor: e.vendor ?? "",
@@ -170,12 +197,19 @@ export const EXPORT_DATASETS: ExportDataset[] = [
     label: "Staff attendance",
     columns: STAFF_ATTENDANCE_COLUMNS,
     fetch: async (supabase, schoolId) => {
-      const { data } = await supabase
-        .from("staff_attendance")
-        .select("date, status, app_users(name)")
-        .eq("school_id", schoolId)
-        .order("date", { ascending: false });
-      return (data ?? []).map((row) => ({
+      // One row per staff member per school day — a couple of years of
+      // this is well past a single request.
+      const data = await fetchAllRows<{ date: string; status: string; app_users: unknown }>(
+        (from, to) =>
+          supabase
+            .from("staff_attendance")
+            .select("date, status, app_users(name)")
+            .eq("school_id", schoolId)
+            .order("date", { ascending: false })
+            .order("id")
+            .range(from, to)
+      );
+      return data.map((row) => ({
         date: row.date,
         staff_name: (row.app_users as unknown as { name: string } | null)?.name ?? "",
         status: row.status,
@@ -187,12 +221,25 @@ export const EXPORT_DATASETS: ExportDataset[] = [
     label: "Admissions",
     columns: ADMISSIONS_COLUMNS,
     fetch: async (supabase, schoolId) => {
-      const { data } = await supabase
-        .from("admission_prospects")
-        .select("full_name, desired_class, parent_name, parent_phone, parent_email, status, entrance_test_score, session")
-        .eq("school_id", schoolId)
-        .order("created_at", { ascending: false });
-      return (data ?? []).map((p) => ({
+      const data = await fetchAllRows<{
+        full_name: string;
+        desired_class: string | null;
+        parent_name: string | null;
+        parent_phone: string | null;
+        parent_email: string | null;
+        status: string;
+        entrance_test_score: number | null;
+        session: string;
+      }>((from, to) =>
+        supabase
+          .from("admission_prospects")
+          .select("full_name, desired_class, parent_name, parent_phone, parent_email, status, entrance_test_score, session")
+          .eq("school_id", schoolId)
+          .order("created_at", { ascending: false })
+          .order("id")
+          .range(from, to)
+      );
+      return data.map((p) => ({
         full_name: p.full_name,
         desired_class: p.desired_class ?? "",
         parent_name: p.parent_name ?? "",

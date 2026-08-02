@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fetchAllRows, fetchAllRowsByIds } from "@/lib/fetchAll";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
@@ -36,40 +37,63 @@ export default async function DebtorsPage({
   const supabase = await createClient();
 
   // Every unpaid balance, not just the current term — an unpaid 1st-term fee
-  // is exactly what an aging report exists to surface.
-  const [{ data: outstanding }, { data: classes }] = await Promise.all([
-    supabase
-      .from("fee_summary")
-      .select(
-        "fee_record_id, student_id, session, term, fee_type_name, amount_expected, amount_paid, balance"
-      )
-      .eq("school_id", profile.school_id ?? "")
-      .gt("balance", 0),
+  // is exactly what an aging report exists to surface. Read in full: a
+  // debtors list that stops at the first page hides exactly the debts the
+  // school opened the page to find.
+  const [outstanding, { data: classes }] = await Promise.all([
+    fetchAllRows<{
+      fee_record_id: string;
+      student_id: string;
+      session: string;
+      term: string;
+      fee_type_name: string;
+      amount_expected: number;
+      amount_paid: number;
+      balance: number;
+    }>((from, to) =>
+      supabase
+        .from("fee_summary")
+        .select(
+          "fee_record_id, student_id, session, term, fee_type_name, amount_expected, amount_paid, balance"
+        )
+        .eq("school_id", profile.school_id ?? "")
+        .gt("balance", 0)
+        .order("fee_record_id")
+        .range(from, to)
+    ),
     supabase.from("classes").select("id, name").order("name"),
   ]);
 
-  const recordIds = (outstanding ?? []).map((f) => f.fee_record_id);
-  const studentIds = Array.from(new Set((outstanding ?? []).map((f) => f.student_id)));
+  const recordIds = outstanding.map((f) => f.fee_record_id);
+  const studentIds = Array.from(new Set(outstanding.map((f) => f.student_id)));
 
-  const [{ data: feeRecords }, { data: students }] = await Promise.all([
-    recordIds.length > 0
-      ? supabase.from("fee_records").select("id, created_at").in("id", recordIds)
-      : Promise.resolve({ data: [] }),
-    studentIds.length > 0
-      ? supabase
-          .from("students")
-          .select("id, full_name, class_id, parent_name, parent_phone")
-          .in("id", studentIds)
-      : Promise.resolve({ data: [] }),
+  const [feeRecords, students] = await Promise.all([
+    fetchAllRowsByIds<{ id: string; created_at: string }>(recordIds, (chunk, from, to) =>
+      supabase.from("fee_records").select("id, created_at").in("id", chunk).order("id").range(from, to)
+    ),
+    fetchAllRowsByIds<{
+      id: string;
+      full_name: string;
+      class_id: string | null;
+      parent_name: string | null;
+      parent_phone: string | null;
+    }>(studentIds, (chunk, from, to) =>
+      supabase
+        .from("students")
+        .select("id, full_name, class_id, parent_name, parent_phone")
+        .in("id", chunk)
+        .order("id")
+        .range(from, to)
+    ),
   ]);
 
-  const billedAtById = new Map((feeRecords ?? []).map((r) => [r.id, r.created_at]));
-  const studentById = new Map((students ?? []).map((s) => [s.id, s]));
+  const billedAtById = new Map(feeRecords.map((r) => [r.id, r.created_at]));
+  const studentById = new Map(students.map((s) => [s.id, s]));
   const classNameById = new Map((classes ?? []).map((c) => [c.id, c.name]));
 
   const today = new Date();
 
-  const rows = (outstanding ?? [])
+  const rows = outstanding
     .map((f) => {
       const student = studentById.get(f.student_id);
       const billedAt = billedAtById.get(f.fee_record_id);
