@@ -2,6 +2,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { BulkReportCardDocument, type ReportCardData } from "@/lib/pdf/ReportCardDocument";
+import { getGradePoints } from "@/lib/gradeBands";
 import { computeClassRanking } from "@/lib/ranking";
 import { proprietorTitle } from "@/lib/format";
 import type { Term } from "@/lib/types";
@@ -42,6 +43,7 @@ export async function GET(
 
   const term = school.current_term as Term;
   const ranking = await computeClassRanking(supabase, classId, school.current_session, term);
+  const gradePoints = await getGradePoints(supabase, school.id);
 
   const cards: ReportCardData[] = await Promise.all(
     (students ?? []).map(async (student) => {
@@ -84,6 +86,7 @@ export async function GET(
         remarks: remarks
           ? { teacher: remarks.teacher_remark, principal: remarks.principal_remark }
           : null,
+        gradePoints,
       };
     })
   );

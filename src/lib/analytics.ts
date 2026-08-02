@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import { computeGPA } from "@/lib/grading";
+import { getGradePoints } from "@/lib/gradeBands";
 import type { Term } from "@/lib/types";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
@@ -66,10 +67,10 @@ export async function getAcademicTrend(
   supabase: SupabaseClient,
   schoolId: string
 ): Promise<AcademicTrendPoint[]> {
-  const { data } = await supabase
-    .from("results")
-    .select("session, term, total, grade")
-    .eq("school_id", schoolId);
+  const [{ data }, gradePoints] = await Promise.all([
+    supabase.from("results").select("session, term, total, grade").eq("school_id", schoolId),
+    getGradePoints(supabase, schoolId),
+  ]);
 
   const byPeriod = new Map<
     string,
@@ -97,7 +98,7 @@ export async function getAcademicTrend(
     return {
       label: periodLabel(p),
       averageScore,
-      gpa: computeGPA(entry.grades),
+      gpa: computeGPA(entry.grades, gradePoints),
     };
   });
 }

@@ -35,10 +35,13 @@ export function AcademicHistory({
   results,
   fees,
   attendance,
+  gradePoints,
 }: {
   results: ResultRow[];
   fees: FeeRow[];
   attendance: AttendanceRow[];
+  /** School's letter -> points map; omitted falls back to the fixed scale. */
+  gradePoints?: Record<string, number>;
 }) {
   const periodKeys = new Map<string, { session: string; term: string }>();
   for (const r of results) periodKeys.set(`${r.session}|${r.term}`, { session: r.session, term: r.term });
@@ -75,7 +78,7 @@ export function AcademicHistory({
         periods.map(({ session, term }) => {
           const termResults = results.filter((r) => r.session === session && r.term === term);
           const termFees = fees.filter((f) => f.session === session && f.term === term);
-          const gpa = computeGPA(termResults);
+          const gpa = computeGPA(termResults, gradePoints);
 
           return (
             <section

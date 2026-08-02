@@ -59,12 +59,14 @@ export interface ReportCardData {
   }[];
   ranking?: { position: number; outOf: number } | null;
   remarks?: { teacher: string | null; principal: string | null } | null;
+  /** School's letter -> points map; omitted falls back to the fixed scale. */
+  gradePoints?: Record<string, number>;
 }
 
-function ReportCardPage({ school, student, term, results, ranking, remarks }: ReportCardData) {
+function ReportCardPage({ school, student, term, results, ranking, remarks, gradePoints }: ReportCardData) {
   const totalScore = results.reduce((sum, r) => sum + Number(r.total), 0);
   const average = results.length ? totalScore / results.length : 0;
-  const gpa = computeGPA(results);
+  const gpa = computeGPA(results, gradePoints);
 
   return (
     <Page size="A4" style={styles.page}>

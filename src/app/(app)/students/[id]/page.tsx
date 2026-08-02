@@ -14,6 +14,7 @@ import { AvatarUploader } from "@/components/AvatarUploader";
 import { Avatar } from "@/components/Avatar";
 import { saveStudentPhoto } from "../actions";
 import { StudentRecordForm, type StudentRecord } from "./StudentRecordForm";
+import { getGradePoints } from "@/lib/gradeBands";
 
 export default async function StudentDetailPage({
   params,
@@ -89,6 +90,8 @@ export default async function StudentDetailPage({
     })
   );
 
+  const gradePoints = await getGradePoints(supabase, student.school_id);
+
   const headerList = await headers();
   const host = headerList.get("host");
   const protocol = host?.startsWith("localhost") ? "http" : "https";
@@ -162,6 +165,7 @@ export default async function StudentDetailPage({
           Academic history
         </h2>
         <AcademicHistory
+          gradePoints={gradePoints}
           results={(results ?? []).map((r) => ({ ...r, total: Number(r.total) }))}
           fees={(fees ?? []).map((f) => ({
             ...f,

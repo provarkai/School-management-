@@ -29,20 +29,44 @@ export async function saveScore(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("results").upsert(
-    {
-      school_id: profile.school_id,
-      student_id: studentId,
-      subject,
-      session: school?.current_session ?? "",
-      term: school?.current_term ?? "1",
-      ca_score: caScore,
-      exam_score: examScore,
-    },
-    { onConflict: "student_id,subject,session,term" }
-  );
+
+  // Resolve the FK too, so rows written here and rows written by the class
+  // grid are indistinguishable downstream — otherwise anything keying off
+  // subject_id silently misses scores entered through this form.
+  const { data: subjectRow } = await supabase
+    .from("subjects")
+    .select("id")
+    .eq("school_id", profile.school_id ?? "")
+    .eq("name", subject)
+    .maybeSingle();
+
+  const { data: saved, error } = await supabase
+    .from("results")
+    .upsert(
+      {
+        school_id: profile.school_id,
+        student_id: studentId,
+        subject,
+        subject_id: subjectRow?.id ?? null,
+        session: school?.current_session ?? "",
+        term: school?.current_term ?? "1",
+        ca_score: caScore,
+        exam_score: examScore,
+      },
+      { onConflict: "student_id,subject,session,term" }
+    )
+    .select("id")
+    .single();
 
   if (error) return { error: error.message };
+
+  // This form sets the CA and exam totals directly. If the score was
+  // previously entered component-by-component in the class grid, those
+  // component rows would now sum to something other than the totals just
+  // written — so they're cleared rather than left to contradict the result.
+  if (saved) {
+    await supabase.from("result_component_scores").delete().eq("result_id", saved.id);
+  }
 
   revalidatePath(`/report-cards/${studentId}`);
   return { success: `Saved ${subject}.` };

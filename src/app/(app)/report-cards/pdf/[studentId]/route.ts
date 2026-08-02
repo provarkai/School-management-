@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ReportCardDocument } from "@/lib/pdf/ReportCardDocument";
 import { computeClassRanking } from "@/lib/ranking";
 import { proprietorTitle } from "@/lib/format";
+import { getGradePoints } from "@/lib/gradeBands";
 import type { Term } from "@/lib/types";
 
 export async function GET(
@@ -60,6 +61,8 @@ export async function GET(
     .eq("term", term)
     .maybeSingle();
 
+  const gradePoints = await getGradePoints(supabase, school.id);
+
   const buffer = await renderToBuffer(
     ReportCardDocument({
       school: {
@@ -83,6 +86,7 @@ export async function GET(
       remarks: remarks
         ? { teacher: remarks.teacher_remark, principal: remarks.principal_remark }
         : null,
+      gradePoints,
     })
   );
 
