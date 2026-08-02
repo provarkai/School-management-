@@ -42,8 +42,14 @@ export async function addStaffMember(
     return { error: createError?.message ?? "Could not create staff account." };
   }
 
-  const supabase = await createClient();
-  const { error: profileError } = await supabase
+  // The on_auth_user_created trigger just inserted this row with
+  // school_id null (it has no way to know which school), and the
+  // app_users_select/update RLS policies require school_id to already
+  // match current_school_id() — a null school_id never matches, so a
+  // session-bound client here silently updates zero rows (no error, but
+  // the new staff member's account is never actually linked to the
+  // school). The admin client bypasses RLS, same as the trigger itself.
+  const { error: profileError } = await admin
     .from("app_users")
     .update({
       school_id: profile.school_id,
@@ -130,7 +136,10 @@ export async function bulkImportStaff(rows: StaffImportRow[]): Promise<StaffImpo
       continue;
     }
 
-    const { error: profileError } = await supabase
+    // Same reasoning as addStaffMember: the trigger-created row has
+    // school_id null, so this update must bypass RLS via the admin client
+    // or it silently affects zero rows.
+    const { error: profileError } = await admin
       .from("app_users")
       .update({
         school_id: profile.school_id,
