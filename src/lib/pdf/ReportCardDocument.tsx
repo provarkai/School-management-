@@ -1,6 +1,5 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { TERM_LABELS, type Term } from "@/lib/types";
-import { computeGPA } from "@/lib/grading";
 import { SchoolLetterhead, type LetterheadSchool } from "./SchoolLetterhead";
 
 const styles = StyleSheet.create({
@@ -59,14 +58,11 @@ export interface ReportCardData {
   }[];
   ranking?: { position: number; outOf: number } | null;
   remarks?: { teacher: string | null; principal: string | null } | null;
-  /** School's letter -> points map; omitted falls back to the fixed scale. */
-  gradePoints?: Record<string, number>;
 }
 
-function ReportCardPage({ school, student, term, results, ranking, remarks, gradePoints }: ReportCardData) {
+function ReportCardPage({ school, student, term, results, ranking, remarks }: ReportCardData) {
   const totalScore = results.reduce((sum, r) => sum + Number(r.total), 0);
   const average = results.length ? totalScore / results.length : 0;
-  const gpa = computeGPA(results, gradePoints);
 
   return (
     <Page size="A4" style={styles.page}>
@@ -120,7 +116,6 @@ function ReportCardPage({ school, student, term, results, ranking, remarks, grad
       <View style={styles.summary}>
         <Text>Subjects: {results.length}</Text>
         <Text>Average: {average.toFixed(1)}%</Text>
-        <Text>GPA: {gpa !== null ? `${gpa.toFixed(2)}/5` : "—"}</Text>
         <Text>Position: {ranking ? `${ranking.position} of ${ranking.outOf}` : "—"}</Text>
       </View>
 

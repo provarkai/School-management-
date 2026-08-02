@@ -2,8 +2,6 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { computeClassRanking } from "@/lib/ranking";
-import { computeGPA } from "@/lib/grading";
-import { getGradePoints } from "@/lib/gradeBands";
 import { proprietorTitle } from "@/lib/format";
 import { ScoreForm, DeleteScoreButton } from "./ScoreForm";
 import { RemarksForm } from "./RemarksForm";
@@ -62,8 +60,6 @@ export default async function ScoreEntryPage({
   const ranking = student.class_id
     ? (await computeClassRanking(supabase, student.class_id, session, term)).get(studentId) ?? null
     : null;
-  const gradePoints = await getGradePoints(supabase, profile.school_id ?? "");
-  const gpa = computeGPA(results ?? [], gradePoints);
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -73,7 +69,6 @@ export default async function ScoreEntryPage({
           <p className="text-sm text-zinc-500">
             {session} · Term {term}
             {ranking && ` · Position ${ranking.position} of ${ranking.outOf}`}
-            {gpa !== null && ` · GPA ${gpa.toFixed(2)}/5`}
           </p>
         </div>
         <a

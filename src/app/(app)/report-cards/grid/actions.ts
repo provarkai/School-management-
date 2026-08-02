@@ -16,7 +16,7 @@ export interface GridSaveState {
  *
  * Writes both the component breakdown and the ca_score/exam_score sums
  * `results` has always carried, because every downstream reader (report
- * card PDFs, GPA, ranking, analytics, exports) still reads those two
+ * card PDFs, ranking, analytics, exports) still reads those two
  * columns.
  */
 export async function saveClassScores(

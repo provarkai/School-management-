@@ -15,7 +15,7 @@ export default async function GradingPage() {
       .order("position"),
     supabase
       .from("grade_bands")
-      .select("id, letter, min_score, points")
+      .select("id, letter, min_score")
       .eq("school_id", profile.school_id ?? "")
       .order("min_score", { ascending: false }),
   ]);

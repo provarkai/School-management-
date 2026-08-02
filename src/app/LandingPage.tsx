@@ -49,9 +49,9 @@ const FEATURES: { title: string; description: string; mark: string }[] = [
   },
   {
     mark: "🎓",
-    title: "Report cards & GPA",
+    title: "Report cards & grading",
     description:
-      "CA/exam score entry, auto-computed grades and class ranking, GPA tracking, and printable PDF report cards.",
+      "Class-wide score entry, auto-computed grades and class ranking, and printable PDF report cards.",
   },
   {
     mark: "👪",

@@ -1,5 +1,4 @@
 import { naira } from "@/lib/format";
-import { computeGPA } from "@/lib/grading";
 import { TERM_LABELS, type Term } from "@/lib/types";
 
 interface ResultRow {
@@ -35,13 +34,10 @@ export function AcademicHistory({
   results,
   fees,
   attendance,
-  gradePoints,
 }: {
   results: ResultRow[];
   fees: FeeRow[];
   attendance: AttendanceRow[];
-  /** School's letter -> points map; omitted falls back to the fixed scale. */
-  gradePoints?: Record<string, number>;
 }) {
   const periodKeys = new Map<string, { session: string; term: string }>();
   for (const r of results) periodKeys.set(`${r.session}|${r.term}`, { session: r.session, term: r.term });
@@ -78,21 +74,15 @@ export function AcademicHistory({
         periods.map(({ session, term }) => {
           const termResults = results.filter((r) => r.session === session && r.term === term);
           const termFees = fees.filter((f) => f.session === session && f.term === term);
-          const gpa = computeGPA(termResults, gradePoints);
 
           return (
             <section
               key={`${session}|${term}`}
               className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm"
             >
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-zinc-900">
-                  {session} · {TERM_LABELS[term as Term] ?? `Term ${term}`}
-                </h2>
-                {gpa !== null && (
-                  <span className="text-xs font-medium text-zinc-500">GPA: {gpa.toFixed(2)}/5</span>
-                )}
-              </div>
+              <h2 className="mb-3 text-sm font-semibold text-zinc-900">
+                {session} · {TERM_LABELS[term as Term] ?? `Term ${term}`}
+              </h2>
 
               {termResults.length > 0 && (
                 <table className="mb-4 w-full text-sm">

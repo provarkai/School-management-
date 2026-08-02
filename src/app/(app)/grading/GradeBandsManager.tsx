@@ -9,7 +9,6 @@ export interface GradeBand {
   id: string;
   letter: string;
   min_score: number;
-  points: number;
 }
 
 export function GradeBandsManager({ bands }: { bands: GradeBand[] }) {
@@ -23,8 +22,7 @@ export function GradeBandsManager({ bands }: { bands: GradeBand[] }) {
     <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
       <h2 className="text-sm font-semibold text-zinc-900">Grade boundaries</h2>
       <p className="mt-1 text-xs text-zinc-500">
-        A student&rsquo;s total is matched against the highest boundary it reaches. Points feed
-        the GPA shown on report cards.
+        A student&rsquo;s total out of 100 is matched against the highest boundary it reaches.
       </p>
 
       {sorted.length > 0 && (
@@ -34,7 +32,6 @@ export function GradeBandsManager({ bands }: { bands: GradeBand[] }) {
               <tr>
                 <th className="px-3 py-2 text-left font-medium text-zinc-500">Grade</th>
                 <th className="px-3 py-2 text-left font-medium text-zinc-500">Range</th>
-                <th className="px-3 py-2 text-right font-medium text-zinc-500">Points</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
@@ -47,7 +44,6 @@ export function GradeBandsManager({ bands }: { bands: GradeBand[] }) {
                     <td className="px-3 py-2 text-zinc-500">
                       {Number(b.min_score)} – {upper}
                     </td>
-                    <td className="px-3 py-2 text-right text-zinc-500">{Number(b.points)}</td>
                     <td className="px-3 py-2 text-right">
                       <form action={deleteGradeBand.bind(null, b.id)}>
                         <button
@@ -98,18 +94,6 @@ export function GradeBandsManager({ bands }: { bands: GradeBand[] }) {
             step="1"
             required
             className="mt-1 block w-28 rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
-          />
-        </label>
-        <label className="text-sm font-medium text-zinc-700">
-          Points
-          <input
-            name="points"
-            type="number"
-            min="0"
-            step="0.5"
-            defaultValue={0}
-            required
-            className="mt-1 block w-24 rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
           />
         </label>
         <button

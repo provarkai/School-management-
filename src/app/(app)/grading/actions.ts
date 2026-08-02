@@ -71,22 +71,16 @@ export async function addGradeBand(
 
   const letter = String(formData.get("letter") ?? "").trim().toUpperCase();
   const minScore = Number(formData.get("min_score"));
-  const points = Number(formData.get("points"));
 
   if (!letter) return { error: "Enter a grade letter." };
   if (!Number.isFinite(minScore) || minScore < 0) {
     return { error: "Minimum score must be 0 or more." };
   }
-  if (!Number.isFinite(points) || points < 0) {
-    return { error: "Points must be 0 or more." };
-  }
-
   const supabase = await createClient();
   const { error } = await supabase.from("grade_bands").insert({
     school_id: profile.school_id,
     letter,
     min_score: minScore,
-    points,
   });
 
   if (error) {
