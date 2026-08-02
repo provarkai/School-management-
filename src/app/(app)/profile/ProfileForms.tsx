@@ -7,10 +7,12 @@ import {
   updateSchoolProfile,
   updateAcademicSession,
   updateQuickLinks,
+  updateDashboardWidgets,
   type ProfileFormState,
 } from "./actions";
 import type { Term } from "@/lib/types";
 import { QUICK_LINK_CATALOG, MAX_QUICK_LINKS } from "@/lib/quickLinks";
+import { DASHBOARD_WIDGET_CATALOG, DEFAULT_DASHBOARD_WIDGETS } from "@/lib/dashboardWidgets";
 import { PasswordInput } from "@/components/PasswordInput";
 
 const initialState: ProfileFormState = {};
@@ -178,6 +180,111 @@ export function QuickLinksForm({ selected }: { selected: string[] }) {
           );
         })}
       </div>
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:opacity-50"
+      >
+        {pending ? "Saving…" : "Save"}
+      </button>
+    </form>
+  );
+}
+
+export function DashboardWidgetsForm({ selected }: { selected: string[] }) {
+  const [state, action, pending] = useActionState(updateDashboardWidgets, initialState);
+  const [order, setOrder] = useState<string[]>(
+    selected.length > 0 ? selected : DEFAULT_DASHBOARD_WIDGETS
+  );
+  const [visible, setVisible] = useState<Set<string>>(
+    new Set(selected.length > 0 ? selected : DEFAULT_DASHBOARD_WIDGETS)
+  );
+
+  function toggle(key: string) {
+    setVisible((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function move(key: string, direction: -1 | 1) {
+    setOrder((prev) => {
+      const index = prev.indexOf(key);
+      // Swap with the next *visible* entry in that direction, not just the
+      // physically adjacent one — otherwise moving "up" past a hidden
+      // widget silently reorders nothing the user can see.
+      let swapWith = index + direction;
+      while (swapWith >= 0 && swapWith < prev.length && !visible.has(prev[swapWith])) {
+        swapWith += direction;
+      }
+      if (swapWith < 0 || swapWith >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[swapWith]] = [next[swapWith], next[index]];
+      return next;
+    });
+  }
+
+  const orderedVisible = order.filter((key) => visible.has(key));
+
+  return (
+    <form action={action} className="space-y-4">
+      {state.error && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
+      )}
+      {state.success && (
+        <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          {state.success}
+        </p>
+      )}
+      <p className="text-sm text-zinc-500">
+        Choose which sections show on the dashboard, and reorder them top to bottom.
+      </p>
+      <ul className="divide-y divide-zinc-100 rounded-md border border-zinc-200">
+        {order.map((key) => {
+          const option = DASHBOARD_WIDGET_CATALOG.find((o) => o.key === key);
+          if (!option) return null;
+          const isVisible = visible.has(key);
+          const visibleIndex = orderedVisible.indexOf(key);
+          return (
+            <li key={key} className="flex items-center justify-between gap-3 px-3 py-2">
+              <label className={`flex items-center gap-2 text-sm ${isVisible ? "text-zinc-700" : "text-zinc-400"}`}>
+                <input
+                  type="checkbox"
+                  checked={isVisible}
+                  onChange={() => toggle(key)}
+                  className="rounded border-zinc-300"
+                />
+                {option.label}
+              </label>
+              {isVisible && (
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    disabled={visibleIndex <= 0}
+                    onClick={() => move(key, -1)}
+                    className="rounded border border-zinc-300 px-2 py-0.5 text-xs text-zinc-600 hover:bg-zinc-50 disabled:opacity-30"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    disabled={visibleIndex >= orderedVisible.length - 1}
+                    onClick={() => move(key, 1)}
+                    className="rounded border border-zinc-300 px-2 py-0.5 text-xs text-zinc-600 hover:bg-zinc-50 disabled:opacity-30"
+                  >
+                    ↓
+                  </button>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {orderedVisible.map((key) => (
+        <input key={key} type="hidden" name="widgets" value={key} />
+      ))}
       <button
         type="submit"
         disabled={pending}

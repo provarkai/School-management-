@@ -38,6 +38,7 @@ export interface AppUser {
   photo_url: string | null;
   gender: Gender | null;
   is_school_admin: boolean;
+  dashboard_widgets: string[] | null;
   created_at: string;
 }
 

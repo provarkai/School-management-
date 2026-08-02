@@ -7,6 +7,7 @@ import { CampusFilter } from "../CampusFilter";
 import { UpcomingEvents } from "./UpcomingEvents";
 import { RecentActivity } from "./RecentActivity";
 import { DEFAULT_QUICK_LINKS, getQuickLinkOption } from "@/lib/quickLinks";
+import { DEFAULT_DASHBOARD_WIDGETS } from "@/lib/dashboardWidgets";
 
 export default async function DashboardPage({
   searchParams,
@@ -179,6 +180,57 @@ export default async function DashboardPage({
   const marked = todaysAttendance.data?.length ?? 0;
   const attendanceRate = marked ? Math.round((present / marked) * 100) : null;
 
+  const widgets: Record<string, React.ReactNode> = {
+    summary_cards: (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <SummaryCard label="Total students" value={String(studentCount ?? 0)} />
+        <SummaryCard
+          label="Fees collected this term"
+          value={`${naira(collected)} / ${naira(expected)}`}
+        />
+        <SummaryCard
+          label="Attendance rate today"
+          value={attendanceRate === null ? "Not marked yet" : `${attendanceRate}%`}
+        />
+      </div>
+    ),
+    quick_links: (
+      <div>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+          Quick links
+        </h2>
+        <div className="flex flex-wrap gap-3">
+          {(school?.quick_links?.length ? school.quick_links : DEFAULT_QUICK_LINKS).map((key) => {
+            const option = getQuickLinkOption(key);
+            if (!option) return null;
+            const label = key === "fees_owing" ? `View owing students (${owingCount})` : option.label;
+            return <QuickLink key={key} href={option.href} label={label} />;
+          })}
+        </div>
+      </div>
+    ),
+    upcoming_events: <UpcomingEvents schoolId={profile.school_id ?? ""} />,
+    ai_assistant: (
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            AI Assistant
+          </h2>
+          <Link href="/assistant" className="text-sm font-medium text-zinc-600 hover:text-zinc-900">
+            Open full screen →
+          </Link>
+        </div>
+        <Chat heightClassName="h-[420px]" />
+      </div>
+    ),
+    recent_activity: <RecentActivity schoolId={profile.school_id ?? ""} />,
+  };
+
+  const widgetOrder =
+    profile.dashboard_widgets && profile.dashboard_widgets.length > 0
+      ? profile.dashboard_widgets
+      : DEFAULT_DASHBOARD_WIDGETS;
+
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -193,47 +245,7 @@ export default async function DashboardPage({
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <SummaryCard label="Total students" value={String(studentCount ?? 0)} />
-        <SummaryCard
-          label="Fees collected this term"
-          value={`${naira(collected)} / ${naira(expected)}`}
-        />
-        <SummaryCard
-          label="Attendance rate today"
-          value={attendanceRate === null ? "Not marked yet" : `${attendanceRate}%`}
-        />
-      </div>
-
-      <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          Quick links
-        </h2>
-        <div className="flex flex-wrap gap-3">
-          {(school?.quick_links?.length ? school.quick_links : DEFAULT_QUICK_LINKS).map((key) => {
-            const option = getQuickLinkOption(key);
-            if (!option) return null;
-            const label = key === "fees_owing" ? `View owing students (${owingCount})` : option.label;
-            return <QuickLink key={key} href={option.href} label={label} />;
-          })}
-        </div>
-      </div>
-
-      <UpcomingEvents schoolId={profile.school_id ?? ""} />
-
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-            AI Assistant
-          </h2>
-          <Link href="/assistant" className="text-sm font-medium text-zinc-600 hover:text-zinc-900">
-            Open full screen →
-          </Link>
-        </div>
-        <Chat heightClassName="h-[420px]" />
-      </div>
-
-      <RecentActivity schoolId={profile.school_id ?? ""} />
+      {widgetOrder.map((key) => <div key={key}>{widgets[key]}</div>)}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { requireUser, requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import type { Term } from "@/lib/types";
 import { QUICK_LINK_CATALOG, MAX_QUICK_LINKS } from "@/lib/quickLinks";
+import { DASHBOARD_WIDGET_CATALOG } from "@/lib/dashboardWidgets";
 
 export interface ProfileFormState {
   error?: string;
@@ -152,6 +153,30 @@ export async function updateQuickLinks(
   revalidatePath("/profile");
   revalidatePath("/dashboard");
   return { success: "Quick links updated." };
+}
+
+export async function updateDashboardWidgets(
+  _prevState: ProfileFormState,
+  formData: FormData
+): Promise<ProfileFormState> {
+  const { profile } = await requireProprietor();
+
+  const validKeys = new Set(DASHBOARD_WIDGET_CATALOG.map((o) => o.key));
+  const selected = formData.getAll("widgets").map(String).filter((k) => validKeys.has(k));
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("app_users")
+    .update({ dashboard_widgets: selected })
+    .eq("id", profile.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/profile");
+  revalidatePath("/dashboard");
+  return { success: "Dashboard layout updated." };
 }
 
 export async function changeOwnPassword(
