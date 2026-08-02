@@ -23,6 +23,9 @@ export interface School {
   status: SchoolStatus;
   quick_links: string[];
   withhold_results_when_owing: boolean;
+  promotion_min_average: number;
+  promotion_subject_pass_mark: number;
+  promotion_max_failed_subjects: number;
   created_at: string;
 }
 

@@ -3,23 +3,86 @@
 import { revalidatePath } from "next/cache";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import {
+  assessStudentsForPromotion,
+  type PromotionCriteria,
+  type PromotionDecision,
+} from "@/lib/promotionCriteria";
 
 export interface PromotionFormState {
   error?: string;
   success?: string;
 }
 
-export async function promoteSession(
+export async function updatePromotionCriteria(
   _prevState: PromotionFormState,
   formData: FormData
 ): Promise<PromotionFormState> {
   const { profile } = await requireProprietor();
+
+  const minAverage = Number(formData.get("min_average"));
+  const subjectPassMark = Number(formData.get("subject_pass_mark"));
+  const maxFailedSubjects = Number(formData.get("max_failed_subjects"));
+
+  if (!Number.isFinite(minAverage) || minAverage < 0 || minAverage > 100) {
+    return { error: "Minimum average must be between 0 and 100." };
+  }
+  if (!Number.isFinite(subjectPassMark) || subjectPassMark < 0 || subjectPassMark > 100) {
+    return { error: "Subject pass mark must be between 0 and 100." };
+  }
+  if (!Number.isInteger(maxFailedSubjects) || maxFailedSubjects < 0) {
+    return { error: "Enter how many subjects a student may fail, as a whole number." };
+  }
+
   const supabase = await createClient();
+  const { error } = await supabase
+    .from("schools")
+    .update({
+      promotion_min_average: minAverage,
+      promotion_subject_pass_mark: subjectPassMark,
+      promotion_max_failed_subjects: maxFailedSubjects,
+    })
+    .eq("id", profile.school_id ?? "");
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/promotion");
+  return { success: "Promotion criteria saved." };
+}
+
+interface PromotionLogRow {
+  school_id: string;
+  student_id: string;
+  from_session: string;
+  to_session: string;
+  from_class_id: string;
+  from_class_name: string;
+  to_class_id: string | null;
+  to_class_name: string | null;
+  decision: "promoted" | "repeated" | "graduated";
+  average_score: number | null;
+  subjects_failed: number | null;
+  subjects_counted: number | null;
+  overridden: boolean;
+  decided_by: string;
+}
+
+export async function promoteSession(
+  _prevState: PromotionFormState,
+  formData: FormData
+): Promise<PromotionFormState> {
+  const { profile, school } = await requireProprietor();
+  const supabase = await createClient();
+  const schoolId = profile.school_id ?? "";
 
   const newSession = String(formData.get("new_session") ?? "").trim();
   if (!newSession) {
     return { error: "Enter the new session, e.g. 2026/2027." };
   }
+
+  // Read the outgoing session before it's overwritten below — the promotion
+  // log and the criteria both need to know which year is being closed.
+  const fromSession = school?.current_session ?? "";
 
   // Derived from where active students actually sit (class_id), not from a
   // session/term match on the classes table — classes aren't reliably
@@ -27,14 +90,19 @@ export async function promoteSession(
   // students still sitting in an older-term class row.
   const { data: activeStudents } = await supabase
     .from("students")
-    .select("class_id")
-    .eq("school_id", profile.school_id ?? "")
+    .select("id, class_id")
+    .eq("school_id", schoolId)
     .eq("status", "active");
 
-  const classIds = Array.from(
-    new Set((activeStudents ?? []).map((s) => s.class_id).filter((id): id is string => !!id))
-  );
+  const studentsByClass = new Map<string, string[]>();
+  for (const s of activeStudents ?? []) {
+    if (!s.class_id) continue;
+    const bucket = studentsByClass.get(s.class_id) ?? [];
+    bucket.push(s.id);
+    studentsByClass.set(s.class_id, bucket);
+  }
 
+  const classIds = Array.from(studentsByClass.keys());
   if (classIds.length === 0) {
     return { error: "No active students are assigned to a class yet." };
   }
@@ -42,77 +110,175 @@ export async function promoteSession(
   const { data: classes } = await supabase
     .from("classes")
     .select("id, name, teacher_id, campus_id")
-    .eq("school_id", profile.school_id ?? "")
+    .eq("school_id", schoolId)
     .in("id", classIds);
 
   if (!classes || classes.length === 0) {
     return { error: "No classes found to promote." };
   }
 
+  const criteria: PromotionCriteria = {
+    minAverage: Number(school?.promotion_min_average ?? 40),
+    subjectPassMark: Number(school?.promotion_subject_pass_mark ?? 40),
+    maxFailedSubjects: Number(school?.promotion_max_failed_subjects ?? 3),
+  };
+
+  // Recomputed here rather than trusted from the form: the page's numbers
+  // are only there to inform the choice, and the log should record what the
+  // results actually said at the moment of promotion.
+  const assessments = await assessStudentsForPromotion(
+    supabase,
+    schoolId,
+    fromSession,
+    Array.from(studentsByClass.values()).flat(),
+    criteria
+  );
+
   const targetClassIdByName = new Map<string, string>();
-  let promotedClasses = 0;
+  const logs: PromotionLogRow[] = [];
+  let createdClasses = 0;
   let promotedStudents = 0;
+  let repeatedStudents = 0;
   let graduatedStudents = 0;
 
-  for (const c of classes) {
-    const graduate = formData.get(`graduate_${c.id}`) === "on";
+  /** Finds or creates the new-session class with this name, reusing one
+   * already created in this run so a promoted class and the class below it
+   * repeating into the same name share a single row. */
+  async function ensureClass(
+    name: string,
+    teacherId: string | null,
+    campusId: string | null
+  ): Promise<{ id?: string; error?: string }> {
+    const existing = targetClassIdByName.get(name);
+    if (existing) return { id: existing };
 
-    if (graduate) {
-      const { data: updated, error } = await supabase
+    const { data: newClass, error } = await supabase
+      .from("classes")
+      .insert({
+        school_id: schoolId,
+        name,
+        teacher_id: teacherId,
+        campus_id: campusId,
+        session: newSession,
+        term: "1",
+      })
+      .select("id")
+      .single();
+
+    if (error || !newClass?.id) {
+      return { error: `Could not create "${name}": ${error?.message ?? "no id returned"}` };
+    }
+
+    targetClassIdByName.set(name, newClass.id);
+    createdClasses++;
+    return { id: newClass.id };
+  }
+
+  for (const c of classes) {
+    const studentIds = studentsByClass.get(c.id) ?? [];
+    if (studentIds.length === 0) continue;
+
+    const logFor = (
+      studentId: string,
+      decision: PromotionLogRow["decision"],
+      toClassId: string | null,
+      toClassName: string | null,
+      overridden: boolean
+    ): PromotionLogRow => {
+      const a = assessments.get(studentId);
+      return {
+        school_id: schoolId,
+        student_id: studentId,
+        from_session: fromSession,
+        to_session: newSession,
+        from_class_id: c.id,
+        from_class_name: c.name,
+        to_class_id: toClassId,
+        to_class_name: toClassName,
+        decision,
+        average_score: a?.average ?? null,
+        subjects_failed: a?.subjectsCounted ? a.subjectsFailed : null,
+        subjects_counted: a?.subjectsCounted ?? null,
+        overridden,
+        decided_by: profile.id,
+      };
+    };
+
+    if (formData.get(`graduate_${c.id}`) === "on") {
+      const { error } = await supabase
         .from("students")
         .update({ status: "graduated" })
-        .eq("class_id", c.id)
-        .eq("status", "active")
-        .select("id");
+        .in("id", studentIds);
       if (error) return { error: error.message };
-      graduatedStudents += updated?.length ?? 0;
+      graduatedStudents += studentIds.length;
+      for (const id of studentIds) logs.push(logFor(id, "graduated", null, null, false));
       continue;
     }
 
     const targetName = String(formData.get(`target_${c.id}`) ?? "").trim();
     if (!targetName) continue;
 
-    let targetClassId = targetClassIdByName.get(targetName);
-    if (!targetClassId) {
-      const { data: newClass, error: classError } = await supabase
-        .from("classes")
-        .insert({
-          school_id: profile.school_id,
-          name: targetName,
-          teacher_id: c.teacher_id,
-          campus_id: c.campus_id,
-          session: newSession,
-          term: "1",
-        })
-        .select("id")
-        .single();
-
-      if (classError || !newClass) {
-        return { error: `Could not create "${targetName}": ${classError?.message ?? "unknown error"}` };
-      }
-      targetClassId = newClass.id;
-      if (!targetClassId) {
-        return { error: `Could not create "${targetName}": no id returned.` };
-      }
-      targetClassIdByName.set(targetName, targetClassId);
-      promotedClasses++;
+    const promoting: string[] = [];
+    const repeating: string[] = [];
+    for (const id of studentIds) {
+      const decision = (String(formData.get(`decision_${id}`) ?? "promote") ===
+        "repeat"
+        ? "repeat"
+        : "promote") as PromotionDecision;
+      (decision === "repeat" ? repeating : promoting).push(id);
     }
 
-    const { data: moved, error: moveError } = await supabase
-      .from("students")
-      .update({ class_id: targetClassId })
-      .eq("class_id", c.id)
-      .eq("status", "active")
-      .select("id");
+    if (promoting.length > 0) {
+      const target = await ensureClass(targetName, c.teacher_id, c.campus_id);
+      if (target.error || !target.id) return { error: target.error ?? "Could not create class." };
 
-    if (moveError) return { error: moveError.message };
-    promotedStudents += moved?.length ?? 0;
+      const { error } = await supabase
+        .from("students")
+        .update({ class_id: target.id })
+        .in("id", promoting);
+      if (error) return { error: error.message };
+
+      promotedStudents += promoting.length;
+      for (const id of promoting) {
+        logs.push(
+          logFor(id, "promoted", target.id, targetName, assessments.get(id)?.recommendation === "repeat")
+        );
+      }
+    }
+
+    if (repeating.length > 0) {
+      // A repeater stays in the same class *name*, but in the new session's
+      // row for it — otherwise they'd be left pointing at last year's class.
+      const repeatClass = await ensureClass(c.name, c.teacher_id, c.campus_id);
+      if (repeatClass.error || !repeatClass.id) {
+        return { error: repeatClass.error ?? "Could not create class." };
+      }
+
+      const { error } = await supabase
+        .from("students")
+        .update({ class_id: repeatClass.id })
+        .in("id", repeating);
+      if (error) return { error: error.message };
+
+      repeatedStudents += repeating.length;
+      for (const id of repeating) {
+        logs.push(
+          logFor(id, "repeated", repeatClass.id, c.name, assessments.get(id)?.recommendation === "promote")
+        );
+      }
+    }
+  }
+
+  if (logs.length > 0) {
+    // Best-effort: the students have already moved, so a failure to write
+    // the history shouldn't present the whole promotion as failed.
+    await supabase.from("student_promotions").insert(logs);
   }
 
   const { error: schoolError } = await supabase
     .from("schools")
     .update({ current_session: newSession, current_term: "1" })
-    .eq("id", profile.school_id ?? "");
+    .eq("id", schoolId);
 
   if (schoolError) return { error: schoolError.message };
 
@@ -122,7 +288,10 @@ export async function promoteSession(
   revalidatePath("/dashboard");
   revalidatePath("/profile");
 
-  const parts = [`Promoted ${promotedStudents} student${promotedStudents === 1 ? "" : "s"} into ${promotedClasses} class${promotedClasses === 1 ? "" : "es"}`];
+  const parts = [
+    `Promoted ${promotedStudents} student${promotedStudents === 1 ? "" : "s"} into ${createdClasses} class${createdClasses === 1 ? "" : "es"}`,
+  ];
+  if (repeatedStudents > 0) parts.push(`held ${repeatedStudents} back to repeat`);
   if (graduatedStudents > 0) parts.push(`graduated ${graduatedStudents}`);
 
   return { success: `${parts.join(", ")} for ${newSession}. That's now the active session.` };

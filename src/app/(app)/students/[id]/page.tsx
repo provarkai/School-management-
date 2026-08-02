@@ -43,6 +43,7 @@ export default async function StudentDetailPage({
     { data: fieldDefs },
     { data: fieldValues },
     { data: documentRows },
+    { data: promotions },
   ] = await Promise.all([
     student.class_id
       ? supabase.from("classes").select("name").eq("id", student.class_id).single()
@@ -74,6 +75,13 @@ export default async function StudentDetailPage({
     supabase
       .from("student_documents")
       .select("id, label, file_name, file_path, size_bytes, created_at")
+      .eq("student_id", student.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("student_promotions")
+      .select(
+        "id, from_session, to_session, from_class_name, to_class_name, decision, average_score, subjects_failed, subjects_counted, overridden"
+      )
       .eq("student_id", student.id)
       .order("created_at", { ascending: false }),
   ]);
@@ -172,6 +180,62 @@ export default async function StudentDetailPage({
           attendance={attendance ?? []}
         />
       </div>
+
+      {(promotions ?? []).length > 0 && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            Promotion history
+          </h2>
+          <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">
+            <table className="min-w-full divide-y divide-zinc-200 text-sm">
+              <thead className="bg-zinc-50">
+                <tr>
+                  <th className="px-4 py-2 text-left font-medium text-zinc-500">Session</th>
+                  <th className="px-4 py-2 text-left font-medium text-zinc-500">Outcome</th>
+                  <th className="px-4 py-2 text-left font-medium text-zinc-500">Class</th>
+                  <th className="px-4 py-2 text-right font-medium text-zinc-500">Average</th>
+                  <th className="px-4 py-2 text-right font-medium text-zinc-500">Failed</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {(promotions ?? []).map((p) => (
+                  <tr key={p.id}>
+                    <td className="px-4 py-2 whitespace-nowrap text-zinc-900">
+                      {p.from_session} → {p.to_session}
+                    </td>
+                    <td className="px-4 py-2">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
+                          p.decision === "repeated"
+                            ? "bg-amber-100 text-amber-700"
+                            : p.decision === "graduated"
+                              ? "bg-indigo-100 text-indigo-700"
+                              : "bg-emerald-100 text-emerald-700"
+                        }`}
+                      >
+                        {p.decision}
+                      </span>
+                      {p.overridden && (
+                        <span className="ml-2 text-xs text-zinc-400">overridden</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-zinc-500">
+                      {p.from_class_name}
+                      {p.to_class_name ? ` → ${p.to_class_name}` : ""}
+                    </td>
+                    <td className="px-4 py-2 text-right text-zinc-500">
+                      {p.average_score === null ? "—" : `${Number(p.average_score).toFixed(1)}%`}
+                    </td>
+                    <td className="px-4 py-2 text-right text-zinc-500">
+                      {p.subjects_counted ? `${p.subjects_failed}/${p.subjects_counted}` : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
