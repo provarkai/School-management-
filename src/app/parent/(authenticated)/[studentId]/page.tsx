@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import { CALENDAR_EVENT_TYPE_LABELS, TERM_LABELS, type Term } from "@/lib/types";
 import { PayNowButton } from "./PayNowButton";
+import { checkFeeGate } from "@/lib/feeGate";
 
 export default async function ParentChildPage({
   params,
@@ -21,7 +22,7 @@ export default async function ParentChildPage({
 
   const { data: school } = await supabase
     .from("schools")
-    .select("name, phone, current_session, current_term")
+    .select("name, phone, current_session, current_term, withhold_results_when_owing")
     .eq("id", child.school_id)
     .single();
 
@@ -122,6 +123,15 @@ export default async function ParentChildPage({
     })
   );
 
+  const gate = await checkFeeGate(
+    supabase,
+    child.school_id,
+    child.id,
+    session,
+    term,
+    school?.withhold_results_when_owing ?? false
+  );
+
   const attendanceRows = attendance ?? [];
   const present = attendanceRows.filter((a) => a.status === "present").length;
   const attendanceRate = attendanceRows.length
@@ -199,7 +209,12 @@ export default async function ParentChildPage({
 
       <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-zinc-900">Results — {TERM_LABELS[term]}</h2>
-        {(results ?? []).length === 0 ? (
+        {gate.withheld ? (
+          <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Results are held pending payment of the outstanding {naira(gate.balance)}. You can
+            clear it above, or contact the school office.
+          </p>
+        ) : (results ?? []).length === 0 ? (
           <p className="text-sm text-zinc-400">No scores entered yet.</p>
         ) : (
           <table className="w-full text-sm">

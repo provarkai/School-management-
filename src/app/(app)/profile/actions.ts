@@ -124,6 +124,32 @@ export async function updateAcademicSession(
   return { success: "Academic session updated." };
 }
 
+export async function updateFeePolicy(
+  _prevState: ProfileFormState,
+  formData: FormData
+): Promise<ProfileFormState> {
+  const { profile } = await requireProprietor();
+
+  const withhold = formData.get("withhold_results_when_owing") === "on";
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("schools")
+    .update({ withhold_results_when_owing: withhold })
+    .eq("id", profile.school_id ?? "");
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/profile");
+  return {
+    success: withhold
+      ? "Results will be held from parents who owe."
+      : "Results are visible to all parents.",
+  };
+}
+
 export async function updateQuickLinks(
   _prevState: ProfileFormState,
   formData: FormData

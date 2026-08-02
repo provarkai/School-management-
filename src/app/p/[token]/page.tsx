@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import { TERM_LABELS, type Term } from "@/lib/types";
+import { checkFeeGate } from "@/lib/feeGate";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function ParentViewPage({
 
   const { data: school } = await supabase
     .from("schools")
-    .select("name, logo_url, current_session, current_term, status")
+    .select("id, name, logo_url, current_session, current_term, status, withhold_results_when_owing")
     .eq("id", student.school_id)
     .single();
 
@@ -77,6 +78,15 @@ export default async function ParentViewPage({
           .in("exam_id", examIds)
       : { data: [] };
   const attemptByExam = new Map((attempts ?? []).map((a) => [a.exam_id, a]));
+
+  const gate = await checkFeeGate(
+    supabase,
+    student.school_id,
+    student.id,
+    session,
+    term,
+    school?.withhold_results_when_owing ?? false
+  );
 
   const attendanceRows = attendance ?? [];
   const present = attendanceRows.filter((a) => a.status === "present").length;
@@ -141,7 +151,12 @@ export default async function ParentViewPage({
 
       <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-zinc-900">Results — {TERM_LABELS[term]}</h2>
-        {(results ?? []).length === 0 ? (
+        {gate.withheld ? (
+          <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Results are held pending payment of the outstanding {naira(gate.balance)}. Please
+            contact the school office.
+          </p>
+        ) : (results ?? []).length === 0 ? (
           <p className="text-sm text-zinc-400">No scores entered yet.</p>
         ) : (
           <table className="w-full text-sm">

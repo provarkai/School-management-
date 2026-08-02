@@ -8,6 +8,7 @@ import {
   updateAcademicSession,
   updateQuickLinks,
   updateDashboardWidgets,
+  updateFeePolicy,
   type ProfileFormState,
 } from "./actions";
 import type { Term } from "@/lib/types";
@@ -115,6 +116,46 @@ export function AcademicSessionForm({ session, term }: { session: string; term: 
           <option value="2">2nd Term</option>
           <option value="3">3rd Term</option>
         </select>
+      </label>
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:opacity-50"
+      >
+        {pending ? "Saving…" : "Save"}
+      </button>
+    </form>
+  );
+}
+
+export function FeePolicyForm({ withhold }: { withhold: boolean }) {
+  const [state, action, pending] = useActionState(updateFeePolicy, initialState);
+
+  return (
+    <form action={action} className="space-y-4">
+      {state.error && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
+      )}
+      {state.success && (
+        <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          {state.success}
+        </p>
+      )}
+      <label className="flex items-start gap-3 text-sm text-zinc-700">
+        <input
+          type="checkbox"
+          name="withhold_results_when_owing"
+          defaultChecked={withhold}
+          className="mt-0.5 rounded border-zinc-300"
+        />
+        <span>
+          Hold results from parents who owe
+          <span className="mt-1 block text-xs font-normal text-zinc-400">
+            When a parent has an outstanding balance for the current term, the parent portal
+            and the shared student link show the amount owed instead of the scores. Your own
+            pages and printed report cards are never affected.
+          </span>
+        </span>
       </label>
       <button
         type="submit"

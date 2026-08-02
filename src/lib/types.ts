@@ -22,6 +22,7 @@ export interface School {
   current_term: Term;
   status: SchoolStatus;
   quick_links: string[];
+  withhold_results_when_owing: boolean;
   created_at: string;
 }
 

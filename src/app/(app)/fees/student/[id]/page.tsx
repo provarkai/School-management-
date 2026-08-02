@@ -171,6 +171,7 @@ export default async function StudentFeePage({
                 <th className="px-4 py-2 text-right font-medium text-zinc-500">Amount</th>
                 <th className="px-4 py-2 text-left font-medium text-zinc-500">Method</th>
                 <th className="px-4 py-2 text-left font-medium text-zinc-500">Reference</th>
+                <th className="px-4 py-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
@@ -183,11 +184,21 @@ export default async function StudentFeePage({
                   <td className="px-4 py-2 text-right text-zinc-900">{naira(Number(p.amount))}</td>
                   <td className="px-4 py-2 capitalize text-zinc-500">{p.method}</td>
                   <td className="px-4 py-2 text-zinc-500">{p.reference_number ?? "—"}</td>
+                  <td className="px-4 py-2 text-right">
+                    <a
+                      href={`/fees/receipt/${p.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-medium text-zinc-600 hover:text-zinc-900"
+                    >
+                      Receipt
+                    </a>
+                  </td>
                 </tr>
               ))}
               {(payments ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-zinc-400">
+                  <td colSpan={6} className="px-4 py-6 text-center text-zinc-400">
                     No payments recorded yet.
                   </td>
                 </tr>

@@ -7,6 +7,7 @@ import {
   AcademicSessionForm,
   QuickLinksForm,
   DashboardWidgetsForm,
+  FeePolicyForm,
 } from "./ProfileForms";
 import { DEFAULT_QUICK_LINKS } from "@/lib/quickLinks";
 import { SchoolLogoUploader } from "./SchoolLogoUploader";
@@ -70,6 +71,11 @@ export default async function SettingsPage({
               and results all default to whatever is set here.
             </p>
             <AcademicSessionForm session={school.current_session} term={school.current_term} />
+          </section>
+
+          <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-zinc-900">Fee policy</h3>
+            <FeePolicyForm withhold={school.withhold_results_when_owing ?? false} />
           </section>
 
           <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
