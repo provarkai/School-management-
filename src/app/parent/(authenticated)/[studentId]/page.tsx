@@ -37,6 +37,7 @@ export default async function ParentChildPage({
     { data: events },
     { data: assignments },
     { data: resourceRows },
+    { data: topicRows },
   ] = await Promise.all([
     supabase
       .from("fee_summary")
@@ -80,7 +81,36 @@ export default async function ParentChildPage({
           .order("created_at", { ascending: false })
           .limit(10)
       : Promise.resolve({ data: [] }),
+    supabase
+      .from("syllabus_topics")
+      .select("id, subject")
+      .eq("school_id", child.school_id)
+      .eq("session", session)
+      .eq("term", term),
   ]);
+
+  let curriculumProgress: { subject: string; completed: number; total: number }[] = [];
+  if (child.class_id && (topicRows ?? []).length > 0) {
+    const topicIds = (topicRows ?? []).map((t) => t.id);
+    const { data: progressRows } = await supabase
+      .from("class_topic_progress")
+      .select("topic_id, status")
+      .eq("class_id", child.class_id)
+      .in("topic_id", topicIds);
+
+    const completedTopicIds = new Set(
+      (progressRows ?? []).filter((p) => p.status === "completed").map((p) => p.topic_id)
+    );
+
+    const bySubject = new Map<string, { completed: number; total: number }>();
+    for (const t of topicRows ?? []) {
+      const bucket = bySubject.get(t.subject) ?? { completed: 0, total: 0 };
+      bucket.total++;
+      if (completedTopicIds.has(t.id)) bucket.completed++;
+      bySubject.set(t.subject, bucket);
+    }
+    curriculumProgress = Array.from(bySubject.entries()).map(([subject, v]) => ({ subject, ...v }));
+  }
 
   const resources = await Promise.all(
     (resourceRows ?? []).map(async (r) => {
@@ -207,6 +237,30 @@ export default async function ParentChildPage({
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {curriculumProgress.length > 0 && (
+        <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold text-zinc-900">Curriculum progress</h2>
+          <div className="space-y-3">
+            {curriculumProgress.map((c) => {
+              const percent = Math.round((c.completed / c.total) * 100);
+              return (
+                <div key={c.subject}>
+                  <div className="mb-1 flex items-center justify-between text-sm">
+                    <span className="text-zinc-900">{c.subject}</span>
+                    <span className="text-xs text-zinc-400">
+                      {c.completed}/{c.total} topics
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-zinc-100">
+                    <div className="h-full rounded-full bg-emerald-600" style={{ width: `${percent}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </section>
       )}
 
