@@ -170,8 +170,14 @@ update public.app_users set school_id = (select id from tmp_school), role = 'sta
 where id = (select auth_id from tmp_people where label = 'staff.bursar');
 update public.app_users set school_id = (select id from tmp_school), role = 'staff', phone = '+2348012230002', gender = 'female', job_title = 'Admissions Officer'
 where id = (select auth_id from tmp_people where label = 'staff.admissions');
+-- protect_school_admin_flag() (0030_school_admin.sql) requires auth.uid()
+-- to resolve to a proprietor before allowing an is_school_admin change —
+-- there's no authenticated session running this script, so it's disabled
+-- for just this one update and re-enabled immediately after.
+alter table public.app_users disable trigger protect_school_admin_flag;
 update public.app_users set school_id = (select id from tmp_school), role = 'staff', phone = '+2348012230003', gender = 'female', job_title = 'Vice Principal', is_school_admin = true
 where id = (select auth_id from tmp_people where label = 'staff.viceprincipal');
+alter table public.app_users enable trigger protect_school_admin_flag;
 update public.app_users set school_id = (select id from tmp_school), role = 'staff', phone = '+2348012230004', gender = 'female', job_title = 'Hostel Matron'
 where id = (select auth_id from tmp_people where label = 'staff.matron');
 
