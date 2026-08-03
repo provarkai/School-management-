@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireProprietor, requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { nextAdmissionNumber } from "@/lib/admissionNumber";
 import type { BehaviorCategory, BehaviorSeverity } from "@/lib/types";
 
 export interface StudentFormState {
@@ -142,7 +143,10 @@ export async function createStudent(
   const parentPhone = String(formData.get("parent_phone") ?? "").trim() || null;
   const parentEmail = String(formData.get("parent_email") ?? "").trim().toLowerCase() || null;
   const admissionDate = String(formData.get("admission_date") ?? "") || undefined;
-  const admissionNumber = String(formData.get("admission_number") ?? "").trim() || null;
+  // The registration form has no admission-number field — it's assigned
+  // automatically below — but an explicit value is still honoured if one
+  // is ever passed in, the same as the bulk importer.
+  const providedAdmissionNumber = String(formData.get("admission_number") ?? "").trim() || null;
   const gender = String(formData.get("gender") ?? "").trim() || null;
   const address = String(formData.get("address") ?? "").trim() || null;
 
@@ -154,6 +158,9 @@ export async function createStudent(
   }
 
   const supabase = await createClient();
+  const admissionNumber =
+    providedAdmissionNumber ?? (await nextAdmissionNumber(supabase, profile.school_id ?? ""));
+
   const { data: student, error } = await supabase
     .from("students")
     .insert({
@@ -247,6 +254,7 @@ export interface ImportRow {
   parent_phone?: string;
   parent_email?: string;
   admission_date?: string;
+  admission_number?: string;
 }
 
 export interface ImportResult {
@@ -271,11 +279,15 @@ export async function bulkImportStudents(rows: ImportRow[]): Promise<ImportResul
   const toInsert: Record<string, unknown>[] = [];
   const skipped: { row: number; reason: string }[] = [];
 
-  rows.forEach((row, index) => {
+  // A plain for-of rather than .forEach so a row missing an admission
+  // number can await one from the database before the row is queued —
+  // an external system's own numbering is respected when the column is
+  // present, and a fresh one is claimed only for rows that don't have it.
+  for (const [index, row] of rows.entries()) {
     const fullName = row.full_name?.trim();
     if (!fullName) {
       skipped.push({ row: index + 2, reason: "Missing full_name" });
-      return;
+      continue;
     }
 
     let classId: string | null = null;
@@ -283,9 +295,12 @@ export async function bulkImportStudents(rows: ImportRow[]): Promise<ImportResul
       classId = classByName.get(row.class_name.trim().toLowerCase()) ?? null;
       if (!classId) {
         skipped.push({ row: index + 2, reason: `Unknown class "${row.class_name}"` });
-        return;
+        continue;
       }
     }
+
+    const admissionNumber =
+      row.admission_number?.trim() || (await nextAdmissionNumber(supabase, profile.school_id ?? ""));
 
     toInsert.push({
       school_id: profile.school_id,
@@ -295,9 +310,10 @@ export async function bulkImportStudents(rows: ImportRow[]): Promise<ImportResul
       parent_name: row.parent_name?.trim() || null,
       parent_phone: row.parent_phone?.trim() || null,
       parent_email: row.parent_email?.trim().toLowerCase() || null,
+      admission_number: admissionNumber,
       ...(row.admission_date ? { admission_date: row.admission_date } : {}),
     });
-  });
+  }
 
   if (toInsert.length === 0) {
     return { error: "No valid rows to import.", skipped };

@@ -44,7 +44,8 @@ export function ImportForm() {
         />
         <p className="mt-3 text-xs text-zinc-400">
           Columns: full_name (required), class_name, date_of_birth (YYYY-MM-DD), parent_name,
-          parent_phone, parent_email, admission_date (YYYY-MM-DD)
+          parent_phone, parent_email, admission_date (YYYY-MM-DD), admission_number (leave blank
+          to auto-generate one)
         </p>
       </div>
 

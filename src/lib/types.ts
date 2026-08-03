@@ -26,6 +26,7 @@ export interface School {
   promotion_min_average: number;
   promotion_subject_pass_mark: number;
   promotion_max_failed_subjects: number;
+  admission_prefix: string;
   created_at: string;
 }
 

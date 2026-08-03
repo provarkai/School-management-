@@ -166,6 +166,36 @@ export async function updateFeePolicy(
   };
 }
 
+export async function updateAdmissionPrefix(
+  _prevState: ProfileFormState,
+  formData: FormData
+): Promise<ProfileFormState> {
+  const { profile } = await requireProprietor();
+
+  const prefix = String(formData.get("admission_prefix") ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (!/^[A-Z0-9]{2,8}$/.test(prefix)) {
+    return { error: "Enter 2–8 letters or numbers, e.g. OSS." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("schools")
+    .update({ admission_prefix: prefix })
+    .eq("id", profile.school_id ?? "");
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/profile");
+  return {
+    success: `New admission numbers will now read ${prefix}-0001 and up. Numbers already given out don't change.`,
+  };
+}
+
 export async function updateQuickLinks(
   _prevState: ProfileFormState,
   formData: FormData

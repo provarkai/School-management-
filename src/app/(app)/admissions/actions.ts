@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { nextAdmissionNumber } from "@/lib/admissionNumber";
 
 export interface ProspectFormState {
   error?: string;
@@ -117,6 +118,8 @@ export async function convertProspectToStudent(
     return { error: "Already converted to a student." };
   }
 
+  const admissionNumber = await nextAdmissionNumber(supabase, profile.school_id ?? "");
+
   const { data: student, error: studentError } = await supabase
     .from("students")
     .insert({
@@ -127,6 +130,7 @@ export async function convertProspectToStudent(
       parent_name: prospect.parent_name,
       parent_phone: prospect.parent_phone,
       parent_email: prospect.parent_email,
+      admission_number: admissionNumber,
     })
     .select("id")
     .single();

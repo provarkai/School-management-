@@ -9,6 +9,7 @@ import {
   updateQuickLinks,
   updateDashboardWidgets,
   updateFeePolicy,
+  updateAdmissionPrefix,
   type ProfileFormState,
 } from "./actions";
 import type { Term } from "@/lib/types";
@@ -116,6 +117,45 @@ export function AcademicSessionForm({ session, term }: { session: string; term: 
           <option value="2">2nd Term</option>
           <option value="3">3rd Term</option>
         </select>
+      </label>
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:opacity-50"
+      >
+        {pending ? "Saving…" : "Save"}
+      </button>
+    </form>
+  );
+}
+
+export function AdmissionPrefixForm({ prefix }: { prefix: string }) {
+  const [state, action, pending] = useActionState(updateAdmissionPrefix, initialState);
+
+  return (
+    <form action={action} className="max-w-sm space-y-4">
+      {state.error && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
+      )}
+      {state.success && (
+        <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          {state.success}
+        </p>
+      )}
+      <label className="block text-sm font-medium text-zinc-700">
+        Admission number prefix
+        <input
+          name="admission_prefix"
+          defaultValue={prefix}
+          required
+          maxLength={8}
+          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 font-mono text-sm uppercase shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+        />
+        <span className="mt-1 block text-xs font-normal text-zinc-400">
+          Every new student gets {prefix}-0001, {prefix}-0002 and so on, automatically, in order
+          of admission — assigned once and never changed. Editing this only affects numbers
+          issued from now on.
+        </span>
       </label>
       <button
         type="submit"
