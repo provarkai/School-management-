@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { safeFilename } from "./csv";
 
 export interface XlsxSchoolInfo {
   name: string;
@@ -45,7 +46,7 @@ export function xlsxResponse(buffer: Buffer, filename: string): Response {
   return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `attachment; filename="${safeFilename(filename)}"`,
     },
   });
 }
@@ -59,7 +60,7 @@ export function jsonResponse(
   return new Response(JSON.stringify(body, null, 2), {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `attachment; filename="${safeFilename(filename)}"`,
     },
   });
 }

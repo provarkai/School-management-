@@ -6,6 +6,7 @@ import { getReportCardExtras } from "@/lib/reportCardData";
 import { computeClassRanking } from "@/lib/ranking";
 import { proprietorTitle } from "@/lib/format";
 import type { Term } from "@/lib/types";
+import { safeFilename } from "@/lib/csv";
 
 export async function GET(
   _request: Request,
@@ -89,7 +90,7 @@ export async function GET(
   return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${student.full_name.replace(/\s+/g, "_")}_report_card.pdf"`,
+      "Content-Disposition": `inline; filename="${safeFilename(`${student.full_name}_report_card.pdf`)}"`,
     },
   });
 }

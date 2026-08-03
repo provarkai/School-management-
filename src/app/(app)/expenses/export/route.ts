@@ -1,10 +1,10 @@
-import { requireProprietor } from "@/lib/current-user";
+import { requirePermission } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { parseExportFormat, exportRows } from "@/lib/export";
 import { fetchExpensesExportRows, EXPENSES_EXPORT_COLUMNS } from "@/lib/expensesExport";
 
 export async function GET(request: Request) {
-  const { profile, school } = await requireProprietor();
+  const { profile, school } = await requirePermission("expenses");
   const supabase = await createClient();
 
   const { searchParams } = new URL(request.url);

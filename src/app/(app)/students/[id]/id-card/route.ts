@@ -3,6 +3,7 @@ import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { IdCardSheetDocument, type IdCardData } from "@/lib/pdf/IdCardDocument";
 import type { Term } from "@/lib/types";
+import { safeFilename } from "@/lib/csv";
 
 /** Single-card reprint — a lost or damaged card doesn't need the whole
  * class run again. Renders through the same sheet document as one card on
@@ -60,7 +61,7 @@ export async function GET(
   return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="id-card-${student.full_name.replace(/\s+/g, "-")}.pdf"`,
+      "Content-Disposition": `inline; filename="${safeFilename(`id-card-${student.full_name}.pdf`)}"`,
     },
   });
 }

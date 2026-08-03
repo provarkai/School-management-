@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { withAuthTimeout } from "@/lib/withAuthTimeout";
+import { siteOrigin } from "@/lib/siteUrl";
 
 export interface AuthActionState {
   error?: string;
@@ -61,7 +62,13 @@ export async function parentSignUp(
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name, phone, account_type: "parent" } },
+    options: {
+      data: { name, phone, account_type: "parent" },
+      // Without this the confirmation link falls back to the Supabase
+      // project's Site URL, which points at the staff app — a parent
+      // confirming their email landed on the staff login.
+      emailRedirectTo: `${await siteOrigin()}/auth/confirm`,
+    },
   });
 
   if (error) {

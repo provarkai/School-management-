@@ -3,6 +3,7 @@ import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { ResultCheckerCardsDocument } from "@/lib/pdf/ResultCheckerCardsDocument";
 import type { Term } from "@/lib/types";
+import { safeFilename } from "@/lib/csv";
 
 export async function GET(
   request: Request,
@@ -54,7 +55,7 @@ export async function GET(
   return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="result-checker-pins-${batch.session.replace("/", "-")}-T${batch.term}.pdf"`,
+      "Content-Disposition": `inline; filename="${safeFilename(`result-checker-pins-${batch.session}-T${batch.term}.pdf`)}"`,
     },
   });
 }

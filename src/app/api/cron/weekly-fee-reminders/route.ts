@@ -1,5 +1,6 @@
 import { fetchAllRows, fetchAllRowsByIds } from "@/lib/fetchAll";
 import { createAdminClient } from "@/lib/supabase/server";
+import { cronUnauthorizedResponse, isAuthorizedCronRequest } from "@/lib/cronAuth";
 import { feeReminderTemplate } from "@/lib/termii";
 import { sendAndLogMessage } from "@/lib/messageLog";
 import { naira } from "@/lib/format";
@@ -14,9 +15,8 @@ export const maxDuration = 60;
  * ("Automate later (Phase 2)").
  */
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return new Response("Unauthorized", { status: 401 });
+  if (!isAuthorizedCronRequest(request)) {
+    return cronUnauthorizedResponse();
   }
 
   const supabase = createAdminClient();

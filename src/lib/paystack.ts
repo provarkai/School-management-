@@ -17,6 +17,27 @@ export function isMockMode(): boolean {
   return !process.env.PAYSTACK_SECRET_KEY;
 }
 
+/**
+ * Mock mode simulates an *instant successful payment*: a parent taps "Pay
+ * now", is bounced straight to /pay/callback, and the fee is marked paid
+ * without a naira moving. That is exactly right for testing and a live
+ * demo, and exactly wrong for a school that has gone live and simply
+ * forgot to set PAYSTACK_SECRET_KEY — the failure is silent and it writes
+ * false payment records into the books.
+ *
+ * So in a production deployment, refuse to start a payment at all rather
+ * than fake one. Set ALLOW_MOCK_PAYMENTS=1 to keep the simulated flow in
+ * production anyway (a demo deployment on purpose, not by accident).
+ */
+export function isMockPaymentBlocked(): boolean {
+  if (!isMockMode()) return false;
+  if (process.env.ALLOW_MOCK_PAYMENTS === "1") return false;
+  return process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+}
+
+export const MOCK_PAYMENTS_BLOCKED_MESSAGE =
+  "Online payments aren't set up for this school yet. Ask whoever manages the app to add a Paystack secret key.";
+
 export function generateReference(prefix = "schfee"): string {
   return `${prefix}_${randomBytes(12).toString("hex")}`;
 }
@@ -81,6 +102,12 @@ export interface VerifyResult {
 }
 
 export async function verifyTransaction(reference: string): Promise<VerifyResult> {
+  if (isMockPaymentBlocked()) {
+    // /pay/callback is a public page, so an unconditional mock "success"
+    // here is a way to confirm any pending reference without paying.
+    return { ok: false, mocked: true, success: false, error: MOCK_PAYMENTS_BLOCKED_MESSAGE };
+  }
+
   if (isMockMode()) {
     return { ok: true, mocked: true, success: true };
   }

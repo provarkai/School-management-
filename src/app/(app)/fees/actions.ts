@@ -1,6 +1,5 @@
 "use server";
 
-import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/current-user";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
@@ -10,6 +9,7 @@ import { createPaymentIntent } from "@/lib/payments";
 import { naira } from "@/lib/format";
 import { TERM_LABELS, type Term } from "@/lib/types";
 import { logActivity } from "@/lib/activityLog";
+import { siteOrigin } from "@/lib/siteUrl";
 
 export interface FeeActionState {
   error?: string;
@@ -383,10 +383,7 @@ async function buildPaymentLink(params: {
   email: string | null;
   initiatedBy: string;
 }): Promise<string | null> {
-  const headerList = await headers();
-  const host = headerList.get("host");
-  if (!host) return null;
-  const protocol = host.startsWith("localhost") ? "http" : "https";
+  const origin = await siteOrigin();
 
   const admin = createAdminClient();
   const result = await createPaymentIntent(admin, {
@@ -395,7 +392,7 @@ async function buildPaymentLink(params: {
     studentId: params.studentId,
     amountNaira: params.amountNaira,
     email: params.email ?? `parent+${params.studentId}@noemail.example`,
-    callbackUrl: `${protocol}://${host}/pay/callback?student=${params.studentId}`,
+    callbackUrl: `${origin}/pay/callback?student=${params.studentId}`,
     initiatedBy: params.initiatedBy,
   });
 
@@ -440,9 +437,7 @@ export async function generatePaymentLink(
     return { error: "No outstanding balance for this fee type." };
   }
 
-  const headerList = await headers();
-  const host = headerList.get("host");
-  const protocol = host?.startsWith("localhost") ? "http" : "https";
+  const origin = await siteOrigin();
 
   const admin = createAdminClient();
   const result = await createPaymentIntent(admin, {
@@ -451,7 +446,7 @@ export async function generatePaymentLink(
     studentId,
     amountNaira: balance,
     email: student?.parent_email ?? `parent+${studentId}@noemail.example`,
-    callbackUrl: `${protocol}://${host}/pay/callback?student=${studentId}`,
+    callbackUrl: `${origin}/pay/callback?student=${studentId}`,
     initiatedBy: profile.id,
   });
 

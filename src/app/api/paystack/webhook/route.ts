@@ -24,8 +24,13 @@ export async function POST(request: Request) {
       return Response.json({ error: "Missing reference" }, { status: 400 });
     }
 
+    // Paystack reports amounts in kobo; the signature above is what makes
+    // this figure trustworthy enough to credit against a fee record.
+    const koboAmount = Number(event.data?.amount);
+    const settledAmountNaira = Number.isFinite(koboAmount) && koboAmount > 0 ? koboAmount / 100 : undefined;
+
     const admin = createAdminClient();
-    const result = await markPaymentIntentSuccess(admin, reference);
+    const result = await markPaymentIntentSuccess(admin, reference, settledAmountNaira);
 
     if (!result.ok) {
       return Response.json({ error: result.error }, { status: 500 });

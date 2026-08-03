@@ -1,10 +1,10 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireParent } from "@/lib/current-parent";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { createPaymentIntent } from "@/lib/payments";
+import { siteOrigin } from "@/lib/siteUrl";
 
 export interface PayFeesState {
   error?: string;
@@ -45,10 +45,7 @@ export async function payFees(
     return { error: "There's no outstanding balance to pay." };
   }
 
-  const headerList = await headers();
-  const host = headerList.get("host");
-  const protocol = host?.startsWith("localhost") ? "http" : "https";
-  const callbackUrl = `${protocol}://${host}/pay/callback?student=${studentId}`;
+  const callbackUrl = `${await siteOrigin()}/pay/callback?student=${studentId}`;
 
   const admin = createAdminClient();
   const result = await createPaymentIntent(admin, {

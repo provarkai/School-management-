@@ -1,5 +1,6 @@
 import { gzipSync } from "node:zlib";
 import { createAdminClient } from "@/lib/supabase/server";
+import { cronUnauthorizedResponse, isAuthorizedCronRequest } from "@/lib/cronAuth";
 import { buildSchoolSnapshot } from "@/lib/backup";
 import { s3ConfigFromEnv, s3PutObject } from "@/lib/s3";
 
@@ -24,9 +25,8 @@ export const maxDuration = 300;
  * Postgres and aren't in the snapshot.
  */
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return new Response("Unauthorized", { status: 401 });
+  if (!isAuthorizedCronRequest(request)) {
+    return cronUnauthorizedResponse();
   }
 
   const config = s3ConfigFromEnv();

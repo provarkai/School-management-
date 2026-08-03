@@ -2,6 +2,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { TransferCertificateDocument } from "@/lib/pdf/TransferCertificateDocument";
+import { safeFilename } from "@/lib/csv";
 
 export async function GET(
   _request: Request,
@@ -68,7 +69,7 @@ export async function GET(
   return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${certificateNumber}.pdf"`,
+      "Content-Disposition": `inline; filename="${safeFilename(`${certificateNumber}.pdf`)}"`,
     },
   });
 }

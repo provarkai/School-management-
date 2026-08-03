@@ -3,6 +3,7 @@ import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { IdCardSheetDocument, type IdCardData } from "@/lib/pdf/IdCardDocument";
 import type { Term } from "@/lib/types";
+import { safeFilename } from "@/lib/csv";
 
 export async function GET(
   _request: Request,
@@ -58,7 +59,7 @@ export async function GET(
   return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="id-cards-${klass.name}.pdf"`,
+      "Content-Disposition": `inline; filename="${safeFilename(`id-cards-${klass.name}.pdf`)}"`,
     },
   });
 }

@@ -1,12 +1,13 @@
 import { renderToBuffer } from "@react-pdf/renderer";
-import { requireProprietor } from "@/lib/current-user";
+import { requirePermission } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { fetchFeesExportRows, FEES_EXPORT_COLUMNS } from "@/lib/feesExport";
 import { ReportTableDocument } from "@/lib/pdf/ReportTableDocument";
 import { naira } from "@/lib/format";
+import { safeFilename } from "@/lib/csv";
 
 export async function GET(request: Request) {
-  const { profile, school } = await requireProprietor();
+  const { profile, school } = await requirePermission("fees");
   const supabase = await createClient();
 
   const { searchParams } = new URL(request.url);
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
   return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="fees-${session.replace("/", "-")}-term${term}.pdf"`,
+      "Content-Disposition": `attachment; filename="${safeFilename(`fees-${session}-term${term}.pdf`)}"`,
     },
   });
 }

@@ -40,7 +40,7 @@ export default async function PaymentCallbackPage({
   }
 
   const admin = createAdminClient();
-  const result = await markPaymentIntentSuccess(admin, reference);
+  const result = await markPaymentIntentSuccess(admin, reference, verified.amountNaira);
 
   if (!result.ok) {
     return (

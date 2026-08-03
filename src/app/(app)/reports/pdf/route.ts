@@ -3,6 +3,7 @@ import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { getReportSource, fetchReportRows, type ReportFilters } from "@/lib/reports";
 import { ReportTableDocument } from "@/lib/pdf/ReportTableDocument";
+import { safeFilename } from "@/lib/csv";
 
 export async function GET(request: Request) {
   const { profile, school } = await requireProprietor();
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
   return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="report_${source.key}.pdf"`,
+      "Content-Disposition": `attachment; filename="${safeFilename(`report_${source.key}.pdf`)}"`,
     },
   });
 }

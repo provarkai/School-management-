@@ -1,15 +1,16 @@
 import { renderToBuffer } from "@react-pdf/renderer";
-import { requireProprietor } from "@/lib/current-user";
+import { requirePermission } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { InvoiceDocument } from "@/lib/pdf/InvoiceDocument";
 import type { Term } from "@/lib/types";
+import { safeFilename } from "@/lib/csv";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ studentId: string }> }
 ) {
   const { studentId } = await params;
-  const { profile, school } = await requireProprietor();
+  const { profile, school } = await requirePermission("fees");
   const supabase = await createClient();
 
   const { data: student } = await supabase
@@ -62,7 +63,7 @@ export async function GET(
   return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${student.full_name.replace(/\s+/g, "_")}_invoice.pdf"`,
+      "Content-Disposition": `inline; filename="${safeFilename(`${student.full_name}_invoice.pdf`)}"`,
     },
   });
 }

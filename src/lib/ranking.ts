@@ -47,9 +47,21 @@ export async function computeClassRanking(
 
   averages.sort((a, b) => b.average - a.average);
 
+  // Equal averages share a position, and the next student takes the place
+  // their combined count reaches ("standard competition ranking": 1, 2, 2,
+  // 4). Ranking purely by array index instead would hand two children with
+  // identical averages a 1st and a 2nd on their printed report cards,
+  // decided by nothing more than the order Postgres returned the rows —
+  // which is the sort of thing a parent brings back to the school.
   const ranking = new Map<string, RankingEntry>();
+  let lastAverage: number | null = null;
+  let lastPosition = 0;
+
   averages.forEach((entry, index) => {
-    ranking.set(entry.studentId, { position: index + 1, outOf: averages.length });
+    const position = lastAverage !== null && entry.average === lastAverage ? lastPosition : index + 1;
+    ranking.set(entry.studentId, { position, outOf: averages.length });
+    lastAverage = entry.average;
+    lastPosition = position;
   });
 
   return ranking;

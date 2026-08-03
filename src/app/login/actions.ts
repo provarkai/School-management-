@@ -1,15 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { withAuthTimeout } from "@/lib/withAuthTimeout";
-
-async function siteOrigin(): Promise<string> {
-  const host = (await headers()).get("host") ?? "localhost:3000";
-  const protocol = host.startsWith("localhost") ? "http" : "https";
-  return `${protocol}://${host}`;
-}
+import { siteOrigin } from "@/lib/siteUrl";
 
 // Supabase's auth API sometimes returns an error response with no
 // recognizable message field (e.g. when the underlying SMTP send fails

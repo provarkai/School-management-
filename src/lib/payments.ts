@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { generateReference, initializeTransaction } from "./paystack";
+import {
+  MOCK_PAYMENTS_BLOCKED_MESSAGE,
+  generateReference,
+  initializeTransaction,
+  isMockPaymentBlocked,
+} from "./paystack";
 
 export interface CreatePaymentIntentParams {
   schoolId: string;
@@ -29,6 +34,10 @@ export async function createPaymentIntent(
   admin: SupabaseClient,
   params: CreatePaymentIntentParams
 ): Promise<CreatePaymentIntentResult> {
+  if (isMockPaymentBlocked()) {
+    return { ok: false, mocked: true, error: MOCK_PAYMENTS_BLOCKED_MESSAGE };
+  }
+
   const reference = generateReference();
 
   const init = await initializeTransaction({
@@ -72,7 +81,11 @@ export interface MarkPaymentSuccessResult {
  */
 export async function markPaymentIntentSuccess(
   admin: SupabaseClient,
-  reference: string
+  reference: string,
+  /** The amount Paystack confirmed was actually charged, when the caller
+   * has verified it. Falls back to the intent's amount when absent (the
+   * webhook path, where the event body is the only source). */
+  settledAmountNaira?: number
 ): Promise<MarkPaymentSuccessResult> {
   const { data: intent } = await admin
     .from("payment_intents")
@@ -88,12 +101,21 @@ export async function markPaymentIntentSuccess(
     return { ok: true, alreadyProcessed: true };
   }
 
+  // Credit what was actually paid, not what we asked for. Paystack can
+  // settle a charge for less than the requested amount (partial payment on
+  // some channels), and crediting the requested figure would mark a fee
+  // cleared that the school was never paid in full for.
+  const amount =
+    typeof settledAmountNaira === "number" && Number.isFinite(settledAmountNaira) && settledAmountNaira > 0
+      ? settledAmountNaira
+      : Number(intent.amount);
+
   const { data: payment, error: paymentError } = await admin
     .from("fee_payments")
     .insert({
       school_id: intent.school_id,
       fee_record_id: intent.fee_record_id,
-      amount: intent.amount,
+      amount,
       method: "paystack",
       reference_number: reference,
     })

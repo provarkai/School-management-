@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { requireProprietor } from "@/lib/current-user";
+import { requirePermission } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import {
@@ -16,7 +16,7 @@ export default async function StudentFeePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { profile, school } = await requireProprietor();
+  const { profile, school } = await requirePermission("fees");
   const supabase = await createClient();
 
   const { data: student } = await supabase
