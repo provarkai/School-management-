@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { withAuthTimeout } from "@/lib/withAuthTimeout";
-import type { AppUser, School } from "@/lib/types";
+import type { AppUser, School, StaffPermission } from "@/lib/types";
 
 export interface CurrentUser {
   authId: string;
@@ -85,5 +85,30 @@ export async function requireLiteralProprietor(): Promise<CurrentUser> {
   if (current.profile.role !== "proprietor") {
     redirect("/dashboard");
   }
+  return current;
+}
+
+/** Allows a manager (same as requireProprietor), OR a plain staff member
+ * who has been individually granted this one module — e.g. a bursar
+ * granted "fees" can use the Fees pages without becoming a full delegated
+ * admin. Redirects to /dashboard for anyone else, same as requireProprietor. */
+export async function requirePermission(permission: StaffPermission): Promise<CurrentUser> {
+  const current = await requireUser();
+  if (current.isManager) {
+    return current;
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("staff_permissions")
+    .select("id")
+    .eq("staff_id", current.authId)
+    .eq("permission", permission)
+    .maybeSingle();
+
+  if (!data) {
+    redirect("/dashboard");
+  }
+
   return current;
 }

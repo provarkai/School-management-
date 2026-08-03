@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { Role } from "@/lib/types";
+import type { Role, StaffPermission } from "@/lib/types";
 import {
   PINNED_TOP,
   getVisibleGroups,
@@ -16,18 +16,26 @@ import {
   type GroupStyle,
 } from "./navConfig";
 
-export function NavLinks({ role, isManager }: { role: Role; isManager: boolean }) {
+export function NavLinks({
+  role,
+  isManager,
+  permissions = new Set(),
+}: {
+  role: Role;
+  isManager: boolean;
+  permissions?: ReadonlySet<StaffPermission>;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [openGroup, setOpenGroup] = useState<string | null>(null);
 
-  const visibleGroups = getVisibleGroups(role, isManager);
-  const pinnedBottom = getPinnedBottom(role, isManager);
+  const visibleGroups = getVisibleGroups(role, isManager, permissions);
+  const pinnedBottom = getPinnedBottom(role, isManager, permissions);
 
   const activeGroupId = visibleGroups.find((g) => g.items.some((item) => isActive(pathname, item.href)))?.id ?? null;
   const effectiveOpenGroup = openGroup !== null ? openGroup : activeGroupId;
 
-  const pinnedTop = PINNED_TOP.filter((item) => isVisible(item, role, isManager));
+  const pinnedTop = PINNED_TOP.filter((item) => isVisible(item, role, isManager, permissions));
   const allItems = [...pinnedTop, ...visibleGroups.flatMap((g) => g.items), ...pinnedBottom];
   const current = allItems.find((item) => isActive(pathname, item.href));
   const activeGroup = visibleGroups.find((g) => g.id === activeGroupId);

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { fetchAllRows } from "@/lib/fetchAll";
-import { requireProprietor } from "@/lib/current-user";
+import { requirePermission } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import { ExportLinks } from "@/components/ExportLinks";
@@ -14,7 +14,7 @@ export default async function ExpensesPage({
 }: {
   searchParams: Promise<{ category?: string; campus?: string }>;
 }) {
-  const { profile, school } = await requireProprietor();
+  const { profile, school } = await requirePermission("expenses");
   const { category: categoryFilter, campus: campusFilter } = await searchParams;
   const supabase = await createClient();
 

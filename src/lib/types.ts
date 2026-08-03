@@ -24,6 +24,12 @@ export type MessageStatus = "sent" | "failed" | "mocked";
 export type ThreadRecipientKind = "office" | "teacher";
 export type ThreadStatus = "open" | "closed";
 
+/** Modules a proprietor can delegate to a specific non-admin staff member,
+ * independent of is_school_admin (which grants every manager capability
+ * including payroll). Payroll/salary is deliberately not in this list — see
+ * 0062_staff_permissions.sql. */
+export type StaffPermission = "fees" | "expenses" | "admissions";
+
 export type SchoolStatus = "active" | "suspended";
 
 export interface School {
@@ -109,6 +115,12 @@ export const MESSAGE_PURPOSE_LABELS: Record<MessagePurpose, string> = {
   fee_reminder: "Fee reminder",
   staff_notice: "Staff notice",
   broadcast: "Broadcast",
+};
+
+export const STAFF_PERMISSION_LABELS: Record<StaffPermission, string> = {
+  fees: "Fees",
+  expenses: "Expenses",
+  admissions: "Admissions",
 };
 
 export const WEEKDAY_LABELS: Record<number, string> = {

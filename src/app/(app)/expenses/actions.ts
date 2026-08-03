@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireProprietor } from "@/lib/current-user";
+import { requirePermission } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 
 export interface CategoryFormState {
@@ -12,7 +12,7 @@ export async function createExpenseCategory(
   _prevState: CategoryFormState,
   formData: FormData
 ): Promise<CategoryFormState> {
-  const { profile } = await requireProprietor();
+  const { profile } = await requirePermission("expenses");
   const name = String(formData.get("name") ?? "").trim();
   const budgetRaw = String(formData.get("termly_budget") ?? "").trim();
   const termlyBudget = budgetRaw ? Number(budgetRaw) : null;
@@ -43,7 +43,7 @@ export async function createExpenseCategory(
 }
 
 export async function updateExpenseCategoryBudget(categoryId: string, formData: FormData) {
-  await requireProprietor();
+  await requirePermission("expenses");
   const budgetRaw = String(formData.get("termly_budget") ?? "").trim();
   const termlyBudget = budgetRaw ? Number(budgetRaw) : null;
 
@@ -58,7 +58,7 @@ export async function updateExpenseCategoryBudget(categoryId: string, formData: 
 }
 
 export async function deleteExpenseCategory(categoryId: string) {
-  await requireProprietor();
+  await requirePermission("expenses");
   const supabase = await createClient();
   const { error } = await supabase.from("expense_categories").delete().eq("id", categoryId);
   if (error) throw new Error(error.message);
@@ -74,7 +74,7 @@ export async function createExpense(
   _prevState: ExpenseFormState,
   formData: FormData
 ): Promise<ExpenseFormState> {
-  const { profile, school } = await requireProprietor();
+  const { profile, school } = await requirePermission("expenses");
 
   const categoryId = String(formData.get("category_id") ?? "");
   const campusId = String(formData.get("campus_id") ?? "").trim() || null;
@@ -113,7 +113,7 @@ export async function createExpense(
 }
 
 export async function deleteExpense(expenseId: string) {
-  await requireProprietor();
+  await requirePermission("expenses");
   const supabase = await createClient();
   const { error } = await supabase.from("expenses").delete().eq("id", expenseId);
   if (error) throw new Error(error.message);

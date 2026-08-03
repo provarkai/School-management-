@@ -4,7 +4,8 @@ import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/components/Avatar";
 import { proprietorTitle } from "@/lib/format";
-import type { Gender } from "@/lib/types";
+import { StaffPermissionsForm } from "../StaffPermissionsForm";
+import type { Gender, StaffPermission } from "@/lib/types";
 
 const ROLE_LABELS: Record<string, string> = {
   teacher: "Teacher",
@@ -35,12 +36,14 @@ export default async function StaffProfilePage({
 
   if (!person) notFound();
 
-  const [{ data: campus }, { data: classes }] = await Promise.all([
+  const [{ data: campus }, { data: classes }, { data: permissionRows }] = await Promise.all([
     person.campus_id
       ? supabase.from("campuses").select("name").eq("id", person.campus_id).single()
       : Promise.resolve({ data: null }),
     supabase.from("classes").select("name").eq("teacher_id", person.id).order("name"),
+    supabase.from("staff_permissions").select("permission").eq("staff_id", person.id),
   ]);
+  const grantedPermissions = (permissionRows ?? []).map((p) => p.permission as StaffPermission);
 
   return (
     <div className="max-w-lg space-y-6">
@@ -78,6 +81,10 @@ export default async function StaffProfilePage({
         >
           View performance →
         </Link>
+      )}
+
+      {!person.is_school_admin && (
+        <StaffPermissionsForm staffId={person.id} granted={grantedPermissions} />
       )}
     </div>
   );

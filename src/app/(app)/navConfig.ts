@@ -1,4 +1,4 @@
-import type { Role } from "@/lib/types";
+import type { Role, StaffPermission } from "@/lib/types";
 
 export interface NavItem {
   href: string;
@@ -10,6 +10,9 @@ export interface NavItem {
   managerOnly?: boolean;
   /** Visible to every signed-in role, no filtering. */
   alwaysVisible?: boolean;
+  /** Also visible to a plain staff member individually granted this module
+   * (see staff_permissions / requirePermission), even without managerOnly. */
+  permission?: StaffPermission;
 }
 
 export interface GroupStyle {
@@ -106,9 +109,9 @@ export const GROUPS: NavGroup[] = [
     id: "finance",
     label: "Finance",
     items: [
-      { href: "/fees", label: "Fees", emoji: "💵", managerOnly: true },
-      { href: "/debtors", label: "Debtors", emoji: "⏳", managerOnly: true },
-      { href: "/expenses", label: "Expenses", emoji: "🧾", managerOnly: true },
+      { href: "/fees", label: "Fees", emoji: "💵", managerOnly: true, permission: "fees" },
+      { href: "/debtors", label: "Debtors", emoji: "⏳", managerOnly: true, permission: "fees" },
+      { href: "/expenses", label: "Expenses", emoji: "🧾", managerOnly: true, permission: "expenses" },
       { href: "/payroll", label: "Payroll", emoji: "💼", managerOnly: true },
     ],
   },
@@ -127,7 +130,7 @@ export const GROUPS: NavGroup[] = [
     id: "admin",
     label: "Admin",
     items: [
-      { href: "/admissions", label: "Admissions", emoji: "🎓", managerOnly: true },
+      { href: "/admissions", label: "Admissions", emoji: "🎓", managerOnly: true, permission: "admissions" },
       { href: "/calendar", label: "Calendar", emoji: "📅", roles: ["teacher", "staff"], managerOnly: true },
       { href: "/promotion", label: "Session Promotion", emoji: "🔁", managerOnly: true },
       { href: "/transfer-certificates", label: "Transfer Certificates", emoji: "📜", managerOnly: true },
@@ -208,9 +211,15 @@ export const GROUP_STYLES: Record<string, GroupStyle> = {
 
 export const PINNED_BOTTOM: NavItem[] = [SETTINGS_ITEM];
 
-export function isVisible(item: NavItem, role: Role, isManager: boolean): boolean {
+export function isVisible(
+  item: NavItem,
+  role: Role,
+  isManager: boolean,
+  permissions: ReadonlySet<StaffPermission> = new Set()
+): boolean {
   if (item.alwaysVisible) return true;
   if (item.managerOnly && isManager) return true;
+  if (item.permission && permissions.has(item.permission)) return true;
   return item.roles?.includes(role) ?? false;
 }
 
@@ -219,10 +228,16 @@ export function isActive(pathname: string, href: string): boolean {
 }
 
 /** Visible groups for this user, with Settings folded into Admin for a
- * manager instead of staying a separate pinned item. */
-export function getVisibleGroups(role: Role, isManager: boolean): NavGroup[] {
+ * manager instead of staying a separate pinned item. `permissions` are the
+ * individually-granted modules (staff_permissions) a plain staff member
+ * holds — irrelevant for a manager, who already sees everything. */
+export function getVisibleGroups(
+  role: Role,
+  isManager: boolean,
+  permissions: ReadonlySet<StaffPermission> = new Set()
+): NavGroup[] {
   return GROUPS.map((g) => {
-    let items = g.items.filter((item) => isVisible(item, role, isManager));
+    let items = g.items.filter((item) => isVisible(item, role, isManager, permissions));
     if (g.id === "admin" && isManager) {
       items = [...items, SETTINGS_ITEM];
     }
@@ -232,7 +247,11 @@ export function getVisibleGroups(role: Role, isManager: boolean): NavGroup[] {
 
 /** Pinned-bottom items for this user — empty for a manager, since Settings
  * shows inside the Admin group instead. */
-export function getPinnedBottom(role: Role, isManager: boolean): NavItem[] {
+export function getPinnedBottom(
+  role: Role,
+  isManager: boolean,
+  permissions: ReadonlySet<StaffPermission> = new Set()
+): NavItem[] {
   if (isManager) return [];
-  return PINNED_BOTTOM.filter((item) => isVisible(item, role, isManager));
+  return PINNED_BOTTOM.filter((item) => isVisible(item, role, isManager, permissions));
 }

@@ -1,4 +1,4 @@
-import { requireProprietor } from "@/lib/current-user";
+import { requirePermission } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import { LogTransferForm } from "./LogTransferForm";
@@ -41,7 +41,7 @@ function suggestCandidates(
 }
 
 export default async function TransfersPage() {
-  const { profile, school } = await requireProprietor();
+  const { profile, school } = await requirePermission("fees");
   const supabase = await createClient();
 
   const session = school?.current_session ?? "";

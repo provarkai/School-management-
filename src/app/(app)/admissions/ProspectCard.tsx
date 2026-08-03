@@ -30,9 +30,11 @@ export interface Prospect {
 export function ProspectCard({
   prospect,
   classes,
+  canConvert,
 }: {
   prospect: Prospect;
   classes: { id: string; name: string }[];
+  canConvert: boolean;
 }) {
   const updateAction = updateProspect.bind(null, prospect.id);
   const [updateState, updateFormAction, updatePending] = useActionState(updateAction, updateInitial);
@@ -120,6 +122,8 @@ export function ProspectCard({
       <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-zinc-100 pt-3">
         {enrolled ? (
           <p className="text-xs font-medium text-emerald-600">Converted to a student record.</p>
+        ) : !canConvert ? (
+          <p className="text-xs text-zinc-400">Ask a manager to enroll this prospect.</p>
         ) : (
           <form action={convertFormAction} className="flex flex-wrap items-center gap-2">
             <select

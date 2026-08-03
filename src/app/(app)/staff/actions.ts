@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import { requireProprietor, requireLiteralProprietor } from "@/lib/current-user";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activityLog";
+import { STAFF_PERMISSION_LABELS, type StaffPermission } from "@/lib/types";
 
 export interface AddTeacherState {
   error?: string;
@@ -217,6 +218,44 @@ export async function updateTeacherCampus(formData: FormData) {
 
   if (error) throw new Error(error.message);
   revalidatePath("/staff");
+}
+
+/** Grants or revokes one module for a plain staff member — e.g. letting a
+ * bursar record fee payments without making them a full delegated admin.
+ * Any manager can do this (not just the literal proprietor): it's a
+ * narrower grant than admin status itself, which stays reserved for
+ * requireLiteralProprietor via setSchoolAdmin above. */
+export async function setStaffPermission(
+  staffId: string,
+  permission: StaffPermission,
+  granted: boolean
+) {
+  const { profile } = await requireProprietor();
+  const supabase = await createClient();
+
+  if (granted) {
+    const { error } = await supabase
+      .from("staff_permissions")
+      .insert({ school_id: profile.school_id, staff_id: staffId, permission, granted_by: profile.id });
+    if (error && error.code !== "23505") throw new Error(error.message);
+  } else {
+    const { error } = await supabase
+      .from("staff_permissions")
+      .delete()
+      .eq("staff_id", staffId)
+      .eq("permission", permission);
+    if (error) throw new Error(error.message);
+  }
+
+  const { data: staff } = await supabase.from("app_users").select("name").eq("id", staffId).single();
+  await logActivity(
+    supabase,
+    profile,
+    granted ? "permission_granted" : "permission_revoked",
+    `${granted ? "Granted" : "Revoked"} ${STAFF_PERMISSION_LABELS[permission]} access ${granted ? "to" : "from"} ${staff?.name ?? "a staff member"}.`
+  );
+
+  revalidatePath(`/staff/${staffId}`);
 }
 
 export async function setSchoolAdmin(staffId: string, isAdmin: boolean) {

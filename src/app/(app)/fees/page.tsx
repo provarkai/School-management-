@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { fetchAllRows } from "@/lib/fetchAll";
-import { requireProprietor } from "@/lib/current-user";
+import { requirePermission } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import type { FeeStatus } from "@/lib/types";
@@ -21,7 +21,7 @@ export default async function FeesPage({
 }: {
   searchParams: Promise<{ class?: string; status?: string; type?: string }>;
 }) {
-  const { profile, school } = await requireProprietor();
+  const { profile, school } = await requirePermission("fees");
   const { class: classFilter, status: statusFilter, type: typeParam } = await searchParams;
   const supabase = await createClient();
 

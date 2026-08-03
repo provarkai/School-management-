@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { fetchAllRows, fetchAllRowsByIds } from "@/lib/fetchAll";
-import { requireProprietor } from "@/lib/current-user";
+import { requirePermission } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import { TERM_LABELS, type Term } from "@/lib/types";
@@ -32,7 +32,7 @@ export default async function DebtorsPage({
 }: {
   searchParams: Promise<{ bucket?: string; class?: string }>;
 }) {
-  const { profile } = await requireProprietor();
+  const { profile } = await requirePermission("fees");
   const { bucket: bucketFilter, class: classFilter } = await searchParams;
   const supabase = await createClient();
 

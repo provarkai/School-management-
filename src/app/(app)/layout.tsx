@@ -1,9 +1,10 @@
 import { requireUser } from "@/lib/current-user";
+import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/components/Avatar";
 import { NavLinks } from "./NavLinks";
 import { GroupTabs } from "./GroupTabs";
 import { signOut } from "./actions";
-import { TERM_LABELS } from "@/lib/types";
+import { TERM_LABELS, type StaffPermission } from "@/lib/types";
 import { proprietorTitle } from "@/lib/format";
 
 export default async function AppLayout({
@@ -12,6 +13,17 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const { profile, school, isManager } = await requireUser();
+
+  // Irrelevant for a manager (already sees everything managerOnly), so
+  // skip the query — this only matters for a plain staff member who may
+  // have been individually granted a module (see staff_permissions).
+  let permissions = new Set<StaffPermission>();
+  if (!isManager) {
+    const supabase = await createClient();
+    const { data } = await supabase.from("staff_permissions").select("permission").eq("staff_id", profile.id);
+    permissions = new Set((data ?? []).map((p) => p.permission as StaffPermission));
+  }
+
   const roleDisplay =
     profile.role === "proprietor"
       ? proprietorTitle(profile.gender)
@@ -42,7 +54,7 @@ export default async function AppLayout({
               <p className="text-[11px] capitalize text-zinc-400">{roleDisplay}</p>
             </div>
           </div>
-          <NavLinks role={profile.role} isManager={isManager} />
+          <NavLinks role={profile.role} isManager={isManager} permissions={permissions} />
         </div>
         <div className="mt-3 hidden border-t border-zinc-100 pt-4 md:block">
           <div className="flex items-center gap-2 px-1">
@@ -73,7 +85,7 @@ export default async function AppLayout({
         </form>
       </aside>
       <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-8">
-        <GroupTabs role={profile.role} isManager={isManager} />
+        <GroupTabs role={profile.role} isManager={isManager} permissions={permissions} />
         {children}
       </main>
     </div>

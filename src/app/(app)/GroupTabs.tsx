@@ -2,13 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { Role } from "@/lib/types";
+import type { Role, StaffPermission } from "@/lib/types";
 import { getVisibleGroups, isActive, GROUP_STYLES } from "./navConfig";
 
-export function GroupTabs({ role, isManager }: { role: Role; isManager: boolean }) {
+export function GroupTabs({
+  role,
+  isManager,
+  permissions = new Set(),
+}: {
+  role: Role;
+  isManager: boolean;
+  permissions?: ReadonlySet<StaffPermission>;
+}) {
   const pathname = usePathname();
 
-  const visibleGroups = getVisibleGroups(role, isManager);
+  const visibleGroups = getVisibleGroups(role, isManager, permissions);
   const group = visibleGroups.find((g) => g.items.some((item) => isActive(pathname, item.href)));
   if (!group) return null;
 

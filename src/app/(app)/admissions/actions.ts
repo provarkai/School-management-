@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireProprietor } from "@/lib/current-user";
+import { requireProprietor, requirePermission } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { nextAdmissionNumber } from "@/lib/admissionNumber";
 
@@ -14,7 +14,7 @@ export async function createProspect(
   _prevState: ProspectFormState,
   formData: FormData
 ): Promise<ProspectFormState> {
-  const { profile, school } = await requireProprietor();
+  const { profile, school } = await requirePermission("admissions");
 
   const fullName = String(formData.get("full_name") ?? "").trim();
   const dateOfBirth = String(formData.get("date_of_birth") ?? "").trim() || null;
@@ -55,7 +55,7 @@ export async function updateProspect(
   _prevState: ProspectFormState,
   formData: FormData
 ): Promise<ProspectFormState> {
-  await requireProprietor();
+  await requirePermission("admissions");
 
   const status = String(formData.get("status") ?? "").trim();
   const scoreRaw = String(formData.get("entrance_test_score") ?? "").trim();
@@ -84,7 +84,7 @@ export async function updateProspect(
 }
 
 export async function deleteProspect(prospectId: string) {
-  await requireProprietor();
+  await requirePermission("admissions");
   const supabase = await createClient();
   const { error } = await supabase.from("admission_prospects").delete().eq("id", prospectId);
   if (error) throw new Error(error.message);

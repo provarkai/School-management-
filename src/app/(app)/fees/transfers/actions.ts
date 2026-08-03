@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireProprietor } from "@/lib/current-user";
+import { requirePermission } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 
 export interface TransferFormState {
@@ -12,7 +12,7 @@ export async function logTransferAlert(
   _prevState: TransferFormState,
   formData: FormData
 ): Promise<TransferFormState> {
-  const { profile } = await requireProprietor();
+  const { profile } = await requirePermission("fees");
 
   const amount = Number(formData.get("amount"));
   const narration = String(formData.get("narration") ?? "").trim();
@@ -69,7 +69,7 @@ async function getOrCreateFeeRecord(
 }
 
 export async function matchTransferAlert(alertId: string, studentId: string, feeTypeId: string) {
-  const { profile, school } = await requireProprietor();
+  const { profile, school } = await requirePermission("fees");
   const supabase = await createClient();
 
   const { data: alert } = await supabase
@@ -123,7 +123,7 @@ export async function matchTransferAlert(alertId: string, studentId: string, fee
 }
 
 export async function ignoreTransferAlert(alertId: string) {
-  await requireProprietor();
+  await requirePermission("fees");
   const supabase = await createClient();
   const { error } = await supabase
     .from("bank_transfer_alerts")

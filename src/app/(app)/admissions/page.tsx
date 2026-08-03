@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireProprietor } from "@/lib/current-user";
+import { requirePermission } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { TableSearch } from "@/components/TableSearch";
 import { AddProspectForm } from "./AddProspectForm";
@@ -11,7 +11,7 @@ export default async function AdmissionsPage({
 }: {
   searchParams: Promise<{ status?: string }>;
 }) {
-  const { profile, school } = await requireProprietor();
+  const { profile, school, isManager } = await requirePermission("admissions");
   const { status: statusFilter } = await searchParams;
   const supabase = await createClient();
 
@@ -103,7 +103,7 @@ export default async function AdmissionsPage({
                 .filter(Boolean)
                 .join(" ")}
             >
-              <ProspectCard prospect={p} classes={classes ?? []} />
+              <ProspectCard prospect={p} classes={classes ?? []} canConvert={isManager} />
             </div>
           ))}
         </div>

@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { requireProprietor } from "@/lib/current-user";
+import { requirePermission } from "@/lib/current-user";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { feeReminderTemplate } from "@/lib/termii";
 import { sendAndLogMessage } from "@/lib/messageLog";
@@ -51,7 +51,7 @@ export async function setFeeAmount(
   _prevState: FeeActionState,
   formData: FormData
 ): Promise<FeeActionState> {
-  const { profile, school } = await requireProprietor();
+  const { profile, school } = await requirePermission("fees");
   const supabase = await createClient();
 
   const amount = Number(formData.get("amount_expected"));
@@ -92,7 +92,7 @@ export async function createFeeType(
   _prevState: FeeTypeFormState,
   formData: FormData
 ): Promise<FeeTypeFormState> {
-  const { profile } = await requireProprietor();
+  const { profile } = await requirePermission("fees");
   const name = String(formData.get("name") ?? "").trim();
 
   if (!name) {
@@ -117,7 +117,7 @@ export async function createFeeType(
 }
 
 export async function deleteFeeType(feeTypeId: string) {
-  await requireProprietor();
+  await requirePermission("fees");
   const supabase = await createClient();
   const { error } = await supabase.from("fee_types").delete().eq("id", feeTypeId);
   if (error) throw new Error(error.message);
@@ -130,7 +130,7 @@ export async function setDiscount(
   _prevState: FeeActionState,
   formData: FormData
 ): Promise<FeeActionState> {
-  const { profile, school } = await requireProprietor();
+  const { profile, school } = await requirePermission("fees");
   const supabase = await createClient();
 
   const discountAmount = Number(formData.get("discount_amount"));
@@ -187,7 +187,7 @@ export async function setClassFeeAmount(
   _prevState: BulkSetClassFeeState,
   formData: FormData
 ): Promise<BulkSetClassFeeState> {
-  const { profile, school } = await requireProprietor();
+  const { profile, school } = await requirePermission("fees");
   const supabase = await createClient();
 
   const classId = String(formData.get("class_id") ?? "");
@@ -239,7 +239,7 @@ export async function recordPayment(
   _prevState: FeeActionState,
   formData: FormData
 ): Promise<FeeActionState> {
-  const { profile, school } = await requireProprietor();
+  const { profile, school } = await requirePermission("fees");
   const supabase = await createClient();
 
   const amount = Number(formData.get("amount"));
@@ -296,7 +296,7 @@ export async function sendFeeReminder(
   _prevState: FeeActionState,
   formData: FormData
 ): Promise<FeeActionState> {
-  const { profile, school } = await requireProprietor();
+  const { profile, school } = await requirePermission("fees");
   const supabase = await createClient();
 
   const studentId = String(formData.get("student_id"));
@@ -414,7 +414,7 @@ export async function generatePaymentLink(
   _prevState: PaymentLinkState,
   _formData: FormData
 ): Promise<PaymentLinkState> {
-  const { profile, school } = await requireProprietor();
+  const { profile, school } = await requirePermission("fees");
   const supabase = await createClient();
 
   const { data: student } = await supabase
