@@ -152,6 +152,64 @@ Most of Phase 2 from the original spec has been pulled forward:
   mock/explain-yourself mode without it. Model defaults to
   `anthropic/claude-haiku-4.5`, overridable via `OPENROUTER_MODEL`.
 
+## Backups and restore
+
+Two independent layers, because they fail differently.
+
+**1. Supabase's own backups.** Turn these on in the Supabase dashboard —
+they are the only thing that restores the database *as a database*, and the
+only thing covering Storage files (student documents, learning resources,
+logos, photos), which live outside Postgres. On the free plan there are
+none; Pro gives daily backups, and point-in-time recovery is an add-on.
+
+**2. Nightly off-site snapshots, one file per school.** `/api/cron/backup-schools`
+runs at 01:00 UTC (see `vercel.json`) and writes every school's complete
+record — all 50 tables, real column names and ids — to S3-compatible object
+storage as `schools/{schoolId}/{YYYY-MM-DD}.json.gz`.
+
+Deliberately a *different* provider from Supabase: if the Supabase project
+is deleted, suspended for billing, or wrecked by a bad migration, the
+backups are untouched. Cloudflare R2 is the cheapest fit — no egress fees,
+and a free tier that covers this comfortably. Configure the four
+`BACKUP_S3_*` variables from `.env.example`; without them the job returns
+an error rather than quietly doing nothing.
+
+Note this is **not** the same as Settings → Export school data. That export
+is shaped for a human — joined names, friendly headers, a subset of tables —
+and cannot rebuild a school. The snapshot can.
+
+### Restoring
+
+Restore is a terminal script, never a button in the app: it writes over live
+data, and there should be no path to that behind a login.
+
+```bash
+# what snapshots exist
+npx tsx scripts/restore-school.ts --list
+npx tsx scripts/restore-school.ts --school <id> --list
+
+# inspect a snapshot's row counts without writing anything
+npx tsx scripts/restore-school.ts --school <id> --date 2026-08-02 --dry-run
+
+# actually restore
+npx tsx scripts/restore-school.ts --school <id> --date 2026-08-02 --confirm
+```
+
+Rows are upserted by primary key. Nothing is deleted, so a restore repairs
+damaged or missing data without destroying anything created since the
+snapshot — the safe default after an accident. To return a school to its
+exact state on a date, delete it first, then restore.
+
+One gap to know before you need it: `app_users` rows come back, but the
+matching Supabase Auth accounts are separate and do not. Anyone whose auth
+account was lost has to be re-invited.
+
+### Test the restore before you need it
+
+A backup nobody has restored is a guess. Once a term, take a snapshot,
+restore it into a scratch Supabase project, and sign in. That is the only
+way to know the backup works.
+
 ## What's still out of scope
 
 Fully-automated bank statement reconciliation (transfer matching above is
