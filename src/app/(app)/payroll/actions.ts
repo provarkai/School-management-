@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { logActivity } from "@/lib/activityLog";
 
 export interface SalaryFormState {
   error?: string;
@@ -215,8 +216,14 @@ export async function deleteDeductionType(typeId: string) {
 }
 
 export async function markPayrollRunPaid(runId: string) {
-  await requireProprietor();
+  const { profile } = await requireProprietor();
   const supabase = await createClient();
+  const { data: run } = await supabase
+    .from("payroll_runs")
+    .select("period")
+    .eq("id", runId)
+    .single();
+
   const { error } = await supabase
     .from("payroll_runs")
     .update({ status: "paid", paid_at: new Date().toISOString() })
@@ -224,6 +231,14 @@ export async function markPayrollRunPaid(runId: string) {
     .eq("status", "draft");
 
   if (error) throw new Error(error.message);
+
+  await logActivity(
+    supabase,
+    profile,
+    "payroll_run_paid",
+    `Marked the ${run?.period ?? ""} payroll run as paid.`
+  );
+
   revalidatePath(`/payroll/${runId}`);
   revalidatePath("/payroll");
 }

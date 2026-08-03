@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser, requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { logActivity } from "@/lib/activityLog";
 import type { LeaveType } from "@/lib/types";
 
 export interface LeaveFormState {
@@ -92,6 +93,12 @@ export async function reviewLeaveRequest(
 
   const reviewNote = String(formData.get("review_note") ?? "").trim() || null;
 
+  const { data: request } = await supabase
+    .from("leave_requests")
+    .select("staff_id, leave_type, app_users!leave_requests_staff_id_fkey(name)")
+    .eq("id", requestId)
+    .single();
+
   const { error } = await supabase
     .from("leave_requests")
     .update({
@@ -105,5 +112,14 @@ export async function reviewLeaveRequest(
     .eq("status", "pending");
 
   if (error) throw new Error(error.message);
+
+  const staffName = (request?.app_users as unknown as { name: string } | null)?.name ?? "a staff member";
+  await logActivity(
+    supabase,
+    profile,
+    "leave_reviewed",
+    `${decision === "approved" ? "Approved" : "Rejected"} ${staffName}'s ${request?.leave_type ?? ""} leave request.`
+  );
+
   revalidatePath("/leave");
 }

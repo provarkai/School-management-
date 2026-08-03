@@ -9,6 +9,7 @@ import { sendAndLogMessage } from "@/lib/messageLog";
 import { createPaymentIntent } from "@/lib/payments";
 import { naira } from "@/lib/format";
 import { TERM_LABELS, type Term } from "@/lib/types";
+import { logActivity } from "@/lib/activityLog";
 
 export interface FeeActionState {
   error?: string;
@@ -158,6 +159,20 @@ export async function setDiscount(
 
   if (error) return { error: error.message };
 
+  const [{ data: student }, { data: feeType }] = await Promise.all([
+    supabase.from("students").select("full_name").eq("id", studentId).single(),
+    supabase.from("fee_types").select("name").eq("id", feeTypeId).single(),
+  ]);
+
+  await logActivity(
+    supabase,
+    profile,
+    discountAmount > 0 ? "discount_applied" : "discount_removed",
+    discountAmount > 0
+      ? `Applied a ${naira(discountAmount)} discount on ${feeType?.name ?? "a fee"} for ${student?.full_name ?? "a student"}.`
+      : `Removed the discount on ${feeType?.name ?? "a fee"} for ${student?.full_name ?? "a student"}.`
+  );
+
   revalidatePath("/fees");
   revalidatePath(`/fees/student/${studentId}`);
   return { success: discountAmount > 0 ? "Discount applied." : "Discount removed." };
@@ -259,6 +274,18 @@ export async function recordPayment(
   });
 
   if (error) return { error: error.message };
+
+  const [{ data: student }, { data: feeType }] = await Promise.all([
+    supabase.from("students").select("full_name").eq("id", studentId).single(),
+    supabase.from("fee_types").select("name").eq("id", feeTypeId).single(),
+  ]);
+
+  await logActivity(
+    supabase,
+    profile,
+    "fee_payment_recorded",
+    `Recorded a ${naira(amount)} ${method} payment for ${student?.full_name ?? "a student"} (${feeType?.name ?? "fee"}).`
+  );
 
   revalidatePath("/fees");
   revalidatePath(`/fees/student/${studentId}`);

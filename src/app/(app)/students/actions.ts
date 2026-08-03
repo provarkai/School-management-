@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireProprietor, requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { nextAdmissionNumber } from "@/lib/admissionNumber";
+import { logActivity } from "@/lib/activityLog";
 import type { BehaviorCategory, BehaviorSeverity } from "@/lib/types";
 
 export interface StudentFormState {
@@ -142,7 +143,7 @@ export async function withdrawStudent(
     .eq("id", studentId)
     .eq("school_id", profile.school_id ?? "")
     .eq("status", "active")
-    .select("id");
+    .select("id, full_name");
 
   if (error) {
     return { error: error.message };
@@ -150,6 +151,13 @@ export async function withdrawStudent(
   if (!data || data.length === 0) {
     return { error: "This student is not currently active." };
   }
+
+  await logActivity(
+    supabase,
+    profile,
+    "student_withdrawn",
+    `Marked ${data[0].full_name} as withdrawn.`
+  );
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/students");
@@ -427,10 +435,24 @@ export async function createBehaviorIncident(
 }
 
 export async function deleteBehaviorIncident(studentId: string, incidentId: string) {
-  await requireProprietor();
+  const { profile } = await requireProprietor();
   const supabase = await createClient();
+
+  const [{ data: student }, { data: incident }] = await Promise.all([
+    supabase.from("students").select("full_name").eq("id", studentId).single(),
+    supabase.from("behavior_incidents").select("category").eq("id", incidentId).single(),
+  ]);
+
   const { error } = await supabase.from("behavior_incidents").delete().eq("id", incidentId);
   if (error) throw new Error(error.message);
+
+  await logActivity(
+    supabase,
+    profile,
+    "behavior_incident_deleted",
+    `Deleted a ${incident?.category ?? ""} record for ${student?.full_name ?? "a student"}.`
+  );
+
   revalidatePath(`/students/${studentId}`);
 }
 

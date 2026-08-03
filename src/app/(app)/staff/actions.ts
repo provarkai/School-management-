@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { randomBytes } from "node:crypto";
 import { requireProprietor, requireLiteralProprietor } from "@/lib/current-user";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { logActivity } from "@/lib/activityLog";
 
 export interface AddTeacherState {
   error?: string;
@@ -65,6 +66,14 @@ export async function addStaffMember(
   if (profileError) {
     return { error: profileError.message };
   }
+
+  const supabase = await createClient();
+  await logActivity(
+    supabase,
+    profile,
+    "staff_created",
+    `Added ${name} as ${role === "teacher" ? "a teacher" : "a staff member"}.`
+  );
 
   revalidatePath("/staff");
   return { tempPassword };
@@ -211,13 +220,27 @@ export async function updateTeacherCampus(formData: FormData) {
 }
 
 export async function setSchoolAdmin(staffId: string, isAdmin: boolean) {
-  await requireLiteralProprietor();
+  const { profile } = await requireLiteralProprietor();
   const supabase = await createClient();
+  const { data: staff } = await supabase
+    .from("app_users")
+    .select("name")
+    .eq("id", staffId)
+    .single();
+
   const { error } = await supabase
     .from("app_users")
     .update({ is_school_admin: isAdmin })
     .eq("id", staffId);
 
   if (error) throw new Error(error.message);
+
+  await logActivity(
+    supabase,
+    profile,
+    isAdmin ? "admin_granted" : "admin_revoked",
+    `${isAdmin ? "Granted" : "Revoked"} admin rights ${isAdmin ? "to" : "from"} ${staff?.name ?? "a staff member"}.`
+  );
+
   revalidatePath("/staff");
 }

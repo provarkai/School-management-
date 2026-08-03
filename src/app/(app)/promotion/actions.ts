@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { logActivity } from "@/lib/activityLog";
 import {
   assessStudentsForPromotion,
   type PromotionCriteria,
@@ -337,6 +338,13 @@ export async function promoteSession(
   if (createdClasses > 0) {
     parts.push(`created ${createdClasses} new class${createdClasses === 1 ? "" : "es"}`);
   }
+
+  await logActivity(
+    supabase,
+    profile,
+    "session_promoted",
+    `Ran session promotion from ${fromSession} to ${newSession}: ${parts.join(", ")}.`
+  );
 
   return { success: `${parts.join(", ")} for ${newSession}. That's now the active session.` };
 }
