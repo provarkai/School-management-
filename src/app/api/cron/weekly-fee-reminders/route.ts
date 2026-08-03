@@ -1,6 +1,7 @@
 import { fetchAllRows, fetchAllRowsByIds } from "@/lib/fetchAll";
 import { createAdminClient } from "@/lib/supabase/server";
-import { feeReminderTemplate, sendReminderMessage } from "@/lib/termii";
+import { feeReminderTemplate } from "@/lib/termii";
+import { sendAndLogMessage } from "@/lib/messageLog";
 import { naira } from "@/lib/format";
 import { TERM_LABELS, type Term } from "@/lib/types";
 
@@ -86,7 +87,17 @@ export async function GET(request: Request) {
         schoolName: school.name,
       });
 
-      const result = await sendReminderMessage(student.parent_phone, message);
+      const result = await sendAndLogMessage(
+        supabase,
+        {
+          schoolId: school.id,
+          purpose: "fee_reminder",
+          recipientName: student.parent_name,
+          studentId: student.id,
+        },
+        student.parent_phone,
+        message
+      );
       if (result.ok) totalSent++;
       else failures.push(`${school.name}/${student.full_name}: ${result.error}`);
     }

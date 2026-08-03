@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
-import { sendReminderMessage } from "@/lib/termii";
+import { sendAndLogMessage } from "@/lib/messageLog";
 import type { NoticeAudience } from "@/lib/types";
 
 export interface NoticeFormState {
@@ -44,14 +44,25 @@ export async function createNotice(
     const targetRoles = audience === "teachers" ? ["teacher"] : audience === "staff" ? ["staff"] : ["teacher", "staff"];
     const { data: recipients } = await supabase
       .from("app_users")
-      .select("phone")
+      .select("id, name, phone")
       .not("phone", "is", null)
       .neq("id", profile.id)
       .in("role", targetRoles);
     let sent = 0;
     for (const r of recipients ?? []) {
       if (!r.phone) continue;
-      const result = await sendReminderMessage(r.phone, `${title}: ${body}`);
+      const result = await sendAndLogMessage(
+        supabase,
+        {
+          schoolId: profile.school_id ?? "",
+          purpose: "staff_notice",
+          recipientName: r.name,
+          staffId: r.id,
+          sentBy: profile.id,
+        },
+        r.phone,
+        `${title}: ${body}`
+      );
       if (result.ok) sent++;
     }
     smsNote = ` SMS sent to ${sent} staff member(s).`;

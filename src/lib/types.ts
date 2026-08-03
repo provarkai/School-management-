@@ -9,6 +9,18 @@ export type BehaviorSeverity = "minor" | "major" | "severe";
 export type CalendarEventType = "term_start" | "term_end" | "holiday" | "exam" | "pta_meeting" | "event";
 export type CustomFieldType = "text" | "number" | "date" | "select";
 export type Gender = "male" | "female";
+export type LeaveType =
+  | "annual"
+  | "sick"
+  | "maternity"
+  | "paternity"
+  | "compassionate"
+  | "unpaid"
+  | "other";
+export type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
+export type LessonNoteStatus = "draft" | "submitted" | "approved" | "needs_revision";
+export type MessagePurpose = "fee_reminder" | "staff_notice" | "broadcast";
+export type MessageStatus = "sent" | "failed" | "mocked";
 
 export type SchoolStatus = "active" | "suspended";
 
@@ -72,6 +84,29 @@ export const TERM_LABELS: Record<Term, string> = {
   "1": "1st Term",
   "2": "2nd Term",
   "3": "3rd Term",
+};
+
+export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
+  annual: "Annual leave",
+  sick: "Sick leave",
+  maternity: "Maternity leave",
+  paternity: "Paternity leave",
+  compassionate: "Compassionate leave",
+  unpaid: "Unpaid leave",
+  other: "Other",
+};
+
+export const LESSON_NOTE_STATUS_LABELS: Record<LessonNoteStatus, string> = {
+  draft: "Draft",
+  submitted: "Submitted for review",
+  approved: "Approved",
+  needs_revision: "Needs revision",
+};
+
+export const MESSAGE_PURPOSE_LABELS: Record<MessagePurpose, string> = {
+  fee_reminder: "Fee reminder",
+  staff_notice: "Staff notice",
+  broadcast: "Broadcast",
 };
 
 export const WEEKDAY_LABELS: Record<number, string> = {

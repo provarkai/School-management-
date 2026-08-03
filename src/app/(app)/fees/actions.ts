@@ -4,7 +4,8 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { requireProprietor } from "@/lib/current-user";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
-import { feeReminderTemplate, sendReminderMessage } from "@/lib/termii";
+import { feeReminderTemplate } from "@/lib/termii";
+import { sendAndLogMessage } from "@/lib/messageLog";
 import { createPaymentIntent } from "@/lib/payments";
 import { naira } from "@/lib/format";
 import { TERM_LABELS, type Term } from "@/lib/types";
@@ -323,7 +324,18 @@ export async function sendFeeReminder(
       schoolName: school?.name ?? "the school",
     }) + ` Breakdown — ${lines.join("; ")}`;
 
-  const result = await sendReminderMessage(student.parent_phone, message);
+  const result = await sendAndLogMessage(
+    supabase,
+    {
+      schoolId: profile.school_id ?? "",
+      purpose: "fee_reminder",
+      recipientName: student.parent_name,
+      studentId,
+      sentBy: profile.id,
+    },
+    student.parent_phone,
+    message
+  );
 
   if (!result.ok) {
     return { error: result.error ?? "Failed to send reminder." };

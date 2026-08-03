@@ -67,6 +67,7 @@ export const GROUPS: NavGroup[] = [
       { href: "/resources", label: "Resources", emoji: "📎", roles: ["teacher"], managerOnly: true },
       { href: "/exams", label: "Exams", emoji: "📋", roles: ["teacher"], managerOnly: true },
       { href: "/report-cards", label: "Report cards", emoji: "📄", roles: ["teacher"], managerOnly: true },
+      { href: "/lesson-notes", label: "Lesson Notes", emoji: "📓", roles: ["teacher"], managerOnly: true },
       { href: "/id-cards", label: "ID Cards", emoji: "🪪", managerOnly: true },
     ],
   },
@@ -98,6 +99,7 @@ export const GROUPS: NavGroup[] = [
       { href: "/staff", label: "Staff", emoji: "👥", managerOnly: true },
       { href: "/staff-attendance", label: "Staff Attendance", emoji: "🕒", managerOnly: true },
       { href: "/staff-performance", label: "Staff Performance", emoji: "🧑‍🏫", managerOnly: true },
+      { href: "/leave", label: "Leave", emoji: "🌴", roles: ["teacher", "staff"], managerOnly: true },
     ],
   },
   {
@@ -117,6 +119,7 @@ export const GROUPS: NavGroup[] = [
       { href: "/reminders", label: "Reminders", emoji: "📣", managerOnly: true },
       { href: "/broadcasts", label: "Broadcasts", emoji: "📢", managerOnly: true },
       { href: "/notices", label: "Notices", emoji: "📌", alwaysVisible: true },
+      { href: "/message-logs", label: "Message Logs", emoji: "📨", managerOnly: true },
     ],
   },
   {

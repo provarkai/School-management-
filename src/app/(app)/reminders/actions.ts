@@ -3,7 +3,8 @@
 import { fetchAllRowsByIds } from "@/lib/fetchAll";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
-import { feeReminderTemplate, sendReminderMessage } from "@/lib/termii";
+import { feeReminderTemplate } from "@/lib/termii";
+import { sendAndLogMessage } from "@/lib/messageLog";
 import { naira } from "@/lib/format";
 import { TERM_LABELS, type Term } from "@/lib/types";
 
@@ -15,7 +16,7 @@ export interface BulkReminderResult {
 }
 
 export async function sendBulkReminders(studentIds: string[]): Promise<BulkReminderResult> {
-  const { school } = await requireProprietor();
+  const { profile, school } = await requireProprietor();
   const supabase = await createClient();
 
   const session = school?.current_session ?? "";
@@ -76,7 +77,18 @@ export async function sendBulkReminders(studentIds: string[]): Promise<BulkRemin
       schoolName: school?.name ?? "the school",
     });
 
-    const result = await sendReminderMessage(student.parent_phone, message);
+    const result = await sendAndLogMessage(
+      supabase,
+      {
+        schoolId: profile.school_id ?? "",
+        purpose: "fee_reminder",
+        recipientName: student.parent_name,
+        studentId: student.id,
+        sentBy: profile.id,
+      },
+      student.parent_phone,
+      message
+    );
     if (result.mocked) mocked = true;
     if (result.ok) sent++;
     else failed.push({ studentName: student.full_name, error: result.error ?? "Unknown error" });

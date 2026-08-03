@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
-import { sendReminderMessage } from "@/lib/termii";
+import { sendAndLogMessage } from "@/lib/messageLog";
 
 export interface BroadcastState {
   error?: string;
@@ -36,7 +36,7 @@ export async function sendBroadcast(
   if (sendToParents) {
     let query = supabase
       .from("students")
-      .select("parent_phone")
+      .select("id, full_name, parent_name, parent_phone")
       .eq("school_id", profile.school_id ?? "")
       .eq("status", "active")
       .not("parent_phone", "is", null);
@@ -45,7 +45,18 @@ export async function sendBroadcast(
 
     for (const s of students ?? []) {
       if (!s.parent_phone) continue;
-      const result = await sendReminderMessage(s.parent_phone, message);
+      const result = await sendAndLogMessage(
+        supabase,
+        {
+          schoolId: profile.school_id ?? "",
+          purpose: "broadcast",
+          recipientName: s.parent_name ?? s.full_name,
+          studentId: s.id,
+          sentBy: profile.id,
+        },
+        s.parent_phone,
+        message
+      );
       if (result.mocked) mocked = true;
       if (result.ok) sentCount++;
     }
@@ -55,14 +66,25 @@ export async function sendBroadcast(
   if (sendToStaff) {
     const { data: staff } = await supabase
       .from("app_users")
-      .select("phone")
+      .select("id, name, phone")
       .eq("school_id", profile.school_id ?? "")
       .in("role", ["teacher", "staff"])
       .not("phone", "is", null);
 
     for (const s of staff ?? []) {
       if (!s.phone) continue;
-      const result = await sendReminderMessage(s.phone, message);
+      const result = await sendAndLogMessage(
+        supabase,
+        {
+          schoolId: profile.school_id ?? "",
+          purpose: "broadcast",
+          recipientName: s.name,
+          staffId: s.id,
+          sentBy: profile.id,
+        },
+        s.phone,
+        message
+      );
       if (result.mocked) mocked = true;
       if (result.ok) sentCount++;
     }
