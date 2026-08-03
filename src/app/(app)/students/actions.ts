@@ -78,6 +78,57 @@ export async function updateStudentRecord(
   return { success: "Record updated." };
 }
 
+export interface WithdrawalState {
+  error?: string;
+  success?: string;
+}
+
+/** Marks a student withdrawn and records what a transfer certificate needs
+ * to say. Only ever moves active -> withdrawn: re-admitting a withdrawn
+ * student, or editing the record afterwards, isn't handled here — treat a
+ * mistaken withdrawal as a support request rather than a self-service undo,
+ * since it also unlocks generating an official-looking certificate. */
+export async function withdrawStudent(
+  studentId: string,
+  _prevState: WithdrawalState,
+  formData: FormData
+): Promise<WithdrawalState> {
+  const { profile } = await requireProprietor();
+
+  const withdrawnAt = String(formData.get("withdrawn_at") ?? "").trim();
+  if (!withdrawnAt) {
+    return { error: "Enter the date the student left." };
+  }
+
+  const text = (key: string) => String(formData.get(key) ?? "").trim() || null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("students")
+    .update({
+      status: "withdrawn",
+      withdrawn_at: withdrawnAt,
+      withdrawal_reason: text("withdrawal_reason"),
+      conduct_remark: text("conduct_remark"),
+    })
+    .eq("id", studentId)
+    .eq("school_id", profile.school_id ?? "")
+    .eq("status", "active")
+    .select("id");
+
+  if (error) {
+    return { error: error.message };
+  }
+  if (!data || data.length === 0) {
+    return { error: "This student is not currently active." };
+  }
+
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath("/students");
+  revalidatePath("/transfer-certificates");
+  return { success: "Student marked as withdrawn. The transfer certificate is ready below." };
+}
+
 export async function createStudent(
   _prevState: StudentFormState,
   formData: FormData

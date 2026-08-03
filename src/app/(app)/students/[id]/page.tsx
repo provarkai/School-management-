@@ -14,6 +14,7 @@ import { AvatarUploader } from "@/components/AvatarUploader";
 import { Avatar } from "@/components/Avatar";
 import { saveStudentPhoto } from "../actions";
 import { StudentRecordForm, type StudentRecord } from "./StudentRecordForm";
+import { WithdrawalSection } from "./WithdrawalForm";
 
 export default async function StudentDetailPage({
   params,
@@ -27,7 +28,7 @@ export default async function StudentDetailPage({
   const { data: student } = await supabase
     .from("students")
     .select(
-      "id, school_id, full_name, class_id, date_of_birth, parent_name, parent_phone, parent_email, admission_date, status, access_token, photo_url, admission_number, gender, address, guardian_name, guardian_phone, guardian_relationship, blood_group, genotype, allergies, emergency_contact_name, emergency_contact_phone"
+      "id, school_id, full_name, class_id, date_of_birth, parent_name, parent_phone, parent_email, admission_date, status, access_token, photo_url, admission_number, gender, address, guardian_name, guardian_phone, guardian_relationship, blood_group, genotype, allergies, emergency_contact_name, emergency_contact_phone, withdrawn_at, withdrawal_reason, conduct_remark"
     )
     .eq("id", id)
     .single();
@@ -134,6 +135,18 @@ export default async function StudentDetailPage({
         <StudentRecordForm studentId={student.id} record={student as unknown as StudentRecord} />
       )}
 
+      {isManager && (student.status === "active" || student.status === "withdrawn") && (
+        <WithdrawalSection
+          studentId={student.id}
+          record={{
+            status: student.status,
+            withdrawn_at: student.withdrawn_at,
+            withdrawal_reason: student.withdrawal_reason,
+            conduct_remark: student.conduct_remark,
+          }}
+        />
+      )}
+
       <CustomFieldValuesForm
         studentId={student.id}
         fieldDefs={fieldDefs ?? []}
@@ -163,6 +176,14 @@ export default async function StudentDetailPage({
         >
           Enter scores / report card
         </Link>
+        {isManager && (
+          <a
+            href={`/students/${student.id}/id-card`}
+            className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
+          >
+            ID card
+          </a>
+        )}
       </div>
 
       <div>

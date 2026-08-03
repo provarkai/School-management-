@@ -67,6 +67,7 @@ export const GROUPS: NavGroup[] = [
       { href: "/resources", label: "Resources", emoji: "📎", roles: ["teacher"], managerOnly: true },
       { href: "/exams", label: "Exams", emoji: "📋", roles: ["teacher"], managerOnly: true },
       { href: "/report-cards", label: "Report cards", emoji: "📄", roles: ["teacher"], managerOnly: true },
+      { href: "/id-cards", label: "ID Cards", emoji: "🪪", managerOnly: true },
     ],
   },
   {
@@ -125,6 +126,8 @@ export const GROUPS: NavGroup[] = [
       { href: "/admissions", label: "Admissions", emoji: "🎓", managerOnly: true },
       { href: "/calendar", label: "Calendar", emoji: "📅", roles: ["teacher", "staff"], managerOnly: true },
       { href: "/promotion", label: "Session Promotion", emoji: "🔁", managerOnly: true },
+      { href: "/transfer-certificates", label: "Transfer Certificates", emoji: "📜", managerOnly: true },
+      { href: "/result-checker", label: "Result Checker", emoji: "🔑", managerOnly: true },
       { href: "/campuses", label: "Campuses", emoji: "🏢", managerOnly: true },
     ],
   },
