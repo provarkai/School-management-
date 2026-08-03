@@ -18,11 +18,7 @@ export async function GET(request: Request) {
   const session = school?.current_session ?? "";
   const term = school?.current_term ?? "1";
 
-  const { data: feeTypes } = await supabase
-    .from("fee_types")
-    .select("id")
-    .eq("school_id", profile.school_id ?? "");
-  const typeFilter = typeParam === "all" ? null : typeParam || feeTypes?.[0]?.id || null;
+  const typeFilter = !typeParam || typeParam === "all" ? null : typeParam;
 
   const rows = await fetchFeesExportRows(supabase, profile.school_id ?? "", session, term, {
     classFilter,

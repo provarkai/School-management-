@@ -46,7 +46,9 @@ export default async function FeesPage({
     })(),
   ]);
 
-  const typeFilter = typeParam === "all" ? null : typeParam || feeTypes?.[0]?.id || null;
+  // Combined (every fee type rolled into one total per student) is the
+  // default view — a single fee type is opt-in via the filter links below.
+  const typeFilter = !typeParam || typeParam === "all" ? null : typeParam;
 
   // One row per student per fee type — a few hundred students already
   // exceeds what a single request returns, and the missing rows would
@@ -169,13 +171,13 @@ export default async function FeesPage({
           <span className="text-xs font-medium uppercase tracking-wide text-zinc-400">
             Fee type:
           </span>
-          <FilterLink label="All (combined)" href={query({ type: "all" })} active={typeParam === "all"} />
+          <FilterLink label="All (combined)" href={query({ type: "all" })} active={!typeFilter} />
           {(feeTypes ?? []).map((t) => (
             <FilterLink
               key={t.id}
               label={t.name}
               href={query({ type: t.id })}
-              active={typeFilter === t.id && typeParam !== "all"}
+              active={typeFilter === t.id}
             />
           ))}
         </div>

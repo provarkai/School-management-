@@ -97,6 +97,13 @@ export default async function StudentFeePage({
         <SummaryStat label="Balance" value={naira(totals.balance)} highlight={totals.balance > 0} />
       </div>
 
+      {(feeTypes ?? []).length > 0 && (
+        <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold text-zinc-900">Record payment</h2>
+          <RecordPaymentForm studentId={id} />
+        </section>
+      )}
+
       <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-zinc-900">Reminder</h2>
         <p className="mb-3 text-sm text-zinc-500">
@@ -136,14 +143,11 @@ export default async function StudentFeePage({
                 </p>
               )}
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <SetAmountForm
-                  studentId={id}
-                  feeTypeId={type.id}
-                  currentAmount={Number(fee?.sticker_amount_expected ?? 0)}
-                />
-                <RecordPaymentForm studentId={id} feeTypeId={type.id} />
-              </div>
+              <SetAmountForm
+                studentId={id}
+                feeTypeId={type.id}
+                currentAmount={Number(fee?.sticker_amount_expected ?? 0)}
+              />
 
               <SetDiscountForm
                 studentId={id}

@@ -240,9 +240,14 @@ export async function setClassFeeAmount(
   return { success: `Set for ${students.length} student(s) in that class.` };
 }
 
+// A parent hands over one lump sum, not a separate cheque per fee type — so
+// a single payment amount here is spread across whatever the student still
+// owes, in the same fee-type order shown on the page, rather than making
+// staff split it themselves and record it type by type. Each affected fee
+// type still gets its own fee_payments row under the hood (that FK is
+// per-record), it's just that staff never has to think about the split.
 export async function recordPayment(
   studentId: string,
-  feeTypeId: string,
   _prevState: FeeActionState,
   formData: FormData
 ): Promise<FeeActionState> {
@@ -261,37 +266,61 @@ export async function recordPayment(
   const session = school?.current_session ?? "";
   const term = school?.current_term ?? "1";
 
-  const feeRecordId = await getOrCreateFeeRecord(
-    supabase,
-    profile.school_id!,
-    studentId,
-    feeTypeId,
-    session,
-    term
-  );
+  const { data: fees } = await supabase
+    .from("fee_summary")
+    .select("fee_record_id, balance")
+    .eq("student_id", studentId)
+    .eq("session", session)
+    .eq("term", term)
+    .order("fee_type_name");
 
-  const { error } = await supabase.from("fee_payments").insert({
-    school_id: profile.school_id,
-    fee_record_id: feeRecordId,
-    amount,
-    ...(paymentDate ? { payment_date: paymentDate } : {}),
-    method,
-    reference_number: reference,
-    recorded_by: profile.id,
-  });
+  if (!fees || fees.length === 0) {
+    return { error: "No fee types have been set for this student this term yet." };
+  }
+
+  // Cover outstanding balances first, in display order. Anything left over
+  // (an overpayment/advance) lands on the last fee type rather than being
+  // dropped, so the amount recorded always matches what was actually paid.
+  let remaining = amount;
+  const allocations = new Map<string, number>();
+  for (const f of fees) {
+    if (remaining <= 0) break;
+    const balance = Number(f.balance);
+    if (balance <= 0) continue;
+    const take = Math.min(remaining, balance);
+    allocations.set(f.fee_record_id, (allocations.get(f.fee_record_id) ?? 0) + take);
+    remaining -= take;
+  }
+  if (remaining > 0) {
+    const last = fees[fees.length - 1];
+    allocations.set(last.fee_record_id, (allocations.get(last.fee_record_id) ?? 0) + remaining);
+  }
+
+  const { error } = await supabase.from("fee_payments").insert(
+    Array.from(allocations.entries()).map(([fee_record_id, allocatedAmount]) => ({
+      school_id: profile.school_id,
+      fee_record_id,
+      amount: allocatedAmount,
+      ...(paymentDate ? { payment_date: paymentDate } : {}),
+      method,
+      reference_number: reference,
+      recorded_by: profile.id,
+    }))
+  );
 
   if (error) return { error: error.message };
 
-  const [{ data: student }, { data: feeType }] = await Promise.all([
-    supabase.from("students").select("full_name").eq("id", studentId).single(),
-    supabase.from("fee_types").select("name").eq("id", feeTypeId).single(),
-  ]);
+  const { data: student } = await supabase
+    .from("students")
+    .select("full_name")
+    .eq("id", studentId)
+    .single();
 
   await logActivity(
     supabase,
     profile,
     "fee_payment_recorded",
-    `Recorded a ${naira(amount)} ${method} payment for ${student?.full_name ?? "a student"} (${feeType?.name ?? "fee"}).`
+    `Recorded a ${naira(amount)} ${method} payment for ${student?.full_name ?? "a student"}.`
   );
 
   revalidatePath("/fees");

@@ -115,14 +115,8 @@ export function SetDiscountForm({
   );
 }
 
-export function RecordPaymentForm({
-  studentId,
-  feeTypeId,
-}: {
-  studentId: string;
-  feeTypeId: string;
-}) {
-  const action = recordPayment.bind(null, studentId, feeTypeId);
+export function RecordPaymentForm({ studentId }: { studentId: string }) {
+  const action = recordPayment.bind(null, studentId);
   const [state, formAction, pending] = useActionState(action, initialState);
 
   return (
@@ -130,6 +124,10 @@ export function RecordPaymentForm({
       <div className="sm:col-span-2">
         <Message state={state} />
       </div>
+      <p className="text-xs text-zinc-400 sm:col-span-2">
+        Enter the total received — it&apos;s applied automatically against whatever this student still
+        owes, in the order the fee types are listed below.
+      </p>
       <label className="text-sm font-medium text-zinc-700">
         Amount
         <input
