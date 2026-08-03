@@ -120,7 +120,23 @@ export async function updateAcademicSession(
     return { error: error.message };
   }
 
+  // Classes record the session and term they're running, and the class
+  // list, timetable and staff performance pages all filter on it. Moving
+  // the school to a new term without moving its classes would empty those
+  // pages — the classes themselves carry on across terms, only the label
+  // changes.
+  const { error: classError } = await supabase
+    .from("classes")
+    .update({ session, term })
+    .eq("school_id", profile.school_id ?? "");
+
+  if (classError) {
+    return { error: classError.message };
+  }
+
   revalidatePath("/profile");
+  revalidatePath("/classes");
+  revalidatePath("/timetable");
   return { success: "Academic session updated." };
 }
 

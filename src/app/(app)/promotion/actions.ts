@@ -107,14 +107,26 @@ export async function promoteSession(
     return { error: "No active students are assigned to a class yet." };
   }
 
-  const { data: classes } = await supabase
+  // Every class the school has, not only the ones holding students — a
+  // promotion target has to be matched against classes that are currently
+  // empty too, such as the SSS3 whose students graduated last year.
+  const { data: allClasses } = await supabase
     .from("classes")
     .select("id, name, teacher_id, campus_id")
-    .eq("school_id", schoolId)
-    .in("id", classIds);
+    .eq("school_id", schoolId);
 
-  if (!classes || classes.length === 0) {
+  const classes = (allClasses ?? []).filter((c) => classIds.includes(c.id));
+
+  if (classes.length === 0) {
     return { error: "No classes found to promote." };
+  }
+
+  // Normalised name -> class id. First one wins if a school somehow has two
+  // rows with the same name, so a promotion never adds a third.
+  const classesByName = new Map<string, string>();
+  for (const c of allClasses ?? []) {
+    const key = c.name.trim().toLowerCase();
+    if (!classesByName.has(key)) classesByName.set(key, c.id);
   }
 
   const criteria: PromotionCriteria = {
@@ -141,16 +153,34 @@ export async function promoteSession(
   let repeatedStudents = 0;
   let graduatedStudents = 0;
 
-  /** Finds or creates the new-session class with this name, reusing one
-   * already created in this run so a promoted class and the class below it
-   * repeating into the same name share a single row. */
+  /**
+   * The class a promoted or repeating student should land in.
+   *
+   * A class is a permanent thing — a school has one JSS1 and students move
+   * through it year after year. So this reuses the school's existing class
+   * of that name and only creates one when the name is genuinely new (a
+   * school adding SSS1 for the first time). Creating a fresh row per
+   * session instead would leave the school with two JSS1s, two JSS2s and
+   * so on after every promotion, each with the timetable, class teacher
+   * and attendance history split between them.
+   *
+   * Matching ignores case and surrounding spaces, so "Jss3" typed one year
+   * and "JSS3" the next are the same class rather than two.
+   */
   async function ensureClass(
     name: string,
     teacherId: string | null,
     campusId: string | null
   ): Promise<{ id?: string; error?: string }> {
-    const existing = targetClassIdByName.get(name);
+    const key = name.trim().toLowerCase();
+    const existing = targetClassIdByName.get(key);
     if (existing) return { id: existing };
+
+    const match = classesByName.get(key);
+    if (match) {
+      targetClassIdByName.set(key, match);
+      return { id: match };
+    }
 
     const { data: newClass, error } = await supabase
       .from("classes")
@@ -169,7 +199,8 @@ export async function promoteSession(
       return { error: `Could not create "${name}": ${error?.message ?? "no id returned"}` };
     }
 
-    targetClassIdByName.set(name, newClass.id);
+    targetClassIdByName.set(key, newClass.id);
+    classesByName.set(key, newClass.id);
     createdClasses++;
     return { id: newClass.id };
   }
@@ -275,6 +306,18 @@ export async function promoteSession(
     await supabase.from("student_promotions").insert(logs);
   }
 
+  // Classes carry the session they're currently running, and pages that
+  // list classes filter on it. Every class moves to the new session — not
+  // just the ones that received students — so a class left empty by
+  // graduation (SSS3) or waiting on new intake (JSS1) still shows up,
+  // ready to be filled.
+  const { error: classSessionError } = await supabase
+    .from("classes")
+    .update({ session: newSession, term: "1" })
+    .eq("school_id", schoolId);
+
+  if (classSessionError) return { error: classSessionError.message };
+
   const { error: schoolError } = await supabase
     .from("schools")
     .update({ current_session: newSession, current_term: "1" })
@@ -288,11 +331,12 @@ export async function promoteSession(
   revalidatePath("/dashboard");
   revalidatePath("/profile");
 
-  const parts = [
-    `Promoted ${promotedStudents} student${promotedStudents === 1 ? "" : "s"} into ${createdClasses} class${createdClasses === 1 ? "" : "es"}`,
-  ];
+  const parts = [`Promoted ${promotedStudents} student${promotedStudents === 1 ? "" : "s"}`];
   if (repeatedStudents > 0) parts.push(`held ${repeatedStudents} back to repeat`);
   if (graduatedStudents > 0) parts.push(`graduated ${graduatedStudents}`);
+  if (createdClasses > 0) {
+    parts.push(`created ${createdClasses} new class${createdClasses === 1 ? "" : "es"}`);
+  }
 
   return { success: `${parts.join(", ")} for ${newSession}. That's now the active session.` };
 }
