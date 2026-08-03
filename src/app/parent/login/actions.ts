@@ -10,12 +10,22 @@ export interface AuthActionState {
   message?: string;
 }
 
+// `next` arrives as a plain hidden form field from a query string a visitor
+// controls (?next=...) — only ever follow it if it's a same-app relative
+// path, never an absolute URL, so this can't be turned into an open
+// redirect off a link the school never actually sent.
+function safeNextPath(next: FormDataEntryValue | null): string {
+  const value = String(next ?? "");
+  return value.startsWith("/") && !value.startsWith("//") ? value : "/parent";
+}
+
 export async function parentSignIn(
   _prevState: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const next = safeNextPath(formData.get("next"));
 
   const supabase = await createClient();
   const { data: signInData, error } = await withAuthTimeout(
@@ -42,7 +52,7 @@ export async function parentSignIn(
     redirect("/dashboard");
   }
 
-  redirect("/parent");
+  redirect(next);
 }
 
 export async function parentSignUp(
@@ -53,6 +63,7 @@ export async function parentSignUp(
   const email = String(formData.get("email") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const next = safeNextPath(formData.get("next"));
 
   if (password.length < 8) {
     return { error: "Password must be at least 8 characters." };
@@ -81,5 +92,5 @@ export async function parentSignUp(
     };
   }
 
-  redirect("/parent");
+  redirect(next);
 }

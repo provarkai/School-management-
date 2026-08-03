@@ -50,9 +50,6 @@ export async function requireParent(): Promise<CurrentParent> {
     redirect("/login");
   }
 
-  // Sync any newly-registered children whose parent_email now matches.
-  await supabase.rpc("link_my_children");
-
   const { data: links } = await supabase
     .from("parent_students")
     .select("student_id, students(id, full_name, class_id, school_id, classes(name), schools(name, status, phone))")

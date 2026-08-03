@@ -199,21 +199,26 @@ the bulk importer. A quote breaks out of the quoted filename.
 **Fixed:** added `safeFilename()` and applied it across the CSV, XLSX, JSON
 and all eleven PDF routes.
 
-### 9. School suspension is enforced only in the app layer — **open**
+### 9. School suspension is enforced only in the app layer — **fixed**
+
+Fixed in `0064_enforce_school_suspension.sql`: `school_is_active(school_id)`
+plus one restrictive policy per tenant-scoped table (~58 of them), AND'd
+against the existing permissive policies rather than replacing them. For any
+school that isn't suspended — the default — nothing changes; suspending one
+now refuses every command, not just reads, at the database level.
 
 `requireUser()` redirects a suspended school's staff to
-`/account-suspended`, but no RLS policy consults `schools.status`. Because
-`NEXT_PUBLIC_SUPABASE_ANON_KEY` is by definition public, a user of a
-suspended school can call the Supabase REST API directly with their own JWT
-and read everything RLS still allows — the suspension never applied to the
-database.
+`/account-suspended` — that's unaffected and still the first line of
+defense — but before this fix, no RLS policy consulted `schools.status`,
+so a suspended school's own staff could call the Supabase REST API
+directly with their own JWT and read (or write) everything RLS still
+allowed.
 
-If suspension is the lever for non-payment or abuse, it needs to hold at the
-database. **Recommendation:** add `and (select status from public.schools
-where id = school_id) = 'active'` to a `current_school_active()` helper and
-`and public.current_school_active()` to the tenant-scoped policies. This is
-a broad change across ~50 tables and wants its own migration and a
-deliberate test pass, which is why it is flagged rather than applied here.
+Deliberately excludes `schools` and `app_users` — `requireUser()` has to
+read both, in that order, before it can detect the suspension and redirect,
+so gating either would break detection instead of enforcing it — and
+`platform_admins`/`platform_admin_logs`, since platform oversight needs to
+stay visible for a suspended school, not disappear along with it.
 
 The same reasoning applies to two smaller app-layer-only rules, both already
 documented as such in the code: proprietors being barred from uploading a
@@ -222,36 +227,55 @@ manager-only (migration `0062`). The second is in fact backstopped by RLS —
 `students` insert requires `current_role() = 'proprietor'` — so only the
 photo rule is genuinely unenforced.
 
-### 10. No rate limiting anywhere — **open**
+### 10. No rate limiting anywhere — **partially fixed**
 
 Supabase Auth rate-limits sign-in itself, but these are the app's own
 endpoints and have none:
 
 - `/check-result` — serial + PIN. The keyspace is large (32¹² serials, 10¹⁰
   PINs), so this is not brute-forceable, but it is an unmetered public
-  endpoint doing four service-role queries per request.
-- `/p/[token]`, `/t/[token]` — same, unmetered public reads.
+  endpoint doing four service-role queries per request. **Still open** —
+  needs Vercel WAF rate-limiting rules (dashboard config, not app code).
+- `/p/[token]`, `/t/[token]` — same, unmetered public reads. **Still open**,
+  same fix.
 - `/assistant` — every message is a paid OpenRouter call. Any signed-in
   teacher can loop it. The client also supplies the full `history` array
   with no length cap, so a single request can be made arbitrarily expensive.
+  **Fixed**: `history` is capped to the last 20 turns server-side
+  (`MAX_HISTORY_TURNS` in `src/app/(app)/assistant/actions.ts`), and a
+  per-user daily message count (`assistant_usage` /
+  `increment_assistant_usage()`, `0066_assistant_rate_limit.sql`) blocks
+  further messages past 200/day with a plain message instead of calling
+  OpenRouter.
 
-**Recommendation:** Vercel's WAF rate-limiting rules on the three public
-paths; for the assistant, cap `history` server-side (say 20 turns) and add a
-per-user daily message count.
-
-### 11. Temporary staff passwords never expire and are never rotated — **open**
+### 11. Temporary staff passwords never expire and are never rotated — **fixed**
 
 `addStaffMember` / `bulkImportStaff` generate a 12-character password,
-display it once, and mark the account `email_confirm: true`. Nothing forces
+display it once, and mark the account `email_confirm: true`. Nothing forced
 a change at first sign-in, and the bulk importer returns every credential in
 one response — a list that will be pasted into WhatsApp.
 
-**Recommendation:** add `must_change_password boolean default false` to
-`app_users`, set it on creation, and have `requireUser()` redirect to
-`/reset-password` while it is true. Better still, switch to Supabase's
-`inviteUserByEmail` so no plaintext password exists.
+**Fixed:** `must_change_password` (`0065_temp_password_rotation.sql`) is set
+on every new staff account created either way; `requireUser()` redirects to
+`/reset-password` while it's true, and `setNewPassword` clears it once a
+real password is set. Existing accounts are untouched — this only applies
+going forward, not a retroactive forced reset for staff already using the
+app. `inviteUserByEmail` (no plaintext password at all) would be a further
+improvement but wasn't made here.
 
-### 12. Parent–child linking trusts an unverified email field — **open**
+While fixing this, a second, unrelated gap surfaced in the same table:
+`app_users_update_proprietor_or_self` (`0003_rls.sql`) had no `WITH CHECK`,
+so a plain teacher/staff account calling the API directly could update
+their own `role` to `'proprietor'` or flip `is_school_admin` to `true`,
+self-granting full manager power — salary was deliberately kept off this
+table for exactly this reason (see `0025_payroll.sql`'s comment), but the
+underlying hole itself was never closed. Also fixed in
+`0065_temp_password_rotation.sql`, the same way `leave_requests` and
+`lesson_notes` were: a `WITH CHECK` that leaves the proprietor/admin branch
+unrestricted and pins the plain-self-edit branch to the role/admin values
+it already had.
+
+### 12. Parent–child linking trusts an unverified email field — **fixed**
 
 `link_my_children()` links a parent account to every student whose
 `students.parent_email` matches their login email. Anyone can self-register
@@ -262,16 +286,23 @@ with no approval step, no notification to the school, and no audit entry.
 A typo landing on a real address is enough. `students.parent_email` is a
 security-critical field that currently looks like a contact detail.
 
-**Recommendation:** treat linking as an invitation rather than a match —
-issue a one-time token from the student's detail page, and log every link
-into the existing `activity_log` so a school can see who gained access to
-which child and when.
+**Fixed:** replaced with an invitation (`parent_invitations`,
+`0067_parent_invitations.sql`). The proprietor generates a one-time link
+from the student's detail page (`ParentInviteSection.tsx`); redeeming it
+(`redeem_parent_invitation()`, `/parent/invite/[token]`) is what creates
+the `parent_students` row now, and it's logged into `activity_logs`. The
+trust is "you have this specific link", not "you typed a matching email".
+`link_my_children()` is no longer called (removed from
+`requireParent()`), though the function itself is left in place;
+existing links it already made are untouched — only how *new* links are
+made changed. `parent_email` on `students` stays as a plain contact field,
+just no longer the security boundary.
 
 ---
 
 ## Low / hardening
 
-### 13. FK ownership is not checked against the caller's school — **open**
+### 13. FK ownership is not checked against the caller's school — **fixed**
 
 RLS validates the `school_id` *value the app writes*, not that the rows it
 points at belong to that school. `getOrCreateFeeRecord(supabase,
@@ -281,8 +312,9 @@ against a student in school B. It leaks nothing (the name is unreadable) and
 requires a known UUID, so the practical risk is low — but the pattern
 recurs across the actions. `setStaffPermission` has the same shape.
 
-**Recommendation:** a shared `assertInSchool(supabase, table, id)` helper on
-the handful of actions that accept a foreign id from a form.
+**Fixed:** added `src/lib/assertInSchool.ts` and applied it to both named
+call sites — `getOrCreateFeeRecord` (checks `studentId` and `feeTypeId`)
+and `setStaffPermission` (checks `staffId`).
 
 ### 14. Signed-in users can change their password without the old one — **open**
 
@@ -290,29 +322,41 @@ the handful of actions that accept a foreign id from a form.
 proof of the current password, so a borrowed session on a shared machine —
 common in a school office — becomes a permanent takeover. **Recommendation:**
 enable "Secure password change" in the Supabase dashboard, which makes
-`updateUser({ password })` require recent reauthentication.
+`updateUser({ password })` require recent reauthentication. Not code — a
+dashboard toggle, so left for whoever holds that account to flip.
 
-### 15. No Content-Security-Policy — **open**
+### 15. No Content-Security-Policy — **fixed (report-only)**
 
 `next.config.ts` sets a good header set (HSTS, `X-Frame-Options`, `nosniff`,
 `Referrer-Policy`, `Permissions-Policy`) but no CSP. There are no
 `dangerouslySetInnerHTML` sinks in the codebase, so this is defence in depth
-rather than a live hole. **Recommendation:** start with
-`default-src 'self'; img-src 'self' data: blob: https://*.supabase.co;
-connect-src 'self' https://*.supabase.co; frame-ancestors 'self'` in
-report-only, then enforce.
+rather than a live hole.
 
-### 16. Dependency advisories — **open**
+**Fixed:** added a `Content-Security-Policy-Report-Only` header (same
+policy the recommendation suggested, with `'unsafe-inline'` on
+script-src/style-src since Next's own hydration script and Tailwind need
+it without a nonce setup). Report-only means nothing is enforced yet —
+next step is wiring an actual `report-uri`/`report-to` and watching it for
+a while before flipping to enforced.
+
+### 16. Dependency advisories — **partially fixed**
 
 `npm audit`: 4 high, 2 moderate. All transitive:
 
 - `next@16.2.12` pulls vulnerable `postcss` and `sharp`. Upgrading Next
-  past `16.3.0` clears both — `npm audit fix --force` proposes `next@9.3.3`
-  and must not be run.
-- `exceljs` → `uuid` (moderate, needs an `exceljs` major).
+  past `16.3.0` clears both — **checked again while acting on this review,
+  and there is no stable `16.3.0` yet**, only canary/preview builds (latest
+  stable is still `16.2.12`). Not bumping to a pre-release in production;
+  revisit once `16.3.0` actually ships. `npm audit fix --force` proposes
+  `next@9.3.3` and must not be run.
+- `exceljs` → `uuid` (moderate, needs an `exceljs` major). Checked: even
+  the newest `exceljs@4.4.0` (already installed) still pins `uuid@^8.3.0`,
+  so there's no version bump — stable or not — that clears this without
+  replacing `exceljs` outright. Left as-is.
+- **Fixed:** ran `npm audit fix` (no `--force`) to pick up the one advisory
+  that had a real non-breaking fix: transitive `brace-expansion`.
 
-None is reachable from an obvious attack path here, but the Next bump is
-cheap and worth taking.
+None is reachable from an obvious attack path here.
 
 ### 17. `/check-result` distinguishes "wrong PIN" from "unknown admission number" — **open**
 
@@ -340,15 +384,21 @@ blocking, PIN generation, and the ranking tie logic.
 
 **Still needed, in priority order:**
 
-1. **A CI workflow.** There is no `.github/` at all. `npm run check` plus
-   `npm run build` on every push is an afternoon's work and would have
-   caught the type of gap in #3.
+1. **A CI workflow.** ~~There is no `.github/` at all.~~ **Fixed** —
+   `.github/workflows/ci.yml` runs `npm run check` and `npm run build` on
+   every push/PR now.
 2. **RLS tests.** The highest-value tests this app could have, and the ones
    it most conspicuously lacks: sign in as a teacher, a bursar with each
    grant, a parent, and a second school's proprietor, then assert what each
    can and cannot read. Findings #3 and #9 are both things such a suite
    would have caught immediately. `supabase start` plus a script that runs
-   the migrations against a scratch database is enough.
+   the migrations against a scratch database is enough. **Still open** —
+   explicitly deferred: the sandbox this round's fixes were made in has no
+   working Docker daemon (nested containers aren't permitted), so
+   `supabase start` can't run here. Writing test code that was never
+   actually executed against a real database was judged worse than not
+   writing it — it can pass by accident and give false confidence. Needs a
+   session with a working local Supabase.
 3. **An end-to-end pass** over the two money paths — record a payment,
    reconcile a Paystack webhook — with Playwright, which is already
    available in this environment.

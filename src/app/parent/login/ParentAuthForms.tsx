@@ -6,7 +6,7 @@ import { PasswordInput } from "@/components/PasswordInput";
 
 const initialState: AuthActionState = {};
 
-export function ParentAuthForms() {
+export function ParentAuthForms({ next }: { next?: string }) {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [signInState, signInAction, signInPending] = useActionState(
     parentSignIn,
@@ -55,12 +55,14 @@ export function ParentAuthForms() {
 
       {mode === "signin" ? (
         <form action={signInAction} className="space-y-4">
+          {next && <input type="hidden" name="next" value={next} />}
           <Field label="Email" name="email" type="email" required />
           <Field label="Password" name="password" type="password" required />
           <SubmitButton pending={signInPending} label="Sign in" />
         </form>
       ) : (
         <form action={signUpAction} className="space-y-4">
+          {next && <input type="hidden" name="next" value={next} />}
           <Field label="Your full name" name="name" type="text" required />
           <Field label="Email" name="email" type="email" required />
           <Field label="Phone" name="phone" type="tel" />
@@ -72,8 +74,9 @@ export function ParentAuthForms() {
             hint="At least 8 characters"
           />
           <p className="text-xs text-zinc-400">
-            Use the same email the school has on file for you as your child&apos;s parent
-            contact — that&apos;s how we link your account to your child.
+            {next
+              ? "Create your account, then you'll come back here to finish linking to your child."
+              : "Ask the school for an invite link to connect your account to your child — creating an account alone doesn't link anyone yet."}
           </p>
           <SubmitButton pending={signUpPending} label="Create account" />
         </form>

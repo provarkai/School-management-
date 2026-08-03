@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { ParentAuthForms } from "./ParentAuthForms";
 
-export default function ParentLoginPage() {
+export default async function ParentLoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-4 py-16">
       <div className="mb-8 text-center">
@@ -17,7 +23,7 @@ export default function ParentLoginPage() {
           Go to the staff login →
         </Link>
       </p>
-      <ParentAuthForms />
+      <ParentAuthForms next={next} />
     </div>
   );
 }

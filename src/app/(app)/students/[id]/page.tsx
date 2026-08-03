@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { ShareLinkButton } from "./ShareLinkButton";
 import { ParentEmailForm } from "./ParentEmailForm";
+import { ParentInviteSection } from "./ParentInviteSection";
 import { AcademicHistory } from "./AcademicHistory";
 import { BehaviorRecord } from "./BehaviorRecord";
 import { CustomFieldValuesForm } from "./CustomFieldValuesForm";
@@ -52,6 +53,7 @@ export default async function StudentDetailPage({
     { data: promotions },
     { data: hostelRoomRows },
     { data: busStopRows },
+    { data: invitations },
   ] = await Promise.all([
     student.class_id
       ? supabase.from("classes").select("name").eq("id", student.class_id).single()
@@ -102,6 +104,11 @@ export default async function StudentDetailPage({
       .select("id, name, bus_routes(name)")
       .eq("school_id", profile.school_id ?? "")
       .order("name"),
+    supabase
+      .from("parent_invitations")
+      .select("id, created_at, expires_at, redeemed_at")
+      .eq("student_id", id)
+      .order("created_at", { ascending: false }),
   ]);
 
   const hostelRooms: HostelRoomOption[] = (hostelRoomRows ?? []).map((r) => ({
@@ -191,6 +198,7 @@ export default async function StudentDetailPage({
         <>
           <ShareLinkButton url={shareUrl} />
           <ParentEmailForm studentId={student.id} currentEmail={student.parent_email} />
+          <ParentInviteSection studentId={student.id} invitations={invitations ?? []} />
         </>
       )}
 

@@ -17,11 +17,17 @@ export async function updateSession(request: NextRequest) {
   // signed-out browser clicking a link from an email — they establish the
   // session themselves, so they can't be gated behind "must already be
   // signed in".
+  // /parent/invite/[token] shows who/what the link is for before asking
+  // anyone to sign in or create an account — forcing a redirect to
+  // /parent/login first (which is what would otherwise happen, since it's
+  // under /parent/*) would mean committing to a login before seeing that.
+  // The page checks the session itself once it renders.
   if (
     request.nextUrl.pathname.startsWith("/p/") ||
     request.nextUrl.pathname.startsWith("/t/") ||
     request.nextUrl.pathname.startsWith("/pay/") ||
     request.nextUrl.pathname.startsWith("/check-result") ||
+    request.nextUrl.pathname.startsWith("/parent/invite/") ||
     request.nextUrl.pathname.startsWith("/api/") ||
     request.nextUrl.pathname.startsWith("/auth/") ||
     request.nextUrl.pathname.startsWith("/privacy")
