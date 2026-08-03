@@ -13,7 +13,12 @@ import { DocumentsList } from "./DocumentsList";
 import { AvatarUploader } from "@/components/AvatarUploader";
 import { Avatar } from "@/components/Avatar";
 import { saveStudentPhoto } from "../actions";
-import { StudentRecordForm, type StudentRecord } from "./StudentRecordForm";
+import {
+  StudentRecordForm,
+  type StudentRecord,
+  type HostelRoomOption,
+  type BusStopOption,
+} from "./StudentRecordForm";
 import { WithdrawalSection } from "./WithdrawalForm";
 
 export default async function StudentDetailPage({
@@ -28,7 +33,7 @@ export default async function StudentDetailPage({
   const { data: student } = await supabase
     .from("students")
     .select(
-      "id, school_id, full_name, class_id, date_of_birth, parent_name, parent_phone, parent_email, admission_date, status, access_token, photo_url, admission_number, gender, address, guardian_name, guardian_phone, guardian_relationship, blood_group, genotype, allergies, emergency_contact_name, emergency_contact_phone, withdrawn_at, withdrawal_reason, conduct_remark"
+      "id, school_id, full_name, class_id, date_of_birth, parent_name, parent_phone, parent_email, admission_date, status, access_token, photo_url, admission_number, gender, address, guardian_name, guardian_phone, guardian_relationship, blood_group, genotype, allergies, emergency_contact_name, emergency_contact_phone, withdrawn_at, withdrawal_reason, conduct_remark, hostel_room_id, bus_stop_id"
     )
     .eq("id", id)
     .single();
@@ -45,6 +50,8 @@ export default async function StudentDetailPage({
     { data: fieldValues },
     { data: documentRows },
     { data: promotions },
+    { data: hostelRoomRows },
+    { data: busStopRows },
   ] = await Promise.all([
     student.class_id
       ? supabase.from("classes").select("name").eq("id", student.class_id).single()
@@ -85,7 +92,28 @@ export default async function StudentDetailPage({
       )
       .eq("student_id", student.id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("hostel_rooms")
+      .select("id, name, hostels(name)")
+      .eq("school_id", profile.school_id ?? "")
+      .order("name"),
+    supabase
+      .from("bus_stops")
+      .select("id, name, bus_routes(name)")
+      .eq("school_id", profile.school_id ?? "")
+      .order("name"),
   ]);
+
+  const hostelRooms: HostelRoomOption[] = (hostelRoomRows ?? []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    hostelName: (r.hostels as unknown as { name: string } | null)?.name ?? "Hostel",
+  }));
+  const busStops: BusStopOption[] = (busStopRows ?? []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    routeName: (s.bus_routes as unknown as { name: string } | null)?.name ?? "Route",
+  }));
 
   const fieldValueByDefId = new Map((fieldValues ?? []).map((v) => [v.field_definition_id, v.value]));
 
@@ -132,7 +160,12 @@ export default async function StudentDetailPage({
       </dl>
 
       {isManager && (
-        <StudentRecordForm studentId={student.id} record={student as unknown as StudentRecord} />
+        <StudentRecordForm
+          studentId={student.id}
+          record={student as unknown as StudentRecord}
+          hostelRooms={hostelRooms}
+          busStops={busStops}
+        />
       )}
 
       {isManager && (student.status === "active" || student.status === "withdrawn") && (

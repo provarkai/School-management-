@@ -133,6 +133,8 @@ export const GROUPS: NavGroup[] = [
       { href: "/transfer-certificates", label: "Transfer Certificates", emoji: "📜", managerOnly: true },
       { href: "/result-checker", label: "Result Checker", emoji: "🔑", managerOnly: true },
       { href: "/campuses", label: "Campuses", emoji: "🏢", managerOnly: true },
+      { href: "/hostel", label: "Hostel", emoji: "🛏️", managerOnly: true },
+      { href: "/transport", label: "Transport", emoji: "🚌", managerOnly: true },
     ],
   },
 ];

@@ -17,14 +17,32 @@ export interface StudentRecord {
   allergies: string | null;
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
+  hostel_room_id: string | null;
+  bus_stop_id: string | null;
+}
+
+export interface HostelRoomOption {
+  id: string;
+  name: string;
+  hostelName: string;
+}
+
+export interface BusStopOption {
+  id: string;
+  name: string;
+  routeName: string;
 }
 
 export function StudentRecordForm({
   studentId,
   record,
+  hostelRooms,
+  busStops,
 }: {
   studentId: string;
   record: StudentRecord;
+  hostelRooms: HostelRoomOption[];
+  busStops: BusStopOption[];
 }) {
   const action = updateStudentRecord.bind(null, studentId);
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -66,6 +84,44 @@ export function StudentRecordForm({
           </select>
         </label>
         <Field label="Home address" name="address" defaultValue={record.address} span />
+      </div>
+
+      <div>
+        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-400">
+          Hostel &amp; transport
+        </p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="text-sm font-medium text-zinc-700">
+            Hostel room
+            <select
+              name="hostel_room_id"
+              defaultValue={record.hostel_room_id ?? ""}
+              className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+            >
+              <option value="">Not assigned</option>
+              {hostelRooms.map((room) => (
+                <option key={room.id} value={room.id}>
+                  {room.hostelName} — {room.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm font-medium text-zinc-700">
+            Bus stop
+            <select
+              name="bus_stop_id"
+              defaultValue={record.bus_stop_id ?? ""}
+              className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+            >
+              <option value="">Not assigned</option>
+              {busStops.map((stop) => (
+                <option key={stop.id} value={stop.id}>
+                  {stop.routeName} — {stop.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       <div>

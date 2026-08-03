@@ -52,6 +52,32 @@ export async function updateStudentRecord(
   const text = (key: string) => String(formData.get(key) ?? "").trim() || null;
 
   const supabase = await createClient();
+
+  // hostel_room_id/bus_stop_id are looked up by id only — cross-check they
+  // belong to this school before writing, since the foreign key on students
+  // doesn't itself constrain which school a room/stop belongs to.
+  const hostelRoomId = text("hostel_room_id");
+  if (hostelRoomId) {
+    const { data: room } = await supabase
+      .from("hostel_rooms")
+      .select("id")
+      .eq("id", hostelRoomId)
+      .eq("school_id", profile.school_id ?? "")
+      .maybeSingle();
+    if (!room) return { error: "Choose a valid hostel room." };
+  }
+
+  const busStopId = text("bus_stop_id");
+  if (busStopId) {
+    const { data: stop } = await supabase
+      .from("bus_stops")
+      .select("id")
+      .eq("id", busStopId)
+      .eq("school_id", profile.school_id ?? "")
+      .maybeSingle();
+    if (!stop) return { error: "Choose a valid bus stop." };
+  }
+
   const { error } = await supabase
     .from("students")
     .update({
@@ -65,6 +91,8 @@ export async function updateStudentRecord(
       allergies: text("allergies"),
       emergency_contact_name: text("emergency_contact_name"),
       emergency_contact_phone: text("emergency_contact_phone"),
+      hostel_room_id: hostelRoomId,
+      bus_stop_id: busStopId,
     })
     .eq("id", studentId)
     .eq("school_id", profile.school_id ?? "");

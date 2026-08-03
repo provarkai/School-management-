@@ -20,11 +20,32 @@ export default async function ParentChildPage({
 
   const supabase = await createClient();
 
-  const { data: school } = await supabase
-    .from("schools")
-    .select("name, phone, current_session, current_term, withhold_results_when_owing")
-    .eq("id", child.school_id)
-    .single();
+  const [{ data: school }, { data: studentAssignment }] = await Promise.all([
+    supabase
+      .from("schools")
+      .select("name, phone, current_session, current_term, withhold_results_when_owing")
+      .eq("id", child.school_id)
+      .single(),
+    supabase
+      .from("students")
+      .select(
+        "hostel_room_id, bus_stop_id, hostel_rooms(name, hostels(name)), bus_stops(name, pickup_time, drop_time, bus_routes(name, driver_name, driver_phone))"
+      )
+      .eq("id", child.id)
+      .single(),
+  ]);
+
+  const hostelRoom = studentAssignment?.hostel_rooms as unknown as
+    | { name: string; hostels: { name: string } | null }
+    | null;
+  const busStop = studentAssignment?.bus_stops as unknown as
+    | {
+        name: string;
+        pickup_time: string | null;
+        drop_time: string | null;
+        bus_routes: { name: string; driver_name: string | null; driver_phone: string | null } | null;
+      }
+    | null;
 
   const session = school?.current_session ?? "";
   const term = (school?.current_term ?? "1") as Term;
@@ -237,6 +258,45 @@ export default async function ParentChildPage({
           </table>
         )}
       </section>
+
+      {(hostelRoom || busStop) && (
+        <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold text-zinc-900">Hostel &amp; transport</h2>
+          <div className="space-y-3 text-sm">
+            {hostelRoom && (
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">Hostel</p>
+                <p className="text-zinc-900">
+                  {hostelRoom.hostels?.name ?? "Hostel"} — Room {hostelRoom.name}
+                </p>
+              </div>
+            )}
+            {busStop && (
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                  Bus stop
+                </p>
+                <p className="text-zinc-900">
+                  {busStop.bus_routes?.name ?? "Route"} — {busStop.name}
+                </p>
+                {(busStop.pickup_time || busStop.drop_time) && (
+                  <p className="text-xs text-zinc-500">
+                    {busStop.pickup_time ? `Pickup ${busStop.pickup_time}` : ""}
+                    {busStop.pickup_time && busStop.drop_time ? " · " : ""}
+                    {busStop.drop_time ? `Drop ${busStop.drop_time}` : ""}
+                  </p>
+                )}
+                {busStop.bus_routes?.driver_name && (
+                  <p className="text-xs text-zinc-500">
+                    Driver: {busStop.bus_routes.driver_name}
+                    {busStop.bus_routes.driver_phone ? ` · ${busStop.bus_routes.driver_phone}` : ""}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {(assignments ?? []).length > 0 && (
         <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
