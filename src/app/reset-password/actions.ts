@@ -50,6 +50,11 @@ export async function setNewPassword(
     redirect("/parent");
   }
 
+  // Clears the forced-reset flag from addStaffMember/bulkImportStaff now
+  // that a real password has been set — best-effort, a failure here
+  // shouldn't strand someone who just successfully changed their password.
+  await supabase.from("app_users").update({ must_change_password: false }).eq("id", user.id);
+
   const { data: isAdmin } = await withAuthTimeout(supabase.rpc("is_platform_admin"), 8000, null);
   redirect(isAdmin ? "/admin" : "/dashboard");
 }

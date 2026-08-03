@@ -10,6 +10,7 @@ import { naira } from "@/lib/format";
 import { TERM_LABELS, type Term } from "@/lib/types";
 import { logActivity } from "@/lib/activityLog";
 import { siteOrigin } from "@/lib/siteUrl";
+import { assertInSchool } from "@/lib/assertInSchool";
 
 export interface FeeActionState {
   error?: string;
@@ -34,6 +35,12 @@ async function getOrCreateFeeRecord(
     .maybeSingle();
 
   if (existing) return existing.id as string;
+
+  // studentId/feeTypeId come from the form, not a lookup the app itself
+  // did — confirm both are actually in this school before creating a
+  // fee_record that points at them.
+  await assertInSchool(supabase, "students", studentId, schoolId);
+  await assertInSchool(supabase, "fee_types", feeTypeId, schoolId);
 
   const { data: created, error } = await supabase
     .from("fee_records")

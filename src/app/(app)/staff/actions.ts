@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import { requireProprietor, requireLiteralProprietor } from "@/lib/current-user";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activityLog";
+import { assertInSchool } from "@/lib/assertInSchool";
 import { STAFF_PERMISSION_LABELS, type StaffPermission } from "@/lib/types";
 
 export interface AddTeacherState {
@@ -61,6 +62,7 @@ export async function addStaffMember(
       subject: role === "teacher" ? subject || null : null,
       job_title: role === "staff" ? jobTitle || null : null,
       campus_id: campusId,
+      must_change_password: true,
     })
     .eq("id", created.user.id);
 
@@ -159,6 +161,7 @@ export async function bulkImportStaff(rows: StaffImportRow[]): Promise<StaffImpo
         subject: role === "teacher" ? row.subject?.trim() || null : null,
         job_title: role === "staff" ? row.job_title?.trim() || null : null,
         campus_id: campusId,
+        must_change_password: true,
       })
       .eq("id", created.user.id);
 
@@ -232,6 +235,11 @@ export async function setStaffPermission(
 ) {
   const { profile } = await requireProprietor();
   const supabase = await createClient();
+
+  // staffId is a form value, not something the app just looked up itself
+  // — confirm it's actually a staff member at this school before granting
+  // or revoking anything.
+  await assertInSchool(supabase, "app_users", staffId, profile.school_id ?? "");
 
   if (granted) {
     const { error } = await supabase

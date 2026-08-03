@@ -58,6 +58,14 @@ export async function requireUser(): Promise<CurrentUser> {
     redirect("/account-suspended");
   }
 
+  // A fresh account created with a generated temporary password (see
+  // addStaffMember/bulkImportStaff) carries this until its first sign-in
+  // sets a real one. /reset-password doesn't call requireUser() itself,
+  // so this can't loop.
+  if (profile.must_change_password) {
+    redirect("/reset-password");
+  }
+
   const typedProfile = profile as AppUser;
 
   return {

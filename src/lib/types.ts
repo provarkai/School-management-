@@ -64,6 +64,7 @@ export interface AppUser {
   gender: Gender | null;
   is_school_admin: boolean;
   dashboard_widgets: string[] | null;
+  must_change_password: boolean;
   created_at: string;
 }
 

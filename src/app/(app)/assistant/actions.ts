@@ -17,6 +17,12 @@ export interface AskAssistantResult {
 }
 
 const MAX_TOOL_ITERATIONS = 5;
+// Every message is a paid OpenRouter call; this is an abuse backstop, not
+// a product quota, so it's set generously.
+const DAILY_MESSAGE_LIMIT = 200;
+// The client sends the whole conversation back on every turn — cap it so
+// one request can't be made arbitrarily expensive by a long-running chat.
+const MAX_HISTORY_TURNS = 20;
 
 export async function askAssistant(
   history: ChatTurn[],
@@ -33,6 +39,15 @@ export async function askAssistant(
 
   const supabase = await createClient();
 
+  const { data: usageCount } = await supabase.rpc("increment_assistant_usage");
+  if ((usageCount ?? 0) > DAILY_MESSAGE_LIMIT) {
+    return {
+      reply: "You've reached today's message limit for the AI Assistant. It resets at midnight.",
+    };
+  }
+
+  const recentHistory = history.slice(-MAX_HISTORY_TURNS);
+
   const term = (user.school?.current_term ?? "1") as Term;
   const systemPrompt = `You are the AI Assistant inside a school management app, helping ${
     user.profile.role === "proprietor" ? "a school proprietor/admin" : "a teacher"
@@ -42,7 +57,7 @@ Answer questions about students, fees, attendance, and results using the provide
 
   const messages: OpenRouterMessage[] = [
     { role: "system", content: systemPrompt },
-    ...history.map((h) => ({ role: h.role, content: h.content }) as OpenRouterMessage),
+    ...recentHistory.map((h) => ({ role: h.role, content: h.content }) as OpenRouterMessage),
     { role: "user", content: message },
   ];
 
