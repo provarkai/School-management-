@@ -37,7 +37,7 @@ create extension if not exists pgcrypto;
 -- ----------------------------------------------------------------------------
 create temp table tmp_school (id uuid);
 create temp table tmp_people (label text primary key, auth_id uuid);
-create temp table tmp_classes (label text primary key, id uuid);
+create temp table tmp_classes (label text primary key, id uuid, teacher_id uuid);
 create temp table tmp_campuses (label text primary key, id uuid);
 create temp table tmp_subjects (label text primary key, id uuid);
 create temp table tmp_students (label text primary key, id uuid, class_label text);
@@ -206,7 +206,7 @@ values
   ((select id from tmp_school), 'JSS 1', (select auth_id from tmp_people where label = 'teacher.jss1'), '2025/2026', '2', (select id from tmp_campuses where label = 'Annex Campus')),
   ((select id from tmp_school), 'JSS 3', (select auth_id from tmp_people where label = 'teacher.jss3'), '2025/2026', '2', (select id from tmp_campuses where label = 'Annex Campus')),
   ((select id from tmp_school), 'SSS 2', (select auth_id from tmp_people where label = 'teacher.sss2'), '2025/2026', '2', (select id from tmp_campuses where label = 'Annex Campus'));
-insert into tmp_classes (label, id) select name, id from public.classes where school_id = (select id from tmp_school);
+insert into tmp_classes (label, id, teacher_id) select name, id, teacher_id from public.classes where school_id = (select id from tmp_school);
 
 insert into public.subjects (school_id, name)
 select (select id from tmp_school), n from unnest(array[
