@@ -43,7 +43,16 @@ export function StudentRecordForm({
       )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="Admission number" name="admission_number" defaultValue={record.admission_number} />
+        <div className="text-sm font-medium text-zinc-700">
+          Admission number
+          <p className="mt-1 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-sm text-zinc-500">
+            {record.admission_number ?? "—"}
+          </p>
+          <span className="mt-1 block text-xs font-normal text-zinc-400">
+            Assigned automatically and fixed for the student&rsquo;s whole time at the school —
+            not editable here. The prefix for new numbers is set in Settings.
+          </span>
+        </div>
         <label className="text-sm font-medium text-zinc-700">
           Gender
           <select

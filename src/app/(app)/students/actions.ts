@@ -33,7 +33,10 @@ export interface StudentRecordState {
 
 /** Extended student record — identity, contact and medical details that
  * don't fit the create form but matter for ID cards, transfer certificates
- * and emergencies. */
+ * and emergencies. Deliberately excludes admission_number: it's assigned
+ * once automatically (see nextAdmissionNumber) and stays fixed for the
+ * student's whole time at the school, so there is no path to edit it here
+ * even by posting the field directly. */
 export async function updateStudentRecord(
   studentId: string,
   _prevState: StudentRecordState,
@@ -52,7 +55,6 @@ export async function updateStudentRecord(
   const { error } = await supabase
     .from("students")
     .update({
-      admission_number: text("admission_number"),
       gender,
       address: text("address"),
       guardian_name: text("guardian_name"),
@@ -68,9 +70,6 @@ export async function updateStudentRecord(
     .eq("school_id", profile.school_id ?? "");
 
   if (error) {
-    if (error.code === "23505") {
-      return { error: "That admission number is already in use by another student." };
-    }
     return { error: error.message };
   }
 
