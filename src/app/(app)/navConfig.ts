@@ -116,6 +116,7 @@ export const GROUPS: NavGroup[] = [
     id: "notifications",
     label: "Notifications",
     items: [
+      { href: "/messages", label: "Messages", emoji: "💬", roles: ["teacher"], managerOnly: true },
       { href: "/reminders", label: "Reminders", emoji: "📣", managerOnly: true },
       { href: "/broadcasts", label: "Broadcasts", emoji: "📢", managerOnly: true },
       { href: "/notices", label: "Notices", emoji: "📌", alwaysVisible: true },
