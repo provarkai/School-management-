@@ -19,6 +19,7 @@
 -- Deliberately not extended to the 'expenses' or 'admissions' grants —
 -- neither of those screens reads students at all.
 
+drop policy if exists "students_select_permission_fees" on public.students;
 create policy "students_select_permission_fees" on public.students
   for select using (
     school_id = public.current_school_id() and public.has_permission('fees')
@@ -32,6 +33,7 @@ create policy "students_select_permission_fees" on public.students
 -- The transfer-matching screen (/fees/transfers) reads and writes
 -- bank_transfer_alerts under the same "fees" grant; its own policy predates
 -- staff_permissions and is still proprietor-only.
+drop policy if exists "bank_transfer_alerts_permission_fees" on public.bank_transfer_alerts;
 create policy "bank_transfer_alerts_permission_fees" on public.bank_transfer_alerts
   for all using (school_id = public.current_school_id() and public.has_permission('fees'))
   with check (school_id = public.current_school_id() and public.has_permission('fees'));
@@ -39,6 +41,7 @@ create policy "bank_transfer_alerts_permission_fees" on public.bank_transfer_ale
 -- payment_intents backs the "generate a payment link" action on the fee
 -- screens. Writes go through the service-role client, so only select needs
 -- widening.
+drop policy if exists "payment_intents_select_permission_fees" on public.payment_intents;
 create policy "payment_intents_select_permission_fees" on public.payment_intents
   for select using (
     school_id = public.current_school_id() and public.has_permission('fees')
