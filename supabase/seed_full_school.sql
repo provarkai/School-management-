@@ -832,8 +832,11 @@ values (
 insert into public.broadcasts (school_id, message, audience, recipient_count, sent_by)
 values ((select id from tmp_school), 'Reminder: PTA meeting this Saturday by 10am in the school hall.', 'all_parents', 47, (select auth_id from tmp_people where label = 'proprietor'));
 
-insert into public.message_logs (school_id, purpose, recipient_phone, recipient_name, student_id, status, sent_by)
-select (select id from tmp_school), 'fee_reminder', s.parent_phone, s.parent_name, s.id, 'mocked', (select auth_id from tmp_people where label = 'staff.bursar')
+insert into public.message_logs (school_id, purpose, recipient_phone, recipient_name, student_id, message, status, sent_by)
+select
+  (select id from tmp_school), 'fee_reminder', s.parent_phone, s.parent_name, s.id,
+  format('Dear parent, this is a reminder that fees for %s are outstanding for the 2025/2026 second term. Please make payment at your earliest convenience. Thank you.', s.full_name),
+  'mocked', (select auth_id from tmp_people where label = 'staff.bursar')
 from public.students s
 where s.school_id = (select id from tmp_school) and s.status = 'active'
 limit 10;
