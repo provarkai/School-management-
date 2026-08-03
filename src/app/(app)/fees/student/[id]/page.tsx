@@ -113,54 +113,100 @@ export default async function StudentFeePage({
         <SendReminderButton studentId={id} />
       </section>
 
-      {(feeTypes ?? []).length === 0 ? (
-        <p className="rounded-lg border border-zinc-200 bg-white p-5 text-sm text-zinc-400 shadow-sm">
-          No fee types set up yet — add one from the Fees page.
-        </p>
-      ) : (
-        (feeTypes ?? []).map((type) => {
-          const fee = feeByType.get(type.id);
-          return (
-            <section key={type.id} className="space-y-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-zinc-900">{type.name}</h2>
-                {fee && (
-                  <span className="text-xs text-zinc-500">
-                    {naira(Number(fee.amount_paid))} / {naira(Number(fee.amount_expected))} — balance{" "}
-                    <span className={Number(fee.balance) > 0 ? "font-medium text-red-600" : "font-medium text-emerald-600"}>
-                      {naira(Number(fee.balance))}
-                    </span>
-                  </span>
-                )}
-              </div>
-
-              {fee && Number(fee.discount_amount) > 0 && (
-                <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  Sticker price {naira(Number(fee.sticker_amount_expected))} − discount{" "}
-                  {naira(Number(fee.discount_amount))}
-                  {fee.discount_reason ? ` (${fee.discount_reason})` : ""} = net{" "}
-                  {naira(Number(fee.amount_expected))}
-                </p>
-              )}
-
-              <SetAmountForm
-                studentId={id}
-                feeTypeId={type.id}
-                currentAmount={Number(fee?.sticker_amount_expected ?? 0)}
-              />
-
-              <SetDiscountForm
-                studentId={id}
-                feeTypeId={type.id}
-                currentDiscount={Number(fee?.discount_amount ?? 0)}
-                currentReason={fee?.discount_reason ?? null}
-              />
-
-              <PaymentLinkButton studentId={id} feeTypeId={type.id} />
-            </section>
-          );
-        })
-      )}
+      {/* One invoice, one card — tuition, PTA, transport, and every other
+          fee type are line items on it, not separate invoices. Each row
+          expands in place to adjust that line's amount/discount or grab a
+          pay-online link; the totals row always matches what the "Download
+          invoice" PDF and the combined payment above add up to. */}
+      <section className="rounded-lg border border-zinc-200 bg-white shadow-sm">
+        <h2 className="border-b border-zinc-200 px-5 py-3 text-sm font-semibold text-zinc-900">
+          School fees — {session} · Term {term}
+        </h2>
+        {(feeTypes ?? []).length === 0 ? (
+          <p className="p-5 text-sm text-zinc-400">No fee types set up yet — add one from the Fees page.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-zinc-200 text-sm">
+              <thead className="bg-zinc-50">
+                <tr>
+                  <th className="px-4 py-2 text-left font-medium text-zinc-500">Line item</th>
+                  <th className="px-4 py-2 text-right font-medium text-zinc-500">Sticker</th>
+                  <th className="px-4 py-2 text-right font-medium text-zinc-500">Discount</th>
+                  <th className="px-4 py-2 text-right font-medium text-zinc-500">Net</th>
+                  <th className="px-4 py-2 text-right font-medium text-zinc-500">Paid</th>
+                  <th className="px-4 py-2 text-right font-medium text-zinc-500">Balance</th>
+                  <th className="px-4 py-2" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {(feeTypes ?? []).map((type) => {
+                  const fee = feeByType.get(type.id);
+                  const sticker = Number(fee?.sticker_amount_expected ?? 0);
+                  const discount = Number(fee?.discount_amount ?? 0);
+                  const net = Number(fee?.amount_expected ?? 0);
+                  const paid = Number(fee?.amount_paid ?? 0);
+                  const balance = Number(fee?.balance ?? 0);
+                  return (
+                    <tr key={type.id}>
+                      <td colSpan={7} className="p-0">
+                        <details className="group">
+                          <summary className="grid cursor-pointer list-none grid-cols-[1fr_repeat(5,minmax(0,1fr))] items-center gap-2 px-4 py-2 marker:hidden hover:bg-zinc-50">
+                            <span className="font-medium text-zinc-900">{type.name}</span>
+                            <span className="text-right text-zinc-500">{naira(sticker)}</span>
+                            <span className="text-right text-zinc-500">
+                              {discount > 0 ? naira(discount) : "—"}
+                            </span>
+                            <span className="text-right text-zinc-500">{naira(net)}</span>
+                            <span className="text-right text-zinc-500">{naira(paid)}</span>
+                            <span
+                              className={`text-right font-medium ${balance > 0 ? "text-red-600" : "text-emerald-600"}`}
+                            >
+                              {naira(balance)}
+                              <span className="ml-2 text-xs font-normal text-zinc-400 group-open:hidden">
+                                Edit ▾
+                              </span>
+                              <span className="ml-2 hidden text-xs font-normal text-zinc-400 group-open:inline">
+                                Close ▴
+                              </span>
+                            </span>
+                          </summary>
+                          <div className="space-y-4 border-t border-zinc-100 bg-zinc-50/50 px-4 py-4">
+                            {fee && discount > 0 && (
+                              <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                Sticker price {naira(sticker)} − discount {naira(discount)}
+                                {fee.discount_reason ? ` (${fee.discount_reason})` : ""} = net {naira(net)}
+                              </p>
+                            )}
+                            <SetAmountForm studentId={id} feeTypeId={type.id} currentAmount={sticker} />
+                            <SetDiscountForm
+                              studentId={id}
+                              feeTypeId={type.id}
+                              currentDiscount={discount}
+                              currentReason={fee?.discount_reason ?? null}
+                            />
+                            <PaymentLinkButton studentId={id} feeTypeId={type.id} />
+                          </div>
+                        </details>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot className="border-t-2 border-zinc-300 bg-zinc-50 font-semibold text-zinc-900">
+                <tr>
+                  <td className="px-4 py-2">Total</td>
+                  <td />
+                  <td />
+                  <td className="px-4 py-2 text-right">{naira(totals.expected)}</td>
+                  <td className="px-4 py-2 text-right">{naira(totals.paid)}</td>
+                  <td className="px-4 py-2 text-right">{naira(totals.balance)}</td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </section>
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
