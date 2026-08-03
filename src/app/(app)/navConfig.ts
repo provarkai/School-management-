@@ -69,9 +69,9 @@ export const GROUPS: NavGroup[] = [
       { href: "/assignments", label: "Assignments", emoji: "📝", roles: ["teacher"], managerOnly: true },
       { href: "/resources", label: "Resources", emoji: "📎", roles: ["teacher"], managerOnly: true },
       { href: "/exams", label: "Exams", emoji: "📋", roles: ["teacher"], managerOnly: true },
-      { href: "/report-cards", label: "Report cards", emoji: "📄", roles: ["teacher"], managerOnly: true },
-      { href: "/lesson-notes", label: "Lesson Notes", emoji: "📓", roles: ["teacher"], managerOnly: true },
-      { href: "/id-cards", label: "ID Cards", emoji: "🪪", managerOnly: true },
+      { href: "/report-cards", label: "Results", emoji: "📄", roles: ["teacher"], managerOnly: true },
+      { href: "/lesson-notes", label: "Notes", emoji: "📓", roles: ["teacher"], managerOnly: true },
+      { href: "/id-cards", label: "IDs", emoji: "🪪", managerOnly: true },
     ],
   },
   {
@@ -79,7 +79,7 @@ export const GROUPS: NavGroup[] = [
     label: "Academics",
     items: [
       { href: "/subjects", label: "Subjects", emoji: "📘", managerOnly: true },
-      { href: "/subject-registration", label: "Subject Registration", emoji: "🧾", managerOnly: true },
+      { href: "/subject-registration", label: "Registration", emoji: "🧾", managerOnly: true },
       { href: "/curriculum", label: "Curriculum", emoji: "🧮", roles: ["teacher"], managerOnly: true },
       { href: "/grading", label: "Grading", emoji: "🎯", managerOnly: true },
       { href: "/timetable", label: "Timetable", emoji: "🗓️", roles: ["teacher"], managerOnly: true },
@@ -90,7 +90,7 @@ export const GROUPS: NavGroup[] = [
     id: "insights",
     label: "Insights",
     items: [
-      { href: "/assistant", label: "AI Assistant", emoji: "🤖", roles: ["teacher"], managerOnly: true },
+      { href: "/assistant", label: "Assistant", emoji: "🤖", roles: ["teacher"], managerOnly: true },
       { href: "/analytics", label: "Analytics", emoji: "📈", managerOnly: true },
       { href: "/reports", label: "Reports", emoji: "🧾", managerOnly: true },
     ],
@@ -100,8 +100,8 @@ export const GROUPS: NavGroup[] = [
     label: "Staff",
     items: [
       { href: "/staff", label: "Staff", emoji: "👥", managerOnly: true },
-      { href: "/staff-attendance", label: "Staff Attendance", emoji: "🕒", managerOnly: true },
-      { href: "/staff-performance", label: "Staff Performance", emoji: "🧑‍🏫", managerOnly: true },
+      { href: "/staff-attendance", label: "Attendance", emoji: "🕒", managerOnly: true },
+      { href: "/staff-performance", label: "Performance", emoji: "🧑‍🏫", managerOnly: true },
       { href: "/leave", label: "Leave", emoji: "🌴", roles: ["teacher", "staff"], managerOnly: true },
     ],
   },
@@ -123,22 +123,28 @@ export const GROUPS: NavGroup[] = [
       { href: "/reminders", label: "Reminders", emoji: "📣", managerOnly: true },
       { href: "/broadcasts", label: "Broadcasts", emoji: "📢", managerOnly: true },
       { href: "/notices", label: "Notices", emoji: "📌", alwaysVisible: true },
-      { href: "/message-logs", label: "Message Logs", emoji: "📨", managerOnly: true },
+      { href: "/message-logs", label: "Logs", emoji: "📨", managerOnly: true },
     ],
   },
   {
     id: "admin",
     label: "Admin",
     items: [
-      { href: "/admissions", label: "Admissions", emoji: "🎓", managerOnly: true, permission: "admissions" },
       { href: "/calendar", label: "Calendar", emoji: "📅", roles: ["teacher", "staff"], managerOnly: true },
-      { href: "/promotion", label: "Session Promotion", emoji: "🔁", managerOnly: true },
-      { href: "/transfer-certificates", label: "Transfer Certificates", emoji: "📜", managerOnly: true },
-      { href: "/result-checker", label: "Result Checker", emoji: "🔑", managerOnly: true },
+      { href: "/promotion", label: "Promotion", emoji: "🔁", managerOnly: true },
+      { href: "/transfer-certificates", label: "Certificates", emoji: "📜", managerOnly: true },
+      { href: "/result-checker", label: "PINs", emoji: "🔑", managerOnly: true },
+      { href: "/audit-log", label: "Audit", emoji: "🕵️", managerOnly: true },
+    ],
+  },
+  {
+    id: "facilities",
+    label: "Facilities",
+    items: [
+      { href: "/admissions", label: "Admissions", emoji: "🎓", managerOnly: true, permission: "admissions" },
       { href: "/campuses", label: "Campuses", emoji: "🏢", managerOnly: true },
       { href: "/hostel", label: "Hostel", emoji: "🛏️", managerOnly: true },
       { href: "/transport", label: "Transport", emoji: "🚌", managerOnly: true },
-      { href: "/audit-log", label: "Audit Log", emoji: "🕵️", managerOnly: true },
     ],
   },
 ];
@@ -206,6 +212,15 @@ export const GROUP_STYLES: Record<string, GroupStyle> = {
     tabActive: "border-rose-600 text-rose-700",
     tabActiveBg: "bg-rose-50",
     tabHover: "hover:border-rose-300 hover:text-rose-600",
+  },
+  facilities: {
+    emoji: "🏫",
+    activeBg: "bg-orange-600",
+    activeText: "text-white",
+    openText: "text-orange-600",
+    tabActive: "border-orange-600 text-orange-700",
+    tabActiveBg: "bg-orange-50",
+    tabHover: "hover:border-orange-300 hover:text-orange-600",
   },
 };
 

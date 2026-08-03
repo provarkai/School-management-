@@ -26,18 +26,16 @@ export function GroupTabs({
   const style = GROUP_STYLES[group.id];
 
   return (
-    <div className="mb-4 -mt-1 border-b border-zinc-200 print:hidden sm:-mt-2">
-      <nav className="flex flex-wrap gap-x-1 gap-y-2 overflow-x-auto" aria-label={`${group.label} tabs`}>
+    <div className={`mb-4 -mt-1 rounded-lg p-1 print:hidden sm:-mt-2 ${style.tabActiveBg}`}>
+      <nav className="flex flex-wrap items-center gap-1 overflow-x-auto" aria-label={`${group.label} tabs`}>
         {items.map((item) => {
           const active = isActive(pathname, item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-1.5 whitespace-nowrap rounded-t-md border-b-2 px-3 py-2 text-sm font-semibold transition ${
-                active
-                  ? `${style.tabActive} ${style.tabActiveBg}`
-                  : `border-transparent text-zinc-500 ${style.tabHover}`
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-sm font-semibold transition ${
+                active ? `bg-white shadow-sm ${style.tabActive}` : `text-zinc-500 hover:bg-black/5 ${style.tabHover}`
               }`}
             >
               <span>{item.emoji}</span>

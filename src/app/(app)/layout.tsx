@@ -54,7 +54,7 @@ export default async function AppLayout({
               <p className="text-[11px] capitalize text-zinc-400">{roleDisplay}</p>
             </div>
           </div>
-          <NavLinks role={profile.role} isManager={isManager} permissions={permissions} />
+          <NavLinks role={profile.role} isManager={isManager} permissions={permissions} onSignOut={signOut} />
         </div>
         <div className="mt-3 hidden border-t border-zinc-100 pt-4 md:block">
           <div className="flex items-center gap-2 px-1">
@@ -75,14 +75,6 @@ export default async function AppLayout({
             </button>
           </form>
         </div>
-        <form action={signOut} className="mt-2 md:hidden">
-          <button
-            type="submit"
-            className="w-full rounded-md border border-zinc-200 px-3 py-1.5 text-left text-xs font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
-          >
-            Sign out
-          </button>
-        </form>
       </aside>
       <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-8">
         <GroupTabs role={profile.role} isManager={isManager} permissions={permissions} />

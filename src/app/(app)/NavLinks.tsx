@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { Role, StaffPermission } from "@/lib/types";
@@ -16,17 +16,22 @@ import {
   type GroupStyle,
 } from "./navConfig";
 
+const SIGN_OUT_VALUE = "__sign_out__";
+
 export function NavLinks({
   role,
   isManager,
   permissions = new Set(),
+  onSignOut,
 }: {
   role: Role;
   isManager: boolean;
   permissions?: ReadonlySet<StaffPermission>;
+  onSignOut: () => Promise<void>;
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   const visibleGroups = getVisibleGroups(role, isManager, permissions);
@@ -43,12 +48,22 @@ export function NavLinks({
 
   return (
     <nav>
-      {/* Mobile: a flat dropdown of top-level destinations only — a group's
-          sub-pages show up as tabs (GroupTabs) once you land on it */}
+      {/* Mobile: a flat dropdown of top-level destinations, plus sign out
+          tucked in as the last entry rather than sitting as its own button
+          above the page content — a group's sub-pages show up as tabs
+          (GroupTabs) once you land on it. */}
       <select
         aria-label="Go to page"
         value={selectValue}
-        onChange={(e) => router.push(e.target.value)}
+        onChange={(e) => {
+          if (e.target.value === SIGN_OUT_VALUE) {
+            startTransition(() => {
+              onSignOut();
+            });
+            return;
+          }
+          router.push(e.target.value);
+        }}
         className="block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 md:hidden"
       >
         {!selectValue && <option value="">Menu</option>}
@@ -67,10 +82,11 @@ export function NavLinks({
             {item.emoji} {item.label}
           </option>
         ))}
+        <option value={SIGN_OUT_VALUE}>🚪 Sign out</option>
       </select>
 
-      {/* Desktop: pinned items + 6 grouped, tab-style collapsible sections */}
-      <div className="hidden md:flex md:flex-col md:gap-1">
+      {/* Desktop: pinned items + grouped, tab-style collapsible sections */}
+      <div className="hidden md:flex md:flex-col md:gap-0.5">
         {pinnedTop.map((item) => (
           <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} style={PINNED_STYLE} />
         ))}
@@ -79,11 +95,11 @@ export function NavLinks({
           const isOpen = effectiveOpenGroup === group.id;
           const style = GROUP_STYLES[group.id];
           return (
-            <div key={group.id} className="mt-1">
+            <div key={group.id} className="mt-0.5">
               <button
                 type="button"
                 onClick={() => setOpenGroup(isOpen ? "" : group.id)}
-                className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide transition ${
+                className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-xs font-semibold uppercase tracking-wide transition ${
                   isOpen ? style.openText : "text-zinc-400 hover:text-zinc-700"
                 }`}
               >
@@ -94,7 +110,7 @@ export function NavLinks({
                 <span className={`transition-transform ${isOpen ? "rotate-90" : ""}`}>›</span>
               </button>
               {isOpen && (
-                <div className="flex flex-col gap-1 pb-1 pl-2">
+                <div className={`flex flex-col gap-0.5 rounded-md p-1 ${style.tabActiveBg}`}>
                   {group.items.map((item) => (
                     <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} style={style} />
                   ))}
@@ -105,7 +121,7 @@ export function NavLinks({
         })}
 
         {pinnedBottom.length > 0 && (
-          <div className="mt-2 border-t border-zinc-100 pt-2">
+          <div className="mt-1.5 border-t border-zinc-100 pt-1.5">
             {pinnedBottom.map((item) => (
               <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} style={PINNED_STYLE} />
             ))}
@@ -120,8 +136,8 @@ function NavLink({ item, active, style }: { item: NavItem; active: boolean; styl
   return (
     <Link
       href={item.href}
-      className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition ${
-        active ? `${style.activeBg} ${style.activeText}` : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+      className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm font-medium transition ${
+        active ? `${style.activeBg} ${style.activeText}` : "text-zinc-600 hover:bg-black/5 hover:text-zinc-900"
       }`}
     >
       <span>{item.emoji}</span>
