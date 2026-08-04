@@ -19,7 +19,7 @@ export default async function RemindersPage({
   // Both lists are one row per student (per fee type, for fees), so they
   // outgrow a single request — and a parent missing from this list is a
   // parent who never gets chased.
-  const [fees, students, { data: classes }] = await Promise.all([
+  const [fees, students, { data: classes }, { data: campuses }] = await Promise.all([
     fetchAllRows<{
       student_id: string;
       balance: number;
@@ -49,11 +49,28 @@ export default async function RemindersPage({
         .order("id")
         .range(from, to)
     ),
-    supabase.from("classes").select("id, name"),
+    supabase.from("classes").select("id, name, campus_id"),
+    supabase.from("campuses").select("id, name").eq("school_id", profile.school_id ?? ""),
   ]);
 
   const studentById = new Map(students.map((s) => [s.id, s]));
   const classNameById = new Map((classes ?? []).map((c) => [c.id, c.name]));
+
+  // Two classes can share a name — usually one per campus — so the filter
+  // buttons need to tell them apart, or two identically-labelled buttons
+  // sit side by side with no way to know which is which.
+  const campusNameById = new Map((campuses ?? []).map((c) => [c.id, c.name]));
+  const classNameCounts = new Map<string, number>();
+  for (const c of classes ?? []) {
+    const key = c.name.trim().toLowerCase();
+    classNameCounts.set(key, (classNameCounts.get(key) ?? 0) + 1);
+  }
+  const classFilterLabel = (c: { name: string; campus_id: string | null }) => {
+    const key = c.name.trim().toLowerCase();
+    if ((classNameCounts.get(key) ?? 0) <= 1) return c.name;
+    const campusName = c.campus_id ? campusNameById.get(c.campus_id) : null;
+    return `${c.name} (${campusName ?? "No campus"})`;
+  };
 
   const balanceByStudent = new Map<string, number>();
   for (const f of fees) {
@@ -112,7 +129,7 @@ export default async function RemindersPage({
                 classFilter === c.id ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-600"
               }`}
             >
-              {c.name}
+              {classFilterLabel(c)}
             </Link>
           ))}
         </div>

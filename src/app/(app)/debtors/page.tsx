@@ -69,7 +69,7 @@ export default async function DebtorsPage({
   // is exactly what an aging report exists to surface. Read in full: a
   // debtors list that stops at the first page hides exactly the debts the
   // school opened the page to find.
-  const [outstanding, { data: classes }] = await Promise.all([
+  const [outstanding, { data: classes }, { data: campuses }] = await Promise.all([
     fetchAllRows<{
       fee_record_id: string;
       student_id: string;
@@ -90,8 +90,25 @@ export default async function DebtorsPage({
         .order("fee_record_id")
         .range(from, to)
     ),
-    supabase.from("classes").select("id, name").order("name"),
+    supabase.from("classes").select("id, name, campus_id").order("name"),
+    supabase.from("campuses").select("id, name").eq("school_id", profile.school_id ?? "").order("name"),
   ]);
+
+  // Two classes can share a name — usually one per campus — so the filter
+  // buttons need to tell them apart, or two identically-labelled buttons
+  // sit side by side with no way to know which is which.
+  const campusNameById = new Map((campuses ?? []).map((c) => [c.id, c.name]));
+  const classNameCounts = new Map<string, number>();
+  for (const c of classes ?? []) {
+    const key = c.name.trim().toLowerCase();
+    classNameCounts.set(key, (classNameCounts.get(key) ?? 0) + 1);
+  }
+  const classFilterLabel = (c: { name: string; campus_id: string | null }) => {
+    const key = c.name.trim().toLowerCase();
+    if ((classNameCounts.get(key) ?? 0) <= 1) return c.name;
+    const campusName = c.campus_id ? campusNameById.get(c.campus_id) : null;
+    return `${c.name} (${campusName ?? "No campus"})`;
+  };
 
   const recordIds = outstanding.map((f) => f.fee_record_id);
   const studentIds = Array.from(new Set(outstanding.map((f) => f.student_id)));
@@ -241,7 +258,7 @@ export default async function DebtorsPage({
         {(classes ?? []).map((c) => (
           <FilterLink
             key={c.id}
-            label={c.name}
+            label={classFilterLabel(c)}
             href={query({ class: c.id })}
             active={classFilter === c.id}
           />
