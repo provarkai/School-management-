@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requirePlatformAdmin } from "@/lib/current-admin";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
@@ -209,7 +210,11 @@ export default async function AdminDashboardPage() {
               const stats = statsBySchoolId.get(school.id);
               return (
                 <tr key={school.id} data-search-row={`${school.name} ${school.status}`}>
-                  <td className="px-4 py-2 font-medium text-zinc-900">{school.name}</td>
+                  <td className="px-4 py-2 font-medium text-zinc-900">
+                    <Link href={`/admin/schools/${school.id}`} className="hover:underline">
+                      {school.name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-2 text-zinc-500">
                     {school.current_session} · Term {school.current_term}
                   </td>
