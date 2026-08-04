@@ -43,7 +43,6 @@ const styles = StyleSheet.create({
     fontWeight: 700,
   },
   signature: { marginTop: 56, alignItems: "flex-end" },
-  signatureLine: { width: 180, borderTop: "1pt solid #333", paddingTop: 4, textAlign: "center" },
   footer: { marginTop: 40, fontSize: 8, color: "#777", textAlign: "center" },
 });
 
@@ -162,7 +161,7 @@ export function InvoiceDocument({
         </View>
 
         <View style={styles.signature}>
-          <Text style={styles.signatureLine}>Signed by Management</Text>
+          <Text>Signed by Management</Text>
         </View>
 
         <Text style={styles.footer}>Generated automatically — please retain for your records.</Text>
