@@ -7,6 +7,10 @@ Paystack webhook, public share links, result-checker).
 Findings are ordered by severity. Each says whether it was **fixed in this
 branch** or is **left open** with a recommendation.
 
+> For the living privilege model — roles, the 0030/0043 delegated-admin
+> contract, the escalation-fix chain (0065–0078), and the platform-only
+> levers — see [SECURITY.md](./SECURITY.md).
+
 ---
 
 ## Summary

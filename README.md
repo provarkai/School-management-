@@ -61,6 +61,10 @@ them to a class from **Classes**. Every account — proprietor, teacher, staff,
 and parent — has a **My Profile** page to edit their own name/phone and
 change their password.
 
+The full privilege model — every role, the delegated-admin contract, the
+escalation-fix chain, and the intentionally trusted surfaces (service-role
+client, platform admins) — is documented in [SECURITY.md](./SECURITY.md).
+
 ## Enabling real SMS/WhatsApp sending
 
 Reminders run in mock mode (logged to the server console) until you set:
