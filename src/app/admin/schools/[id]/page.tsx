@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePlatformAdmin } from "@/lib/current-admin";
 import { createClient } from "@/lib/supabase/server";
+import { BackLink } from "@/components/BackLink";
 import { SchoolStatusButton } from "../../SchoolStatusButton";
 import { FacilitiesToggleButton } from "../../FacilitiesToggleButton";
 import type { School } from "@/lib/types";
@@ -52,11 +52,7 @@ export default async function AdminSchoolDetailPage({
 
   return (
     <div className="max-w-4xl space-y-6">
-      <div>
-        <Link href="/admin" className="text-sm text-zinc-500 hover:text-zinc-700">
-          ← All schools
-        </Link>
-      </div>
+      <BackLink href="/admin" label="All schools" />
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>

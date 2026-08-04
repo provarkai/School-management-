@@ -1,5 +1,6 @@
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { BackLink } from "@/components/BackLink";
 import { NewStudentForm } from "./NewStudentForm";
 
 export default async function NewStudentPage() {
@@ -16,6 +17,7 @@ export default async function NewStudentPage() {
 
   return (
     <div className="space-y-6">
+      <BackLink href="/students" label="Students" />
       <h1 className="text-2xl font-bold text-zinc-900">Register student</h1>
       <NewStudentForm classes={classes ?? []} fieldDefs={fieldDefs ?? []} />
     </div>

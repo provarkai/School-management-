@@ -1,6 +1,7 @@
 import { requirePermission } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
+import { BackLink } from "@/components/BackLink";
 import { LogTransferForm } from "./LogTransferForm";
 import { MatchButton, IgnoreButton } from "./MatchButtons";
 
@@ -85,6 +86,7 @@ export default async function TransfersPage() {
 
   return (
     <div className="space-y-6">
+      <BackLink href="/fees" label="Fees" />
       <div>
         <h1 className="text-2xl font-bold text-zinc-900">Bank transfers</h1>
         <p className="text-sm text-zinc-500">

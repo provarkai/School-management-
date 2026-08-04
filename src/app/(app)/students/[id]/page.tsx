@@ -13,6 +13,7 @@ import { DocumentUploadForm } from "./DocumentUploadForm";
 import { DocumentsList } from "./DocumentsList";
 import { AvatarUploader } from "@/components/AvatarUploader";
 import { Avatar } from "@/components/Avatar";
+import { BackLink } from "@/components/BackLink";
 import { saveStudentPhoto } from "../actions";
 import {
   StudentRecordForm,
@@ -140,6 +141,7 @@ export default async function StudentDetailPage({
 
   return (
     <div className="max-w-lg space-y-6">
+      <BackLink href="/students" label="Students" />
       <div className="flex items-center gap-4">
         {isManager ? (
           <AvatarUploader

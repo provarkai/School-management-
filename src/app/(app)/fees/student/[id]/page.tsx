@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
+import { BackLink } from "@/components/BackLink";
 import {
   PaymentLinkButton,
   RecordPaymentForm,
@@ -73,6 +74,7 @@ export default async function StudentFeePage({
 
   return (
     <div className="max-w-2xl space-y-6">
+      <BackLink href="/fees" label="Fees" />
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900">{student.full_name}</h1>

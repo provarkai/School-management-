@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { computeClassRanking } from "@/lib/ranking";
 import { proprietorTitle } from "@/lib/format";
+import { BackLink } from "@/components/BackLink";
 import { ScoreForm, DeleteScoreButton } from "./ScoreForm";
 import { RemarksForm } from "./RemarksForm";
 
@@ -63,6 +64,7 @@ export default async function ScoreEntryPage({
 
   return (
     <div className="max-w-2xl space-y-6">
+      <BackLink href="/report-cards" label="Report cards" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900">{student.full_name}</h1>

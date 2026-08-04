@@ -1,4 +1,5 @@
 import { requireProprietor } from "@/lib/current-user";
+import { BackLink } from "@/components/BackLink";
 import { ImportForm } from "./ImportForm";
 
 export default async function ImportStaffPage() {
@@ -6,6 +7,7 @@ export default async function ImportStaffPage() {
 
   return (
     <div className="space-y-6">
+      <BackLink href="/staff" label="Staff" />
       <h1 className="text-2xl font-bold text-zinc-900">Bulk import staff</h1>
       <p className="max-w-xl text-sm text-zinc-500">
         Upload a CSV to create staff accounts in one go. Campuses (if any) must already

@@ -4,6 +4,7 @@ import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { ExportLinks } from "@/components/ExportLinks";
 import { TableSearch } from "@/components/TableSearch";
+import { BackLink } from "@/components/BackLink";
 
 export default async function AttendanceHistoryPage({
   searchParams,
@@ -56,6 +57,7 @@ export default async function AttendanceHistoryPage({
 
   return (
     <div className="space-y-6">
+      <BackLink href="/attendance" label="Attendance" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-zinc-900">Attendance history</h1>
         {selectedClassId && (
