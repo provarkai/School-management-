@@ -320,14 +320,14 @@ recurs across the actions. `setStaffPermission` has the same shape.
 call sites — `getOrCreateFeeRecord` (checks `studentId` and `feeTypeId`)
 and `setStaffPermission` (checks `staffId`).
 
-### 14. Signed-in users can change their password without the old one — **open**
+### 14. Signed-in users can change their password without the old one — **fixed (dashboard)**
 
 `setNewPassword` and `changeOwnParentPassword` require a session but not
 proof of the current password, so a borrowed session on a shared machine —
-common in a school office — becomes a permanent takeover. **Recommendation:**
-enable "Secure password change" in the Supabase dashboard, which makes
-`updateUser({ password })` require recent reauthentication. Not code — a
-dashboard toggle, so left for whoever holds that account to flip.
+common in a school office — becomes a permanent takeover. Not code — a
+Supabase dashboard toggle ("Secure password change", which makes
+`updateUser({ password })` require recent reauthentication). Flipped on in
+the live project.
 
 ### 15. No Content-Security-Policy — **fixed (report-only)**
 
