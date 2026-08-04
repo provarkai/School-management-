@@ -29,10 +29,22 @@ export async function GET(request: Request) {
     return cronUnauthorizedResponse();
   }
 
+  const startedAt = new Date();
+  const admin = createAdminClient();
+
   const config = s3ConfigFromEnv();
   if (!config) {
     // Loud rather than silent: a backup job that quietly does nothing is
-    // worse than no backup job, because it looks like one.
+    // worse than no backup job, because it looks like one. Logged to
+    // backup_runs (not just the HTTP response) so it shows up on the
+    // platform admin dashboard even though nobody is watching this
+    // response — a cron job's caller is Vercel, not a person.
+    await admin.from("backup_runs").insert({
+      started_at: startedAt.toISOString(),
+      config_error:
+        "Backup storage is not configured. Set BACKUP_S3_ENDPOINT, BACKUP_S3_BUCKET, " +
+        "BACKUP_S3_ACCESS_KEY_ID and BACKUP_S3_SECRET_ACCESS_KEY.",
+    });
     return Response.json(
       {
         error:
@@ -43,16 +55,18 @@ export async function GET(request: Request) {
     );
   }
 
-  const admin = createAdminClient();
-
   const { data: schools, error } = await admin.from("schools").select("id, name");
   if (error) {
+    await admin.from("backup_runs").insert({
+      started_at: startedAt.toISOString(),
+      config_error: `Could not list schools: ${error.message}`,
+    });
     return Response.json({ error: error.message }, { status: 500 });
   }
 
   const day = new Date().toISOString().slice(0, 10);
   const succeeded: { school: string; key: string; bytes: number; rows: number }[] = [];
-  const failed: { school: string; error: string }[] = [];
+  const failed: { school_id: string; school_name: string; error: string }[] = [];
 
   for (const school of schools ?? []) {
     try {
@@ -71,9 +85,22 @@ export async function GET(request: Request) {
     } catch (e) {
       // Carry on: one school's failure must not cost the others their
       // backup for the night.
-      failed.push({ school: school.name, error: e instanceof Error ? e.message : String(e) });
+      failed.push({
+        school_id: school.id,
+        school_name: school.name,
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
+
+  await admin.from("backup_runs").insert({
+    started_at: startedAt.toISOString(),
+    finished_at: new Date().toISOString(),
+    school_count: (schools ?? []).length,
+    succeeded_count: succeeded.length,
+    failed_count: failed.length,
+    failures: failed,
+  });
 
   return Response.json(
     { day, backedUp: succeeded.length, failedCount: failed.length, succeeded, failed },

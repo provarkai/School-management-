@@ -31,6 +31,29 @@ interface AdminLogRow {
   created_at: string;
 }
 
+interface BackupRunRow {
+  id: string;
+  started_at: string;
+  finished_at: string;
+  school_count: number;
+  succeeded_count: number;
+  failed_count: number;
+  config_error: string | null;
+  failures: { school_id: string; school_name: string; error: string }[];
+  created_at: string;
+}
+
+interface StuckPaymentRow {
+  id: string;
+  school_id: string;
+  school_name: string;
+  student_id: string | null;
+  student_name: string | null;
+  reference: string;
+  amount: number;
+  created_at: string;
+}
+
 const ACTION_LABELS: Record<string, string> = {
   school_suspended: "Suspended",
   school_reactivated: "Reactivated",
@@ -42,7 +65,14 @@ export default async function AdminDashboardPage() {
   await requirePlatformAdmin();
   const supabase = await createClient();
 
-  const [{ data: totalsRows }, { data: schools }, { data: statsRows }, { data: logs }] = await Promise.all([
+  const [
+    { data: totalsRows },
+    { data: schools },
+    { data: statsRows },
+    { data: logs },
+    { data: backupRuns },
+    { data: stuckPayments },
+  ] = await Promise.all([
     supabase.rpc("platform_totals"),
     supabase
       .from("schools")
@@ -54,7 +84,16 @@ export default async function AdminDashboardPage() {
       .select("id, action, target_school_id, actor_id, created_at")
       .order("created_at", { ascending: false })
       .limit(50),
+    supabase
+      .from("backup_runs")
+      .select("id, started_at, finished_at, school_count, succeeded_count, failed_count, config_error, failures, created_at")
+      .order("created_at", { ascending: false })
+      .limit(1),
+    supabase.rpc("platform_stuck_payments"),
   ]);
+
+  const lastBackup = ((backupRuns ?? []) as BackupRunRow[])[0] ?? null;
+  const stuckPaymentRows = (stuckPayments ?? []) as StuckPaymentRow[];
 
   const totals = (totalsRows?.[0] as {
     total_schools: number;
@@ -87,6 +126,11 @@ export default async function AdminDashboardPage() {
         <StatCard label="Total students" value={String(totals.total_students)} />
         <StatCard label="Fees processed" value={naira(Number(totals.total_fees_processed))} />
         <StatCard label="Signups this month" value={String(totals.signups_this_month)} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <BackupHealthCard lastBackup={lastBackup} />
+        <StuckPaymentsCard rows={stuckPaymentRows} />
       </div>
 
       <div data-search-scope className="space-y-3">
@@ -208,6 +252,97 @@ function StatCard({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
       <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">{label}</p>
       <p className="mt-1 text-xl font-bold text-zinc-900">{value}</p>
+    </div>
+  );
+}
+
+function timeAgo(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const hours = Math.floor(ms / (1000 * 60 * 60));
+  if (hours < 1) return "less than an hour ago";
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function BackupHealthCard({ lastBackup }: { lastBackup: BackupRunRow | null }) {
+  if (!lastBackup) {
+    return (
+      <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">Backups</p>
+        <p className="mt-2 text-sm text-zinc-400">No backup run has been recorded yet.</p>
+      </div>
+    );
+  }
+
+  const isConfigError = !!lastBackup.config_error;
+  const hasFailures = lastBackup.failed_count > 0;
+  const status = isConfigError ? "not configured" : hasFailures ? "partial failure" : "healthy";
+  const badgeClass = isConfigError
+    ? "bg-red-100 text-red-700"
+    : hasFailures
+      ? "bg-amber-100 text-amber-700"
+      : "bg-emerald-100 text-emerald-700";
+
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">Backups</p>
+        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}>{status}</span>
+      </div>
+      <p className="mt-1 text-sm text-zinc-900">
+        Last run {timeAgo(lastBackup.created_at)}
+      </p>
+      {isConfigError ? (
+        <p className="mt-1 text-xs text-red-600">{lastBackup.config_error}</p>
+      ) : (
+        <p className="mt-1 text-xs text-zinc-500">
+          {lastBackup.succeeded_count} of {lastBackup.school_count} school(s) backed up
+          {hasFailures ? `, ${lastBackup.failed_count} failed` : ""}
+        </p>
+      )}
+      {lastBackup.failures.length > 0 && (
+        <ul className="mt-2 space-y-0.5 text-xs text-zinc-500">
+          {lastBackup.failures.slice(0, 5).map((f) => (
+            <li key={f.school_id}>
+              {f.school_name}: {f.error}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function StuckPaymentsCard({ rows }: { rows: StuckPaymentRow[] }) {
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">Stuck payments</p>
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+            rows.length > 0 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+          }`}
+        >
+          {rows.length}
+        </span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="mt-2 text-sm text-zinc-400">No payments stuck pending for over 2 hours.</p>
+      ) : (
+        <ul className="mt-2 max-h-48 space-y-1.5 overflow-y-auto text-xs">
+          {rows.map((p) => (
+            <li key={p.id} className="flex items-center justify-between gap-2 text-zinc-600">
+              <span className="truncate">
+                {p.school_name} · {p.student_name ?? "Unknown student"} · {p.reference}
+              </span>
+              <span className="shrink-0 text-zinc-400">
+                {naira(Number(p.amount))} · {timeAgo(p.created_at)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
