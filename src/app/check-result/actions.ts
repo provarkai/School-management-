@@ -67,8 +67,11 @@ export async function checkResult(
     .eq("admission_number", admissionNumber)
     .maybeSingle();
 
+  // Same message as the serial/PIN mismatch — distinguishing "unknown
+  // admission number" from "wrong PIN" would let one card enumerate a
+  // school's roll size. Ambiguity is the point.
   if (!student) {
-    return { error: "No student with that admission number was found at this school." };
+    return { error: "That serial and PIN don't match. Check the card and try again." };
   }
 
   const { data: school } = await admin
