@@ -156,10 +156,10 @@ export default async function DashboardPage({
     // case), so they outgrow a single request well before the school
     // outgrows the app — and a short read would quietly understate the
     // term's collections on the front page.
-    fetchAllRows<{ amount_expected: number; amount_paid: number }>((from, to) => {
+    fetchAllRows<{ student_id: string; amount_expected: number; amount_paid: number }>((from, to) => {
       let query = supabase
         .from("fee_summary")
-        .select("amount_expected, amount_paid")
+        .select("student_id, amount_expected, amount_paid")
         .eq("session", school?.current_session ?? "")
         .eq("term", school?.current_term ?? "1");
       if (campusStudentIds) query = query.in("student_id", campusStudentIds.length ? campusStudentIds : ["00000000-0000-0000-0000-000000000000"]);
@@ -177,8 +177,26 @@ export default async function DashboardPage({
 
   const expected = feeRows.reduce((sum, r) => sum + Number(r.amount_expected), 0);
   const collected = feeRows.reduce((sum, r) => sum + Number(r.amount_paid), 0);
-  const owingCount = feeRows.filter(
-    (r) => Number(r.amount_paid) < Number(r.amount_expected)
+
+  // Fee types (tuition, transport, hostel, ...) are line items on one
+  // invoice per student, not separate students — sum each student's fee
+  // types together before counting who still owes something, so a student
+  // owing on two fee types isn't counted as two owing students.
+  const feeTotalsByStudent = new Map<string, { expected: number; paid: number }>();
+  for (const r of feeRows) {
+    const existing = feeTotalsByStudent.get(r.student_id);
+    if (existing) {
+      existing.expected += Number(r.amount_expected);
+      existing.paid += Number(r.amount_paid);
+    } else {
+      feeTotalsByStudent.set(r.student_id, {
+        expected: Number(r.amount_expected),
+        paid: Number(r.amount_paid),
+      });
+    }
+  }
+  const owingCount = Array.from(feeTotalsByStudent.values()).filter(
+    (f) => f.paid < f.expected
   ).length;
 
   const present = todaysAttendance.filter((a) => a.status === "present").length;
