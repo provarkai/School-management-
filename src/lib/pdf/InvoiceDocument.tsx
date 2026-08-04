@@ -22,8 +22,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#f3f4f6",
     borderBottom: "1pt solid #999",
   },
-  cellType: { width: "28%", padding: 6, fontSize: 9 },
-  cell: { width: "18%", padding: 6, fontSize: 9, textAlign: "right" },
+  cellType: { width: "70%", padding: 6, fontSize: 9 },
+  cell: { width: "30%", padding: 6, fontSize: 9, textAlign: "right" },
   cellHeader: { fontWeight: 700, fontSize: 9 },
   summary: {
     marginTop: 16,
@@ -42,6 +42,8 @@ const styles = StyleSheet.create({
     borderTop: "1pt solid #333",
     fontWeight: 700,
   },
+  signature: { marginTop: 56, alignItems: "flex-end" },
+  signatureLine: { width: 180, borderTop: "1pt solid #333", paddingTop: 4, textAlign: "center" },
   footer: { marginTop: 40, fontSize: 8, color: "#777", textAlign: "center" },
 });
 
@@ -122,17 +124,11 @@ export function InvoiceDocument({
           <View style={styles.tableHeaderRow}>
             <Text style={[styles.cellType, styles.cellHeader]}>Fee type</Text>
             <Text style={[styles.cell, styles.cellHeader]}>Amount</Text>
-            <Text style={[styles.cell, styles.cellHeader]}>Discount</Text>
-            <Text style={[styles.cell, styles.cellHeader]}>Paid</Text>
-            <Text style={[styles.cell, styles.cellHeader]}>Balance</Text>
           </View>
           {fees.map((f) => (
             <View style={styles.tableRow} key={f.fee_type_name}>
               <Text style={styles.cellType}>{f.fee_type_name}</Text>
               <Text style={styles.cell}>{naira(f.sticker_amount_expected)}</Text>
-              <Text style={styles.cell}>{f.discount_amount > 0 ? naira(f.discount_amount) : "—"}</Text>
-              <Text style={styles.cell}>{naira(f.amount_paid)}</Text>
-              <Text style={styles.cell}>{naira(f.balance)}</Text>
             </View>
           ))}
           {fees.length === 0 && (
@@ -147,7 +143,7 @@ export function InvoiceDocument({
         <View style={styles.summary}>
           <View style={styles.summaryBlock}>
             <View style={styles.summaryLine}>
-              <Text>Total charges</Text>
+              <Text>Total fees</Text>
               <Text>{naira(totals.sticker)}</Text>
             </View>
             <View style={styles.summaryLine}>
@@ -163,6 +159,10 @@ export function InvoiceDocument({
               <Text>{naira(totals.balance)}</Text>
             </View>
           </View>
+        </View>
+
+        <View style={styles.signature}>
+          <Text style={styles.signatureLine}>Signed by Management</Text>
         </View>
 
         <Text style={styles.footer}>Generated automatically — please retain for your records.</Text>
