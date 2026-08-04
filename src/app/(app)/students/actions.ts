@@ -102,6 +102,32 @@ export async function updateStudentRecord(
     return { error: error.message };
   }
 
+  // Custom fields (school-defined, e.g. Religion, State of Origin) save in
+  // this same submit rather than a separate form/button — one save action
+  // for "everything about this student", matching the new-student form,
+  // which already folds them in before its single submit.
+  const { data: fieldDefs } = await supabase
+    .from("student_field_definitions")
+    .select("id")
+    .eq("school_id", profile.school_id ?? "");
+
+  if (fieldDefs && fieldDefs.length > 0) {
+    const rows = fieldDefs.map((def) => ({
+      school_id: profile.school_id,
+      student_id: studentId,
+      field_definition_id: def.id,
+      value: String(formData.get(`field_${def.id}`) ?? "").trim() || null,
+    }));
+
+    const { error: fieldError } = await supabase
+      .from("student_field_values")
+      .upsert(rows, { onConflict: "student_id,field_definition_id" });
+
+    if (fieldError) {
+      return { error: fieldError.message };
+    }
+  }
+
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/students");
   return { success: "Record updated." };
@@ -244,41 +270,6 @@ export async function createStudent(
 
   revalidatePath("/students");
   redirect("/students");
-}
-
-export interface StudentFieldValuesState {
-  error?: string;
-  success?: string;
-}
-
-export async function setStudentFieldValues(
-  studentId: string,
-  _prevState: StudentFieldValuesState,
-  formData: FormData
-): Promise<StudentFieldValuesState> {
-  const { profile } = await requireProprietor();
-  const supabase = await createClient();
-
-  const { data: fieldDefs } = await supabase
-    .from("student_field_definitions")
-    .select("id")
-    .eq("school_id", profile.school_id ?? "");
-
-  const rows = (fieldDefs ?? []).map((def) => ({
-    school_id: profile.school_id,
-    student_id: studentId,
-    field_definition_id: def.id,
-    value: String(formData.get(`field_${def.id}`) ?? "").trim() || null,
-  }));
-
-  const { error } = await supabase
-    .from("student_field_values")
-    .upsert(rows, { onConflict: "student_id,field_definition_id" });
-
-  if (error) return { error: error.message };
-
-  revalidatePath(`/students/${studentId}`);
-  return { success: "Custom fields saved." };
 }
 
 export interface ImportRow {

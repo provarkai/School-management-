@@ -28,7 +28,7 @@ export default async function StaffProfilePage({
   const { data: person } = await supabase
     .from("app_users")
     .select(
-      "id, name, email, phone, role, subject, job_title, campus_id, photo_url, gender, is_school_admin"
+      "id, name, email, phone, role, subject, job_title, campus_id, photo_url, gender, is_school_admin, address, qualifications"
     )
     .eq("id", id)
     .eq("school_id", profile.school_id ?? "")
@@ -72,6 +72,8 @@ export default async function StaffProfilePage({
           label="Classes taught"
           value={(classes ?? []).length > 0 ? (classes ?? []).map((c) => c.name).join(", ") : "—"}
         />
+        <Info label="Address" value={person.address ?? "—"} />
+        <Info label="Qualifications" value={person.qualifications ?? "—"} />
       </dl>
 
       {person.role === "teacher" && (

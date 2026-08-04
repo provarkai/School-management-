@@ -17,6 +17,7 @@ export async function updateOwnParentProfile(
 
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
 
   if (!name) {
     return { error: "Name is required." };
@@ -25,7 +26,7 @@ export async function updateOwnParentProfile(
   const supabase = await createClient();
   const { error } = await supabase
     .from("parents")
-    .update({ name, phone: phone || null })
+    .update({ name, phone: phone || null, address: address || null })
     .eq("id", authId);
 
   if (error) {

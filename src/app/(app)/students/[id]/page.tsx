@@ -174,6 +174,8 @@ export default async function StudentDetailPage({
           record={student as unknown as StudentRecord}
           hostelRooms={hostelRooms}
           busStops={busStops}
+          fieldDefs={fieldDefs ?? []}
+          fieldValues={fieldValueByDefId}
         />
       )}
 
@@ -189,12 +191,9 @@ export default async function StudentDetailPage({
         />
       )}
 
-      <CustomFieldValuesForm
-        studentId={student.id}
-        fieldDefs={fieldDefs ?? []}
-        values={fieldValueByDefId}
-        editable={isManager}
-      />
+      {!isManager && (
+        <CustomFieldValuesForm fieldDefs={fieldDefs ?? []} values={fieldValueByDefId} />
+      )}
 
       {isManager && (
         <>

@@ -131,9 +131,8 @@ export async function deleteFeeType(feeTypeId: string) {
   revalidatePath("/fees");
 }
 
-export async function setDiscount(
+export async function setStudentDiscount(
   studentId: string,
-  feeTypeId: string,
   _prevState: FeeActionState,
   formData: FormData
 ): Promise<FeeActionState> {
@@ -150,34 +149,66 @@ export async function setDiscount(
   const session = school?.current_session ?? "";
   const term = school?.current_term ?? "1";
 
-  const feeRecordId = await getOrCreateFeeRecord(
-    supabase,
-    profile.school_id!,
-    studentId,
-    feeTypeId,
-    session,
-    term
+  const { data: fees } = await supabase
+    .from("fee_summary")
+    .select("fee_record_id, sticker_amount_expected")
+    .eq("student_id", studentId)
+    .eq("session", session)
+    .eq("term", term)
+    .order("fee_type_name");
+
+  if (!fees || fees.length === 0) {
+    return { error: "No fee types have been set for this student this term yet." };
+  }
+
+  const totalCharges = fees.reduce((sum, f) => sum + Number(f.sticker_amount_expected), 0);
+  if (discountAmount > totalCharges) {
+    return { error: `Discount can't exceed total charges of ${naira(totalCharges)}.` };
+  }
+
+  // Applied against the total, not one fee type at a time: covers each fee
+  // type's sticker amount in display order (same order recordPayment
+  // allocates a payment in), capped so no line ever gets discounted below
+  // zero — the same "one number in, allocated across the line items" shape
+  // the combined payment already uses, so the itemized invoice stays
+  // consistent between the two.
+  let remaining = discountAmount;
+  const allocations = new Map<string, number>();
+  for (const f of fees) {
+    const cap = Number(f.sticker_amount_expected);
+    const take = Math.min(remaining, cap);
+    allocations.set(f.fee_record_id, take);
+    remaining -= take;
+  }
+
+  const results = await Promise.all(
+    fees.map((f) => {
+      const allocated = allocations.get(f.fee_record_id) ?? 0;
+      return supabase
+        .from("fee_records")
+        .update({
+          discount_amount: allocated,
+          discount_reason: allocated > 0 ? discountReason : null,
+        })
+        .eq("id", f.fee_record_id);
+    })
   );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) return { error: failed.error.message };
 
-  const { error } = await supabase
-    .from("fee_records")
-    .update({ discount_amount: discountAmount, discount_reason: discountReason })
-    .eq("id", feeRecordId);
-
-  if (error) return { error: error.message };
-
-  const [{ data: student }, { data: feeType }] = await Promise.all([
-    supabase.from("students").select("full_name").eq("id", studentId).single(),
-    supabase.from("fee_types").select("name").eq("id", feeTypeId).single(),
-  ]);
+  const { data: student } = await supabase
+    .from("students")
+    .select("full_name")
+    .eq("id", studentId)
+    .single();
 
   await logActivity(
     supabase,
     profile,
     discountAmount > 0 ? "discount_applied" : "discount_removed",
     discountAmount > 0
-      ? `Applied a ${naira(discountAmount)} discount on ${feeType?.name ?? "a fee"} for ${student?.full_name ?? "a student"}.`
-      : `Removed the discount on ${feeType?.name ?? "a fee"} for ${student?.full_name ?? "a student"}.`
+      ? `Applied a ${naira(discountAmount)} discount on the total fees for ${student?.full_name ?? "a student"}.`
+      : `Removed the discount for ${student?.full_name ?? "a student"}.`
   );
 
   revalidatePath("/fees");

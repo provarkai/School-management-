@@ -5,7 +5,7 @@ import {
   generatePaymentLink,
   recordPayment,
   sendFeeReminder,
-  setDiscount,
+  setStudentDiscount,
   setFeeAmount,
   type FeeActionState,
   type PaymentLinkState,
@@ -65,18 +65,16 @@ export function SetAmountForm({
   );
 }
 
-export function SetDiscountForm({
+export function SetStudentDiscountForm({
   studentId,
-  feeTypeId,
   currentDiscount,
   currentReason,
 }: {
   studentId: string;
-  feeTypeId: string;
   currentDiscount: number;
   currentReason: string | null;
 }) {
-  const action = setDiscount.bind(null, studentId, feeTypeId);
+  const action = setStudentDiscount.bind(null, studentId);
   const [state, formAction, pending] = useActionState(action, initialState);
 
   return (
@@ -84,6 +82,10 @@ export function SetDiscountForm({
       <div className="sm:col-span-2">
         <Message state={state} />
       </div>
+      <p className="text-xs text-zinc-400 sm:col-span-2">
+        Applied against the total — it&apos;s spread automatically across whatever this student
+        is charged, in the order the fee types are listed below.
+      </p>
       <label className="block text-sm font-medium text-zinc-700">
         Discount / scholarship amount
         <input

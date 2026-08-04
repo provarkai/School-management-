@@ -8,7 +8,7 @@ import {
   RecordPaymentForm,
   SendReminderButton,
   SetAmountForm,
-  SetDiscountForm,
+  SetStudentDiscountForm,
 } from "./FeeForms";
 
 export default async function StudentFeePage({
@@ -65,12 +65,14 @@ export default async function StudentFeePage({
   const totals = (fees ?? []).reduce(
     (acc, f) => {
       acc.expected += Number(f.amount_expected);
+      acc.discount += Number(f.discount_amount);
       acc.paid += Number(f.amount_paid);
       acc.balance += Number(f.balance);
       return acc;
     },
-    { expected: 0, paid: 0, balance: 0 }
+    { expected: 0, discount: 0, paid: 0, balance: 0 }
   );
+  const discountReason = (fees ?? []).find((f) => Number(f.discount_amount) > 0)?.discount_reason ?? null;
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -103,6 +105,17 @@ export default async function StudentFeePage({
         <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="mb-3 text-sm font-semibold text-zinc-900">Record payment</h2>
           <RecordPaymentForm studentId={id} />
+        </section>
+      )}
+
+      {(feeTypes ?? []).length > 0 && (
+        <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold text-zinc-900">Discount / scholarship</h2>
+          <SetStudentDiscountForm
+            studentId={id}
+            currentDiscount={totals.discount}
+            currentReason={discountReason}
+          />
         </section>
       )}
 
@@ -180,12 +193,6 @@ export default async function StudentFeePage({
                               </p>
                             )}
                             <SetAmountForm studentId={id} feeTypeId={type.id} currentAmount={sticker} />
-                            <SetDiscountForm
-                              studentId={id}
-                              feeTypeId={type.id}
-                              currentDiscount={discount}
-                              currentReason={fee?.discount_reason ?? null}
-                            />
                             <PaymentLinkButton studentId={id} feeTypeId={type.id} />
                           </div>
                         </details>
@@ -197,8 +204,10 @@ export default async function StudentFeePage({
               <tfoot className="border-t-2 border-zinc-300 bg-zinc-50 font-semibold text-zinc-900">
                 <tr>
                   <td className="px-4 py-2">Total</td>
-                  <td />
-                  <td />
+                  <td className="px-4 py-2 text-right">{naira(totals.expected + totals.discount)}</td>
+                  <td className="px-4 py-2 text-right">
+                    {totals.discount > 0 ? naira(totals.discount) : "—"}
+                  </td>
                   <td className="px-4 py-2 text-right">{naira(totals.expected)}</td>
                   <td className="px-4 py-2 text-right">{naira(totals.paid)}</td>
                   <td className="px-4 py-2 text-right">{naira(totals.balance)}</td>

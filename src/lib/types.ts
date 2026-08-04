@@ -66,6 +66,8 @@ export interface AppUser {
   is_school_admin: boolean;
   dashboard_widgets: string[] | null;
   must_change_password: boolean;
+  address: string | null;
+  qualifications: string | null;
   created_at: string;
 }
 

@@ -1,6 +1,6 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { TERM_LABELS, type Term } from "@/lib/types";
-import { naira } from "@/lib/format";
+import { nairaPdf as naira } from "@/lib/pdf/currency";
 import { SchoolLetterhead, type LetterheadSchool } from "./SchoolLetterhead";
 
 const styles = StyleSheet.create({

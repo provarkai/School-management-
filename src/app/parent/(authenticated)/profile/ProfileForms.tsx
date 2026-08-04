@@ -6,7 +6,15 @@ import { PasswordInput } from "@/components/PasswordInput";
 
 const initialState: ProfileFormState = {};
 
-export function EditParentProfileForm({ name, phone }: { name: string; phone: string | null }) {
+export function EditParentProfileForm({
+  name,
+  phone,
+  address,
+}: {
+  name: string;
+  phone: string | null;
+  address: string | null;
+}) {
   const [state, action, pending] = useActionState(updateOwnParentProfile, initialState);
 
   return (
@@ -33,6 +41,14 @@ export function EditParentProfileForm({ name, phone }: { name: string; phone: st
         <input
           name="phone"
           defaultValue={phone ?? ""}
+          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+        />
+      </label>
+      <label className="block text-sm font-medium text-zinc-700">
+        Address
+        <input
+          name="address"
+          defaultValue={address ?? ""}
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         />
       </label>

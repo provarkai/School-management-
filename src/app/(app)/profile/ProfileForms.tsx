@@ -377,7 +377,17 @@ export function DashboardWidgetsForm({ selected }: { selected: string[] }) {
   );
 }
 
-export function EditProfileForm({ name, phone }: { name: string; phone: string | null }) {
+export function EditProfileForm({
+  name,
+  phone,
+  address,
+  qualifications,
+}: {
+  name: string;
+  phone: string | null;
+  address: string | null;
+  qualifications: string | null;
+}) {
   const [state, action, pending] = useActionState(updateOwnProfile, initialState);
 
   return (
@@ -404,6 +414,24 @@ export function EditProfileForm({ name, phone }: { name: string; phone: string |
         <input
           name="phone"
           defaultValue={phone ?? ""}
+          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+        />
+      </label>
+      <label className="block text-sm font-medium text-zinc-700">
+        Address
+        <input
+          name="address"
+          defaultValue={address ?? ""}
+          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+        />
+      </label>
+      <label className="block text-sm font-medium text-zinc-700">
+        Qualifications
+        <textarea
+          name="qualifications"
+          defaultValue={qualifications ?? ""}
+          rows={3}
+          placeholder="e.g. B.Ed Mathematics, NCE"
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         />
       </label>

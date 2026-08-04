@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { updateStudentRecord, type StudentRecordState } from "../actions";
+import { CustomFieldInput, type CustomFieldDef } from "../CustomFieldInput";
 
 const initialState: StudentRecordState = {};
 
@@ -38,11 +39,15 @@ export function StudentRecordForm({
   record,
   hostelRooms,
   busStops,
+  fieldDefs,
+  fieldValues,
 }: {
   studentId: string;
   record: StudentRecord;
   hostelRooms: HostelRoomOption[];
   busStops: BusStopOption[];
+  fieldDefs: CustomFieldDef[];
+  fieldValues: Map<string, string | null>;
 }) {
   const action = updateStudentRecord.bind(null, studentId);
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -160,6 +165,19 @@ export function StudentRecordForm({
           />
         </div>
       </div>
+
+      {fieldDefs.length > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-400">
+            Other details
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {fieldDefs.map((def) => (
+              <CustomFieldInput key={def.id} def={def} defaultValue={fieldValues.get(def.id)} />
+            ))}
+          </div>
+        </div>
+      )}
 
       <button
         type="submit"

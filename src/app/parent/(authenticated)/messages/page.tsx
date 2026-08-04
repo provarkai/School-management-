@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireParent } from "@/lib/current-parent";
 import { createClient } from "@/lib/supabase/server";
+import { BackLink } from "@/components/BackLink";
 import { NewThreadForm, type MessageableChild } from "./NewThreadForm";
 
 export default async function ParentMessagesPage() {
@@ -39,6 +40,7 @@ export default async function ParentMessagesPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
+      <BackLink href="/parent" label="Dashboard" />
       <div>
         <h1 className="text-2xl font-bold text-zinc-900">Messages</h1>
         <p className="text-sm text-zinc-500">

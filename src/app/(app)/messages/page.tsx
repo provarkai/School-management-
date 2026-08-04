@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { BackLink } from "@/components/BackLink";
 import type { ThreadRecipientKind, ThreadStatus } from "@/lib/types";
 
 export default async function MessagesInboxPage({
@@ -48,6 +49,7 @@ export default async function MessagesInboxPage({
 
   return (
     <div className="max-w-2xl space-y-6">
+      <BackLink href="/dashboard" label="Dashboard" />
       <div>
         <h1 className="text-2xl font-bold text-zinc-900">Messages</h1>
         <p className="text-sm text-zinc-500">

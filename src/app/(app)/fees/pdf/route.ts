@@ -3,7 +3,7 @@ import { requirePermission } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { fetchFeesExportRows, FEES_EXPORT_COLUMNS } from "@/lib/feesExport";
 import { ReportTableDocument } from "@/lib/pdf/ReportTableDocument";
-import { naira } from "@/lib/format";
+import { nairaPdf as naira } from "@/lib/pdf/currency";
 import { safeFilename } from "@/lib/csv";
 
 export async function GET(request: Request) {

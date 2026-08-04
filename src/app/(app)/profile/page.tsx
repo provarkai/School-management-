@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/current-user";
 import { AvatarUploader } from "@/components/AvatarUploader";
+import { BackLink } from "@/components/BackLink";
 import {
   EditProfileForm,
   ChangePasswordForm,
@@ -35,6 +36,7 @@ export default async function SettingsPage({
 
   return (
     <div className="max-w-lg space-y-6">
+      <BackLink href="/dashboard" label="Dashboard" />
       <div>
         <h1 className="text-2xl font-bold text-zinc-900">Settings</h1>
         <p className="text-sm text-zinc-500">
@@ -124,7 +126,12 @@ export default async function SettingsPage({
             Email: <span className="text-zinc-700">{profile.email}</span> (contact the school
             proprietor to change your email, subject, job title, or campus)
           </p>
-          <EditProfileForm name={profile.name} phone={profile.phone} />
+          <EditProfileForm
+            name={profile.name}
+            phone={profile.phone}
+            address={profile.address}
+            qualifications={profile.qualifications}
+          />
         </section>
 
         <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">

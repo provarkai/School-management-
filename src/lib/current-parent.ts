@@ -8,6 +8,7 @@ export interface ParentProfile {
   email: string | null;
   phone: string | null;
   photo_url: string | null;
+  address: string | null;
 }
 
 export interface ParentChild {
