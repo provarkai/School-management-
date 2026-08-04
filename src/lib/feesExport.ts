@@ -18,7 +18,6 @@ export const FEES_EXPORT_COLUMNS = [
 export interface FeesExportFilters {
   classFilter?: string | null;
   statusFilter?: string | null;
-  typeFilter?: string | null;
 }
 
 export async function fetchFeesExportRows(
@@ -28,7 +27,7 @@ export async function fetchFeesExportRows(
   term: string,
   filters: FeesExportFilters
 ): Promise<Record<string, unknown>[]> {
-  const { classFilter, statusFilter, typeFilter } = filters;
+  const { classFilter, statusFilter } = filters;
 
   const [{ data: classes }, studentsQuery] = await Promise.all([
     supabase.from("classes").select("id, name"),
@@ -52,14 +51,14 @@ export async function fetchFeesExportRows(
     balance: number;
     status: string;
   }>((from, to) => {
-    let query = supabase
+    return supabase
       .from("fee_summary")
       .select("student_id, amount_expected, amount_paid, balance, status")
       .eq("school_id", schoolId)
       .eq("session", session)
-      .eq("term", term);
-    if (typeFilter) query = query.eq("fee_type_id", typeFilter);
-    return query.order("fee_record_id").range(from, to);
+      .eq("term", term)
+      .order("fee_record_id")
+      .range(from, to);
   });
 
   const classNameById = new Map((classes ?? []).map((c) => [c.id, c.name]));

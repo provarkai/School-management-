@@ -5,16 +5,8 @@ import { payFees, type PayFeesState } from "./actions";
 
 const initialState: PayFeesState = {};
 
-export function PayNowButton({
-  studentId,
-  feeTypeId,
-  label,
-}: {
-  studentId: string;
-  feeTypeId: string;
-  label: string;
-}) {
-  const action = payFees.bind(null, studentId, feeTypeId);
+export function PayNowButton({ studentId, label }: { studentId: string; label: string }) {
+  const action = payFees.bind(null, studentId);
   const [state, formAction, pending] = useActionState(action, initialState);
 
   return (

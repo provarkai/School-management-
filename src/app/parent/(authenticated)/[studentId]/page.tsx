@@ -181,36 +181,47 @@ export default async function ParentChildPage({
         {(fees ?? []).length === 0 ? (
           <p className="text-sm text-zinc-400">No fee record for this term yet.</p>
         ) : (
-          (fees ?? []).map((fee) => (
-            <div key={fee.fee_type_id} className="border-t border-zinc-100 pt-4 first:border-t-0 first:pt-0">
-              <p className="mb-2 text-sm font-medium text-zinc-700">{fee.fee_type_name}</p>
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div>
-                  <p className="text-xs text-zinc-400">Expected</p>
-                  <p className="font-semibold text-zinc-900">{naira(Number(fee.amount_expected))}</p>
+          (() => {
+            // One school bill, one total — Tuition, Transport, Hostel, and
+            // every other fee type are just what makes it up. The
+            // breakdown by type still shows up on the downloadable invoice.
+            const totals = (fees ?? []).reduce(
+              (acc, f) => {
+                acc.expected += Number(f.amount_expected);
+                acc.paid += Number(f.amount_paid);
+                acc.balance += Number(f.balance);
+                return acc;
+              },
+              { expected: 0, paid: 0, balance: 0 }
+            );
+            return (
+              <div>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-xs text-zinc-400">Expected</p>
+                    <p className="font-semibold text-zinc-900">{naira(totals.expected)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-zinc-400">Paid</p>
+                    <p className="font-semibold text-zinc-900">{naira(totals.paid)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-zinc-400">Balance</p>
+                    <p
+                      className={`font-semibold ${totals.balance > 0 ? "text-red-600" : "text-emerald-600"}`}
+                    >
+                      {naira(totals.balance)}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-zinc-400">Paid</p>
-                  <p className="font-semibold text-zinc-900">{naira(Number(fee.amount_paid))}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-zinc-400">Balance</p>
-                  <p className={`font-semibold ${Number(fee.balance) > 0 ? "text-red-600" : "text-emerald-600"}`}>
-                    {naira(Number(fee.balance))}
-                  </p>
-                </div>
+                {totals.balance > 0 && (
+                  <div className="mt-3">
+                    <PayNowButton studentId={child.id} label={`Pay ${naira(totals.balance)} now`} />
+                  </div>
+                )}
               </div>
-              {Number(fee.balance) > 0 && (
-                <div className="mt-3">
-                  <PayNowButton
-                    studentId={child.id}
-                    feeTypeId={fee.fee_type_id}
-                    label={`Pay ${naira(Number(fee.balance))} now`}
-                  />
-                </div>
-              )}
-            </div>
-          ))
+            );
+          })()
         )}
       </section>
 

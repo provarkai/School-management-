@@ -362,21 +362,21 @@ export async function sendFeeReminder(
     return { error: "This student has no outstanding balance." };
   }
 
-  const lines: string[] = [];
-  let total = 0;
-  for (const f of owing) {
-    const balance = Number(f.balance);
-    total += balance;
-    const payLink = await buildPaymentLink({
-      schoolId: profile.school_id!,
-      feeRecordId: f.fee_record_id,
-      studentId,
-      amountNaira: balance,
-      email: student.parent_email,
-      initiatedBy: profile.id,
-    });
-    lines.push(`${f.fee_type_name}: ${naira(balance)}${payLink ? ` (Pay: ${payLink})` : ""}`);
-  }
+  // The breakdown by fee type stays in the message text so the parent can
+  // see what makes up the total — but it's one bill, so there's one "Pay"
+  // link for the combined balance, not a separate checkout per fee type.
+  const total = owing.reduce((sum, f) => sum + Number(f.balance), 0);
+  const lines = owing.map((f) => `${f.fee_type_name}: ${naira(Number(f.balance))}`);
+
+  const payLink = await buildPaymentLink({
+    schoolId: profile.school_id!,
+    feeRecordId: owing[0].fee_record_id,
+    studentId,
+    amountNaira: total,
+    email: student.parent_email,
+    initiatedBy: profile.id,
+    coversAllFeeTypes: true,
+  });
 
   const message =
     feeReminderTemplate({
@@ -385,7 +385,9 @@ export async function sendFeeReminder(
       balance: naira(total),
       termLabel: TERM_LABELS[term],
       schoolName: school?.name ?? "the school",
-    }) + ` Breakdown — ${lines.join("; ")}`;
+    }) +
+    ` Breakdown — ${lines.join("; ")}.` +
+    (payLink ? ` Pay: ${payLink}` : "");
 
   const result = await sendAndLogMessage(
     supabase,
@@ -418,6 +420,7 @@ async function buildPaymentLink(params: {
   amountNaira: number;
   email: string | null;
   initiatedBy: string;
+  coversAllFeeTypes?: boolean;
 }): Promise<string | null> {
   const origin = await siteOrigin();
 
@@ -430,6 +433,7 @@ async function buildPaymentLink(params: {
     email: params.email ?? `parent+${params.studentId}@noemail.example`,
     callbackUrl: `${origin}/pay/callback?student=${params.studentId}`,
     initiatedBy: params.initiatedBy,
+    coversAllFeeTypes: params.coversAllFeeTypes,
   });
 
   return result.ok ? result.authorizationUrl ?? null : null;

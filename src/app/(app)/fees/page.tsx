@@ -19,10 +19,10 @@ const STATUS_STYLES: Record<FeeStatus | "unset", string> = {
 export default async function FeesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ class?: string; status?: string; type?: string }>;
+  searchParams: Promise<{ class?: string; status?: string }>;
 }) {
   const { profile, school } = await requirePermission("fees");
-  const { class: classFilter, status: statusFilter, type: typeParam } = await searchParams;
+  const { class: classFilter, status: statusFilter } = await searchParams;
   const supabase = await createClient();
 
   const session = school?.current_session ?? "";
@@ -46,10 +46,6 @@ export default async function FeesPage({
     })(),
   ]);
 
-  // Combined (every fee type rolled into one total per student) is the
-  // default view — a single fee type is opt-in via the filter links below.
-  const typeFilter = !typeParam || typeParam === "all" ? null : typeParam;
-
   // One row per student per fee type — a few hundred students already
   // exceeds what a single request returns, and the missing rows would
   // silently show as "not set" against those students.
@@ -60,23 +56,24 @@ export default async function FeesPage({
     amount_paid: number;
     balance: number;
     status: string;
-  }>((from, to) => {
-    let query = supabase
+  }>((from, to) =>
+    supabase
       .from("fee_summary")
       .select("student_id, fee_type_id, amount_expected, amount_paid, balance, status")
       .eq("school_id", profile.school_id ?? "")
       .eq("session", session)
-      .eq("term", term);
-    if (typeFilter) query = query.eq("fee_type_id", typeFilter);
-    return query.order("fee_record_id").range(from, to);
-  });
+      .eq("term", term)
+      .order("fee_record_id")
+      .range(from, to)
+  );
 
   const { data: students } = studentsQuery;
   const classNameById = new Map((classes ?? []).map((c) => [c.id, c.name]));
 
-  // typeFilter set: one row per student (that fee type). No filter ("all"):
-  // combine every fee type into a single expected/paid/balance total per
-  // student, with status derived from the combined balance.
+  // Every fee type (Tuition, Transport, PTA, ...) is a line item on one
+  // student's bill, not a separate thing to filter by — combine them all
+  // into a single expected/paid/balance total per student, with status
+  // derived from the combined balance.
   const feeByStudent = new Map<
     string,
     { amount_expected: number; amount_paid: number; balance: number; status: FeeStatus }
@@ -115,7 +112,7 @@ export default async function FeesPage({
 
   const query = (overrides: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
-    const merged = { class: classFilter, status: statusFilter, type: typeParam, ...overrides };
+    const merged = { class: classFilter, status: statusFilter, ...overrides };
     for (const [k, v] of Object.entries(merged)) if (v) params.set(k, v);
     const qs = params.toString();
     return qs ? `/fees?${qs}` : "/fees";
@@ -137,7 +134,6 @@ export default async function FeesPage({
             params={{
               ...(classFilter ? { class: classFilter } : {}),
               ...(statusFilter ? { status: statusFilter } : {}),
-              ...(typeFilter ? { type: typeFilter } : {}),
             }}
             formats={[
               { format: "csv", label: "CSV" },
@@ -148,7 +144,6 @@ export default async function FeesPage({
             href={`/fees/pdf?${new URLSearchParams({
               ...(classFilter ? { class: classFilter } : {}),
               ...(statusFilter ? { status: statusFilter } : {}),
-              ...(typeFilter ? { type: typeFilter } : {}),
             }).toString()}`}
             className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50"
           >
@@ -165,23 +160,6 @@ export default async function FeesPage({
 
       <FeeTypesManager feeTypes={feeTypes ?? []} />
       <SetClassFeeForm classes={classes ?? []} feeTypes={feeTypes ?? []} />
-
-      {(feeTypes ?? []).length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-xs font-medium uppercase tracking-wide text-zinc-400">
-            Fee type:
-          </span>
-          <FilterLink label="All (combined)" href={query({ type: "all" })} active={!typeFilter} />
-          {(feeTypes ?? []).map((t) => (
-            <FilterLink
-              key={t.id}
-              label={t.name}
-              href={query({ type: t.id })}
-              active={typeFilter === t.id}
-            />
-          ))}
-        </div>
-      )}
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <FilterLink label="All classes" href={query({ class: undefined })} active={!classFilter} />

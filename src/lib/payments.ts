@@ -14,6 +14,12 @@ export interface CreatePaymentIntentParams {
   email: string;
   callbackUrl: string;
   initiatedBy?: string | null;
+  /** True when amountNaira is the student's whole combined balance across
+   * every fee type, not just feeRecordId's own balance — feeRecordId is
+   * still set (to one of the student's outstanding records) purely to
+   * satisfy the not-null FK; markPaymentIntentSuccess() spreads the
+   * settled amount across every fee type once the charge succeeds. */
+  coversAllFeeTypes?: boolean;
 }
 
 export interface CreatePaymentIntentResult {
@@ -59,6 +65,7 @@ export async function createPaymentIntent(
     amount: params.amountNaira,
     authorization_url: init.authorizationUrl,
     initiated_by: params.initiatedBy ?? null,
+    covers_all_fee_types: params.coversAllFeeTypes ?? false,
   });
 
   if (error) {
@@ -89,7 +96,7 @@ export async function markPaymentIntentSuccess(
 ): Promise<MarkPaymentSuccessResult> {
   const { data: intent } = await admin
     .from("payment_intents")
-    .select("id, school_id, fee_record_id, amount, status")
+    .select("id, school_id, student_id, fee_record_id, amount, status, covers_all_fee_types")
     .eq("reference", reference)
     .maybeSingle();
 
@@ -110,25 +117,76 @@ export async function markPaymentIntentSuccess(
       ? settledAmountNaira
       : Number(intent.amount);
 
-  const { data: payment, error: paymentError } = await admin
-    .from("fee_payments")
-    .insert({
-      school_id: intent.school_id,
-      fee_record_id: intent.fee_record_id,
-      amount,
-      method: "paystack",
-      reference_number: reference,
-    })
-    .select("id")
-    .single();
+  let firstPaymentId: string;
 
-  if (paymentError) {
-    return { ok: false, alreadyProcessed: false, error: paymentError.message };
+  if (intent.covers_all_fee_types) {
+    // This one Paystack charge stands for the student's whole combined
+    // balance, not just intent.fee_record_id's own — spread it across
+    // every fee type they currently owe on, the same way a staff-recorded
+    // lump-sum payment is allocated (fees/actions.ts recordPayment), so a
+    // single checkout still credits Tuition, Transport, etc. individually.
+    const { data: fees } = await admin
+      .from("fee_summary")
+      .select("fee_record_id, balance")
+      .eq("student_id", intent.student_id)
+      .eq("school_id", intent.school_id)
+      .gt("balance", 0)
+      .order("fee_type_name");
+
+    let remaining = amount;
+    const allocations = new Map<string, number>();
+    for (const f of fees ?? []) {
+      if (remaining <= 0) break;
+      const balance = Number(f.balance);
+      const take = Math.min(remaining, balance);
+      allocations.set(f.fee_record_id, (allocations.get(f.fee_record_id) ?? 0) + take);
+      remaining -= take;
+    }
+    if (remaining > 0) {
+      // Nothing left outstanding (or an overpayment) — credit the
+      // representative fee_record on the intent so the money isn't lost.
+      allocations.set(intent.fee_record_id, (allocations.get(intent.fee_record_id) ?? 0) + remaining);
+    }
+
+    const { data: inserted, error: paymentError } = await admin
+      .from("fee_payments")
+      .insert(
+        Array.from(allocations.entries()).map(([fee_record_id, allocatedAmount]) => ({
+          school_id: intent.school_id,
+          fee_record_id,
+          amount: allocatedAmount,
+          method: "paystack",
+          reference_number: reference,
+        }))
+      )
+      .select("id");
+
+    if (paymentError || !inserted?.length) {
+      return { ok: false, alreadyProcessed: false, error: paymentError?.message ?? "Could not record payment." };
+    }
+    firstPaymentId = inserted[0].id;
+  } else {
+    const { data: payment, error: paymentError } = await admin
+      .from("fee_payments")
+      .insert({
+        school_id: intent.school_id,
+        fee_record_id: intent.fee_record_id,
+        amount,
+        method: "paystack",
+        reference_number: reference,
+      })
+      .select("id")
+      .single();
+
+    if (paymentError) {
+      return { ok: false, alreadyProcessed: false, error: paymentError.message };
+    }
+    firstPaymentId = payment.id;
   }
 
   const { error: updateError } = await admin
     .from("payment_intents")
-    .update({ status: "success", fee_payment_id: payment.id, verified_at: new Date().toISOString() })
+    .update({ status: "success", fee_payment_id: firstPaymentId, verified_at: new Date().toISOString() })
     .eq("id", intent.id);
 
   if (updateError) {
