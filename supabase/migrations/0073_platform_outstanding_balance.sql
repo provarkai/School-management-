@@ -7,6 +7,12 @@
 -- security definer and needs to see every school regardless of RLS —
 -- aggregate-only, per the existing platform_totals()/platform_school_stats()
 -- convention of never returning raw student/fee rows to the platform admin.
+--
+-- The new column changes platform_totals()'s OUT-parameter row type, which
+-- `create or replace function` cannot do in place — Postgres requires the
+-- old signature to be dropped first.
+drop function if exists public.platform_totals();
+
 create or replace function public.platform_totals()
 returns table (
   total_schools bigint,
