@@ -2,6 +2,7 @@ import { requirePlatformAdmin } from "@/lib/current-admin";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
 import { SchoolStatusButton } from "./SchoolStatusButton";
+import { FacilitiesToggleButton } from "./FacilitiesToggleButton";
 import { TableSearch } from "@/components/TableSearch";
 import type { SchoolStatus } from "@/lib/types";
 
@@ -11,6 +12,7 @@ interface SchoolRow {
   current_session: string;
   current_term: string;
   status: SchoolStatus;
+  facilities_enabled: boolean;
   created_at: string;
 }
 
@@ -32,6 +34,8 @@ interface AdminLogRow {
 const ACTION_LABELS: Record<string, string> = {
   school_suspended: "Suspended",
   school_reactivated: "Reactivated",
+  facilities_enabled: "Enabled Facilities for",
+  facilities_disabled: "Disabled Facilities for",
 };
 
 export default async function AdminDashboardPage() {
@@ -42,7 +46,7 @@ export default async function AdminDashboardPage() {
     supabase.rpc("platform_totals"),
     supabase
       .from("schools")
-      .select("id, name, current_session, current_term, status, created_at")
+      .select("id, name, current_session, current_term, status, facilities_enabled, created_at")
       .order("created_at", { ascending: false }),
     supabase.rpc("platform_school_stats"),
     supabase
@@ -98,6 +102,7 @@ export default async function AdminDashboardPage() {
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Last activity</th>
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Created</th>
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Status</th>
+              <th className="px-4 py-2 text-left font-medium text-zinc-500">Facilities</th>
               <th className="px-4 py-2" />
             </tr>
           </thead>
@@ -127,15 +132,32 @@ export default async function AdminDashboardPage() {
                       {school.status}
                     </span>
                   </td>
+                  <td className="px-4 py-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        school.facilities_enabled
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-zinc-100 text-zinc-500"
+                      }`}
+                    >
+                      {school.facilities_enabled ? "enabled" : "disabled"}
+                    </span>
+                  </td>
                   <td className="px-4 py-2 text-right">
-                    <SchoolStatusButton schoolId={school.id} status={school.status} />
+                    <div className="flex flex-col items-end gap-1.5">
+                      <SchoolStatusButton schoolId={school.id} status={school.status} />
+                      <FacilitiesToggleButton
+                        schoolId={school.id}
+                        enabled={school.facilities_enabled}
+                      />
+                    </div>
                   </td>
                 </tr>
               );
             })}
             {(schools ?? []).length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-zinc-400">
+                <td colSpan={9} className="px-4 py-6 text-center text-zinc-400">
                   No schools yet.
                 </td>
               </tr>

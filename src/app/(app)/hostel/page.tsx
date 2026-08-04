@@ -1,10 +1,12 @@
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { FacilitiesDisabledNotice } from "../FacilitiesDisabledNotice";
 import { NewHostelForm } from "./NewHostelForm";
 import { HostelCard } from "./HostelCard";
 
 export default async function HostelPage() {
-  const { profile } = await requireProprietor();
+  const { profile, school } = await requireProprietor();
+  if (!school?.facilities_enabled) return <FacilitiesDisabledNotice />;
   const supabase = await createClient();
 
   const [{ data: hostels }, { data: rooms }, { data: staff }, { data: students }] =

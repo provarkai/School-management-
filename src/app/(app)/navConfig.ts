@@ -130,6 +130,7 @@ export const GROUPS: NavGroup[] = [
     id: "admin",
     label: "Admin",
     items: [
+      { href: "/admissions", label: "Admissions", emoji: "🎓", managerOnly: true, permission: "admissions" },
       { href: "/calendar", label: "Calendar", emoji: "📅", roles: ["teacher", "staff"], managerOnly: true },
       { href: "/promotion", label: "Promotion", emoji: "🔁", managerOnly: true },
       { href: "/transfer-certificates", label: "Certificates", emoji: "📜", managerOnly: true },
@@ -141,7 +142,6 @@ export const GROUPS: NavGroup[] = [
     id: "facilities",
     label: "Facilities",
     items: [
-      { href: "/admissions", label: "Admissions", emoji: "🎓", managerOnly: true, permission: "admissions" },
       { href: "/campuses", label: "Campuses", emoji: "🏢", managerOnly: true },
       { href: "/hostel", label: "Hostel", emoji: "🛏️", managerOnly: true },
       { href: "/transport", label: "Transport", emoji: "🚌", managerOnly: true },
@@ -245,19 +245,25 @@ export function isActive(pathname: string, href: string): boolean {
 /** Visible groups for this user, with Settings folded into Admin for a
  * manager instead of staying a separate pinned item. `permissions` are the
  * individually-granted modules (staff_permissions) a plain staff member
- * holds — irrelevant for a manager, who already sees everything. */
+ * holds — irrelevant for a manager, who already sees everything.
+ * `facilitiesEnabled` is a platform-admin-controlled per-school toggle
+ * (schools.facilities_enabled) — off hides the whole Facilities group
+ * regardless of role or permissions. */
 export function getVisibleGroups(
   role: Role,
   isManager: boolean,
-  permissions: ReadonlySet<StaffPermission> = new Set()
+  permissions: ReadonlySet<StaffPermission> = new Set(),
+  facilitiesEnabled: boolean = true
 ): NavGroup[] {
-  return GROUPS.map((g) => {
-    let items = g.items.filter((item) => isVisible(item, role, isManager, permissions));
-    if (g.id === "admin" && isManager) {
-      items = [...items, SETTINGS_ITEM];
-    }
-    return { ...g, items };
-  }).filter((g) => g.items.length > 0);
+  return GROUPS.filter((g) => g.id !== "facilities" || facilitiesEnabled)
+    .map((g) => {
+      let items = g.items.filter((item) => isVisible(item, role, isManager, permissions));
+      if (g.id === "admin" && isManager) {
+        items = [...items, SETTINGS_ITEM];
+      }
+      return { ...g, items };
+    })
+    .filter((g) => g.items.length > 0);
 }
 
 /** Pinned-bottom items for this user — empty for a manager, since Settings

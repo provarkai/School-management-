@@ -47,6 +47,7 @@ export interface School {
   promotion_subject_pass_mark: number;
   promotion_max_failed_subjects: number;
   admission_prefix: string;
+  facilities_enabled: boolean;
   created_at: string;
 }
 

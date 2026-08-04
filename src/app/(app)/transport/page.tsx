@@ -1,10 +1,12 @@
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { FacilitiesDisabledNotice } from "../FacilitiesDisabledNotice";
 import { NewRouteForm } from "./NewRouteForm";
 import { RouteCard } from "./RouteCard";
 
 export default async function TransportPage() {
-  const { profile } = await requireProprietor();
+  const { profile, school } = await requireProprietor();
+  if (!school?.facilities_enabled) return <FacilitiesDisabledNotice />;
   const supabase = await createClient();
 
   const [{ data: routes }, { data: stops }, { data: students }] = await Promise.all([

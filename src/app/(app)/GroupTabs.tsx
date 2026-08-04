@@ -9,14 +9,16 @@ export function GroupTabs({
   role,
   isManager,
   permissions = new Set(),
+  facilitiesEnabled = true,
 }: {
   role: Role;
   isManager: boolean;
   permissions?: ReadonlySet<StaffPermission>;
+  facilitiesEnabled?: boolean;
 }) {
   const pathname = usePathname();
 
-  const visibleGroups = getVisibleGroups(role, isManager, permissions);
+  const visibleGroups = getVisibleGroups(role, isManager, permissions, facilitiesEnabled);
   const group = visibleGroups.find((g) => g.items.some((item) => isActive(pathname, item.href)));
   if (!group) return null;
 

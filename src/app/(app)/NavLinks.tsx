@@ -22,11 +22,13 @@ export function NavLinks({
   role,
   isManager,
   permissions = new Set(),
+  facilitiesEnabled = true,
   onSignOut,
 }: {
   role: Role;
   isManager: boolean;
   permissions?: ReadonlySet<StaffPermission>;
+  facilitiesEnabled?: boolean;
   onSignOut: () => Promise<void>;
 }) {
   const pathname = usePathname();
@@ -34,7 +36,7 @@ export function NavLinks({
   const [, startTransition] = useTransition();
   const [openGroup, setOpenGroup] = useState<string | null>(null);
 
-  const visibleGroups = getVisibleGroups(role, isManager, permissions);
+  const visibleGroups = getVisibleGroups(role, isManager, permissions, facilitiesEnabled);
   const pinnedBottom = getPinnedBottom(role, isManager, permissions);
 
   const activeGroupId = visibleGroups.find((g) => g.items.some((item) => isActive(pathname, item.href)))?.id ?? null;

@@ -1,10 +1,12 @@
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { FacilitiesDisabledNotice } from "../FacilitiesDisabledNotice";
 import { NewCampusForm } from "./NewCampusForm";
 import { CampusRow } from "./CampusRow";
 
 export default async function CampusesPage() {
-  const { profile } = await requireProprietor();
+  const { profile, school } = await requireProprietor();
+  if (!school?.facilities_enabled) return <FacilitiesDisabledNotice />;
   const supabase = await createClient();
 
   const [{ data: campuses }, { data: classes }, { data: staff }] = await Promise.all([

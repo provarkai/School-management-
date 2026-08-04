@@ -19,3 +19,21 @@ export async function setSchoolStatus(schoolId: string, status: SchoolStatus) {
 
   revalidatePath("/admin");
 }
+
+export async function setFacilitiesEnabled(schoolId: string, enabled: boolean) {
+  const { authId } = await requirePlatformAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("schools")
+    .update({ facilities_enabled: enabled })
+    .eq("id", schoolId);
+  if (error) throw new Error(error.message);
+
+  await supabase.from("platform_admin_logs").insert({
+    actor_id: authId,
+    action: enabled ? "facilities_enabled" : "facilities_disabled",
+    target_school_id: schoolId,
+  });
+
+  revalidatePath("/admin");
+}

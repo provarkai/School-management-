@@ -54,7 +54,13 @@ export default async function AppLayout({
               <p className="text-[11px] capitalize text-zinc-400">{roleDisplay}</p>
             </div>
           </div>
-          <NavLinks role={profile.role} isManager={isManager} permissions={permissions} onSignOut={signOut} />
+          <NavLinks
+            role={profile.role}
+            isManager={isManager}
+            permissions={permissions}
+            facilitiesEnabled={school?.facilities_enabled ?? true}
+            onSignOut={signOut}
+          />
         </div>
         <div className="mt-3 hidden border-t border-zinc-100 pt-4 md:block">
           <div className="flex items-center gap-2 px-1">
@@ -77,7 +83,12 @@ export default async function AppLayout({
         </div>
       </aside>
       <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-8">
-        <GroupTabs role={profile.role} isManager={isManager} permissions={permissions} />
+        <GroupTabs
+          role={profile.role}
+          isManager={isManager}
+          permissions={permissions}
+          facilitiesEnabled={school?.facilities_enabled ?? true}
+        />
         {children}
       </main>
     </div>
