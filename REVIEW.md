@@ -320,14 +320,21 @@ recurs across the actions. `setStaffPermission` has the same shape.
 call sites — `getOrCreateFeeRecord` (checks `studentId` and `feeTypeId`)
 and `setStaffPermission` (checks `staffId`).
 
-### 14. Signed-in users can change their password without the old one — **open**
+### 14. Signed-in users can change their password without the old one — **fixed**
 
 `setNewPassword` and `changeOwnParentPassword` require a session but not
 proof of the current password, so a borrowed session on a shared machine —
-common in a school office — becomes a permanent takeover. **Recommendation:**
-enable "Secure password change" in the Supabase dashboard, which makes
-`updateUser({ password })` require recent reauthentication. Not code — a
-dashboard toggle, so left for whoever holds that account to flip.
+common in a school office — becomes a permanent takeover. **Fixed:** both
+staff and parent profile flows (`changeOwnPassword`, `changeOwnParentPassword`)
+now collect and send the **current password** (`updateUser({ password,
+current_password })`), so the new password is never accepted without proof of
+knowledge of the old one — regardless of how the Auth setting is configured.
+The matching enforcement toggle is Supabase's "**Require current password when
+changing password**" (Authentication settings — note this is distinct from
+"Secure password change", which is the reauthentication-nonce setting). The
+Management API accepts but silently ignores that field on the free plan, so
+it stays a one-click dashboard flip; the app code is already compatible, so
+flipping it needs no further changes.
 
 ### 15. No Content-Security-Policy — **fixed (report-only)**
 
@@ -362,13 +369,15 @@ a while before flipping to enforced.
 
 None is reachable from an obvious attack path here.
 
-### 17. `/check-result` distinguishes "wrong PIN" from "unknown admission number" — **open**
+### 17. `/check-result` distinguishes "wrong PIN" from "unknown admission number" — **fixed**
 
 The serial/PIN mismatch message is deliberately ambiguous, which is right.
-The follow-up check is not: "No student with that admission number was found
-at this school" confirms whether a given admission number exists. It takes a
+The follow-up check was not: "No student with that admission number was found
+at this school" confirmed whether a given admission number exists. It takes a
 valid card to reach, so the disclosure is small — but admission numbers are
-sequential, so one card enumerates the school's roll size.
+sequential, so one card enumerates the school's roll size. **Fixed:** an
+unknown admission number now returns the identical message as a serial/PIN
+mismatch, so a card can no longer probe whether an admission number exists.
 
 ---
 

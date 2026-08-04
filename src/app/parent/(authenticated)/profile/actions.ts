@@ -52,9 +52,15 @@ export async function changeOwnParentPassword(
 ): Promise<ProfileFormState> {
   await requireParent();
 
+  // Current password required — Supabase Auth's "Secure password change"
+  // setting enforces it, so a borrowed session can't change the password.
+  const currentPassword = String(formData.get("current_password") ?? "");
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirm_password") ?? "");
 
+  if (!currentPassword) {
+    return { error: "Enter your current password." };
+  }
   if (password.length < 8) {
     return { error: "Password must be at least 8 characters." };
   }
@@ -63,7 +69,10 @@ export async function changeOwnParentPassword(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ password });
+  const { error } = await supabase.auth.updateUser({
+    password,
+    current_password: currentPassword,
+  });
 
   if (error) {
     return { error: error.message };
