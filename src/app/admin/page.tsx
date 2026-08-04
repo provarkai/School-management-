@@ -114,7 +114,14 @@ export default async function AdminDashboardPage() {
     total_students: number;
     total_fees_processed: number;
     signups_this_month: number;
-  } | undefined) ?? { total_schools: 0, total_students: 0, total_fees_processed: 0, signups_this_month: 0 };
+    total_outstanding_balance: number;
+  } | undefined) ?? {
+    total_schools: 0,
+    total_students: 0,
+    total_fees_processed: 0,
+    signups_this_month: 0,
+    total_outstanding_balance: 0,
+  };
 
   const statsBySchoolId = new Map(
     ((statsRows ?? []) as SchoolStats[]).map((s) => [s.school_id, s])
@@ -135,10 +142,11 @@ export default async function AdminDashboardPage() {
         <p className="text-sm text-zinc-500">Every school on the platform, at a glance.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
         <StatCard label="Total schools" value={String(totals.total_schools)} />
         <StatCard label="Total students" value={String(totals.total_students)} />
         <StatCard label="Fees processed" value={naira(Number(totals.total_fees_processed))} />
+        <StatCard label="Outstanding balance" value={naira(Number(totals.total_outstanding_balance))} />
         <StatCard label="Signups this month" value={String(totals.signups_this_month)} />
       </div>
 
