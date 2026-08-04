@@ -54,6 +54,17 @@ interface StuckPaymentRow {
   created_at: string;
 }
 
+interface MessageFailureRow {
+  id: string;
+  school_id: string;
+  school_name: string;
+  purpose: string;
+  recipient_name: string | null;
+  recipient_phone: string;
+  error: string | null;
+  created_at: string;
+}
+
 const ACTION_LABELS: Record<string, string> = {
   school_suspended: "Suspended",
   school_reactivated: "Reactivated",
@@ -72,6 +83,7 @@ export default async function AdminDashboardPage() {
     { data: logs },
     { data: backupRuns },
     { data: stuckPayments },
+    { data: messageFailures },
   ] = await Promise.all([
     supabase.rpc("platform_totals"),
     supabase
@@ -90,10 +102,12 @@ export default async function AdminDashboardPage() {
       .order("created_at", { ascending: false })
       .limit(1),
     supabase.rpc("platform_stuck_payments"),
+    supabase.rpc("platform_message_failures"),
   ]);
 
   const lastBackup = ((backupRuns ?? []) as BackupRunRow[])[0] ?? null;
   const stuckPaymentRows = (stuckPayments ?? []) as StuckPaymentRow[];
+  const messageFailureRows = (messageFailures ?? []) as MessageFailureRow[];
 
   const totals = (totalsRows?.[0] as {
     total_schools: number;
@@ -128,9 +142,10 @@ export default async function AdminDashboardPage() {
         <StatCard label="Signups this month" value={String(totals.signups_this_month)} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <BackupHealthCard lastBackup={lastBackup} />
         <StuckPaymentsCard rows={stuckPaymentRows} />
+        <MessageFailuresCard rows={messageFailureRows} />
       </div>
 
       <div data-search-scope className="space-y-3">
@@ -306,6 +321,48 @@ function BackupHealthCard({ lastBackup }: { lastBackup: BackupRunRow | null }) {
           {lastBackup.failures.slice(0, 5).map((f) => (
             <li key={f.school_id}>
               {f.school_name}: {f.error}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+const PURPOSE_LABELS: Record<string, string> = {
+  fee_reminder: "Fee reminder",
+  staff_notice: "Staff notice",
+  broadcast: "Broadcast",
+};
+
+function MessageFailuresCard({ rows }: { rows: MessageFailureRow[] }) {
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+          Message failures (24h)
+        </p>
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+            rows.length > 0 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+          }`}
+        >
+          {rows.length}
+        </span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="mt-2 text-sm text-zinc-400">No failed SMS/WhatsApp sends in the last 24 hours.</p>
+      ) : (
+        <ul className="mt-2 max-h-48 space-y-1.5 overflow-y-auto text-xs">
+          {rows.slice(0, 20).map((m) => (
+            <li key={m.id} className="text-zinc-600">
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate">
+                  {m.school_name} · {PURPOSE_LABELS[m.purpose] ?? m.purpose}
+                </span>
+                <span className="shrink-0 text-zinc-400">{timeAgo(m.created_at)}</span>
+              </div>
+              {m.error && <p className="truncate text-zinc-400">{m.error}</p>}
             </li>
           ))}
         </ul>
