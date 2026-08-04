@@ -148,6 +148,16 @@ export default async function AdminDashboardPage() {
       return aTime - bTime;
     });
 
+  // Onboarding funnel: active schools that signed up but never finished
+  // setup — no staff added, no students added, or both. Sorted oldest
+  // signup first, since a school stuck here the longest is the most likely
+  // to need a nudge (or to have quietly churned before ever going live).
+  const stuckOnboarding = ((schools ?? []) as SchoolRow[])
+    .filter((school) => school.status === "active")
+    .map((school) => ({ school, stats: statsBySchoolId.get(school.id) }))
+    .filter(({ stats }) => (stats?.student_count ?? 0) === 0 || (stats?.staff_count ?? 0) === 0)
+    .sort((a, b) => new Date(a.school.created_at).getTime() - new Date(b.school.created_at).getTime());
+
   const actorIds = [...new Set(((logs ?? []) as AdminLogRow[]).map((l) => l.actor_id).filter(Boolean))] as string[];
   const { data: actors } = actorIds.length
     ? await supabase.from("app_users").select("id, name").in("id", actorIds)
@@ -169,11 +179,12 @@ export default async function AdminDashboardPage() {
         <StatCard label="Signups this month" value={String(totals.signups_this_month)} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <BackupHealthCard lastBackup={lastBackup} />
         <StuckPaymentsCard rows={stuckPaymentRows} />
         <MessageFailuresCard rows={messageFailureRows} />
         <DormantSchoolsCard schools={dormantSchools} />
+        <OnboardingFunnelCard schools={stuckOnboarding} />
       </div>
 
       <div data-search-scope className="space-y-3">
@@ -425,6 +436,42 @@ function DormantSchoolsCard({
               <span className="truncate">{school.name}</span>
               <span className="shrink-0 text-zinc-400">
                 {stats?.last_activity ? `last active ${timeAgo(stats.last_activity)}` : "never active"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function OnboardingFunnelCard({
+  schools,
+}: {
+  schools: { school: SchoolRow; stats: SchoolStats | undefined }[];
+}) {
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">Stuck onboarding</p>
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+            schools.length > 0 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+          }`}
+        >
+          {schools.length}
+        </span>
+      </div>
+      {schools.length === 0 ? (
+        <p className="mt-2 text-sm text-zinc-400">Every school has added at least one staff member and student.</p>
+      ) : (
+        <ul className="mt-2 max-h-48 space-y-1.5 overflow-y-auto text-xs">
+          {schools.map(({ school, stats }) => (
+            <li key={school.id} className="flex items-center justify-between gap-2 text-zinc-600">
+              <span className="truncate">{school.name}</span>
+              <span className="shrink-0 text-zinc-400">
+                {stats?.staff_count ?? 0} staff · {stats?.student_count ?? 0} students · signed up{" "}
+                {timeAgo(school.created_at)}
               </span>
             </li>
           ))}
