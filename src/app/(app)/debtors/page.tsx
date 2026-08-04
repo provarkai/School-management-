@@ -27,6 +27,35 @@ function daysBetween(from: string, to: Date): number {
   return Math.max(0, Math.floor(ms / 86_400_000));
 }
 
+interface DebtorLine {
+  fee_record_id: string;
+  fee_type_name: string;
+  session: string;
+  term: string;
+  balance: number;
+  days: number;
+  bucket: BucketKey;
+}
+
+interface DebtorStudent {
+  student_id: string;
+  student: {
+    id: string;
+    full_name: string;
+    class_id: string | null;
+    parent_name: string | null;
+    parent_phone: string | null;
+  };
+  className: string;
+  totalBalance: number;
+  // The oldest of this student's outstanding fee types drives their bucket —
+  // the most conservative signal of how long they've genuinely been owing
+  // something, not an average across fee types billed on different days.
+  oldestDays: number;
+  bucket: BucketKey;
+  lines: DebtorLine[];
+}
+
 export default async function DebtorsPage({
   searchParams,
 }: {
@@ -93,40 +122,67 @@ export default async function DebtorsPage({
 
   const today = new Date();
 
-  const rows = outstanding
-    .map((f) => {
-      const student = studentById.get(f.student_id);
-      const billedAt = billedAtById.get(f.fee_record_id);
-      const days = billedAt ? daysBetween(billedAt, today) : 0;
-      return {
-        ...f,
-        balance: Number(f.balance),
-        amount_expected: Number(f.amount_expected),
-        amount_paid: Number(f.amount_paid),
+  // Every fee type a student owes on (Tuition, Transport, Hostel, ...) is a
+  // line item on that one student's bill, not a separate debtor — group by
+  // student before doing anything else, the same way the fees list and the
+  // student fee page already do.
+  const studentMap = new Map<string, DebtorStudent>();
+  for (const f of outstanding) {
+    const student = studentById.get(f.student_id);
+    if (!student) continue; // a fee record whose student was deleted has nothing to chase
+
+    const billedAt = billedAtById.get(f.fee_record_id);
+    const days = billedAt ? daysBetween(billedAt, today) : 0;
+    const bucket = bucketFor(days);
+    const balance = Number(f.balance);
+
+    const line: DebtorLine = {
+      fee_record_id: f.fee_record_id,
+      fee_type_name: f.fee_type_name,
+      session: f.session,
+      term: f.term,
+      balance,
+      days,
+      bucket,
+    };
+
+    const existing = studentMap.get(f.student_id);
+    if (existing) {
+      existing.totalBalance += balance;
+      existing.lines.push(line);
+      if (days > existing.oldestDays) {
+        existing.oldestDays = days;
+        existing.bucket = bucket;
+      }
+    } else {
+      studentMap.set(f.student_id, {
+        student_id: f.student_id,
         student,
-        className: student?.class_id ? classNameById.get(student.class_id) ?? "—" : "—",
-        days,
-        bucket: bucketFor(days),
-      };
-    })
-    // A fee record whose student was deleted has nothing to chase.
-    .filter((r) => r.student)
-    .sort((a, b) => b.days - a.days);
+        className: student.class_id ? classNameById.get(student.class_id) ?? "—" : "—",
+        totalBalance: balance,
+        oldestDays: days,
+        bucket,
+        lines: [line],
+      });
+    }
+  }
+
+  const studentRows = Array.from(studentMap.values()).sort((a, b) => b.oldestDays - a.oldestDays);
 
   const totals = new Map<BucketKey, { amount: number; count: number }>(
     BUCKETS.map((b) => [b.key, { amount: 0, count: 0 }])
   );
-  for (const r of rows) {
-    const t = totals.get(r.bucket)!;
-    t.amount += r.balance;
+  for (const s of studentRows) {
+    const t = totals.get(s.bucket)!;
+    t.amount += s.totalBalance;
     t.count++;
   }
-  const grandTotal = rows.reduce((sum, r) => sum + r.balance, 0);
+  const grandTotal = studentRows.reduce((sum, s) => sum + s.totalBalance, 0);
 
-  const visible = rows.filter(
-    (r) =>
-      (bucketFilter ? r.bucket === bucketFilter : true) &&
-      (classFilter ? r.student?.class_id === classFilter : true)
+  const visible = studentRows.filter(
+    (s) =>
+      (bucketFilter ? s.bucket === bucketFilter : true) &&
+      (classFilter ? s.student.class_id === classFilter : true)
   );
 
   const query = (overrides: Record<string, string | undefined>) => {
@@ -143,9 +199,9 @@ export default async function DebtorsPage({
         <div>
           <h1 className="text-2xl font-bold text-zinc-900">Debtors</h1>
           <p className="text-sm text-zinc-500">
-            {naira(grandTotal)} outstanding across {rows.length}{" "}
-            {rows.length === 1 ? "unpaid fee" : "unpaid fees"}, aged from the day each fee was
-            raised.
+            {naira(grandTotal)} outstanding across {studentRows.length}{" "}
+            {studentRows.length === 1 ? "student" : "students"}, aged from the oldest fee each one
+            owes.
           </p>
         </div>
         <Link
@@ -173,7 +229,7 @@ export default async function DebtorsPage({
               </p>
               <p className={`mt-1 text-xl font-bold ${b.tone}`}>{naira(t.amount)}</p>
               <p className="text-xs text-zinc-400">
-                {t.count} {t.count === 1 ? "fee" : "fees"}
+                {t.count} {t.count === 1 ? "student" : "students"}
               </p>
             </Link>
           );
@@ -200,8 +256,6 @@ export default async function DebtorsPage({
               <tr>
                 <th className="px-4 py-2 text-left font-medium text-zinc-500">Student</th>
                 <th className="px-4 py-2 text-left font-medium text-zinc-500">Class</th>
-                <th className="px-4 py-2 text-left font-medium text-zinc-500">Fee</th>
-                <th className="px-4 py-2 text-left font-medium text-zinc-500">Term</th>
                 <th className="px-4 py-2 text-right font-medium text-zinc-500">Balance</th>
                 <th className="px-4 py-2 text-right font-medium text-zinc-500">Age</th>
                 <th className="px-4 py-2 text-left font-medium text-zinc-500">Parent</th>
@@ -209,57 +263,95 @@ export default async function DebtorsPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {visible.map((r) => (
+              {visible.map((s) => (
                 <tr
-                  key={r.fee_record_id}
-                  data-search-row={`${r.student?.full_name ?? ""} ${r.className} ${
-                    r.student?.parent_name ?? ""
-                  } ${r.student?.parent_phone ?? ""}`}
+                  key={s.student_id}
+                  data-search-row={`${s.student.full_name} ${s.className} ${
+                    s.student.parent_name ?? ""
+                  } ${s.student.parent_phone ?? ""}`}
                 >
-                  <td className="px-4 py-2 font-medium text-zinc-900">
-                    <Link href={`/students/${r.student_id}`} className="hover:underline">
-                      {r.student?.full_name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2 text-zinc-500">{r.className}</td>
-                  <td className="px-4 py-2 text-zinc-500">{r.fee_type_name}</td>
-                  <td className="px-4 py-2 text-zinc-500">
-                    {r.session} · {TERM_LABELS[r.term as Term]}
-                  </td>
-                  <td className="px-4 py-2 text-right font-medium text-zinc-900">
-                    {naira(r.balance)}
-                  </td>
-                  <td
-                    className={`px-4 py-2 text-right font-medium ${
-                      BUCKETS.find((b) => b.key === r.bucket)!.tone
-                    }`}
-                  >
-                    {r.days}d
-                  </td>
-                  <td className="px-4 py-2 text-zinc-500">
-                    <div className="leading-tight">
-                      <span className="block">{r.student?.parent_name ?? "—"}</span>
-                      {r.student?.parent_phone && (
-                        <span className="block text-xs text-zinc-400">
-                          {r.student.parent_phone}
+                  <td colSpan={6} className="p-0">
+                    <details className="group">
+                      <summary className="grid cursor-pointer list-none grid-cols-[1.6fr_0.9fr_1fr_0.6fr_1.3fr_0.8fr] items-center gap-2 px-4 py-2 marker:hidden hover:bg-zinc-50">
+                        <span className="font-medium text-zinc-900">
+                          <Link href={`/students/${s.student_id}`} className="hover:underline">
+                            {s.student.full_name}
+                          </Link>
                         </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <Link
-                      href={`/fees/student/${r.student_id}`}
-                      className="font-medium text-zinc-600 hover:text-zinc-900"
-                    >
-                      Manage →
-                    </Link>
+                        <span className="text-zinc-500">{s.className}</span>
+                        <span className="text-right font-medium text-zinc-900">
+                          {naira(s.totalBalance)}
+                        </span>
+                        <span
+                          className={`text-right font-medium ${
+                            BUCKETS.find((b) => b.key === s.bucket)!.tone
+                          }`}
+                        >
+                          {s.oldestDays}d
+                        </span>
+                        <span className="text-zinc-500">
+                          <span className="block leading-tight">
+                            {s.student.parent_name ?? "—"}
+                          </span>
+                          {s.student.parent_phone && (
+                            <span className="block text-xs text-zinc-400">
+                              {s.student.parent_phone}
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-right text-xs text-zinc-400">
+                          <span className="group-open:hidden">
+                            {s.lines.length} {s.lines.length === 1 ? "fee" : "fees"} · Details ▾
+                          </span>
+                          <span className="hidden group-open:inline">Close ▴</span>
+                        </span>
+                      </summary>
+                      <div className="space-y-3 border-t border-zinc-100 bg-zinc-50/50 px-4 py-4">
+                        <table className="min-w-full text-xs">
+                          <thead>
+                            <tr className="text-left text-zinc-400">
+                              <th className="pb-1 pr-4 font-medium">Fee type</th>
+                              <th className="pb-1 pr-4 font-medium">Session / Term</th>
+                              <th className="pb-1 pr-4 text-right font-medium">Balance</th>
+                              <th className="pb-1 text-right font-medium">Age</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-100">
+                            {s.lines.map((l) => (
+                              <tr key={l.fee_record_id}>
+                                <td className="py-1 pr-4 text-zinc-700">{l.fee_type_name}</td>
+                                <td className="py-1 pr-4 text-zinc-500">
+                                  {l.session} · {TERM_LABELS[l.term as Term]}
+                                </td>
+                                <td className="py-1 pr-4 text-right text-zinc-900">
+                                  {naira(l.balance)}
+                                </td>
+                                <td
+                                  className={`py-1 text-right font-medium ${
+                                    BUCKETS.find((b) => b.key === l.bucket)!.tone
+                                  }`}
+                                >
+                                  {l.days}d
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <Link
+                          href={`/fees/student/${s.student_id}`}
+                          className="inline-block text-xs font-medium text-zinc-600 hover:text-zinc-900"
+                        >
+                          Manage fees →
+                        </Link>
+                      </div>
+                    </details>
                   </td>
                 </tr>
               ))}
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-zinc-400">
-                    {rows.length === 0
+                  <td colSpan={6} className="px-4 py-6 text-center text-zinc-400">
+                    {studentRows.length === 0
                       ? "No outstanding balances. Everyone is paid up."
                       : "No debtors match this filter."}
                   </td>
