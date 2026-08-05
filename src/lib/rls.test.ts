@@ -1454,6 +1454,84 @@ test("payment_intents: writes are service-role-only — even the proprietor is R
   );
 });
 
+test("message_wallet_transactions & message_wallet_topups: writes are service-role-only", async () => {
+  const txId = await newUuid();
+  const insTx = `insert into public.message_wallet_transactions (id, school_id, amount_kobo, type, description)
+                 values ('${txId}', '${ids.schoolA}', 100000, 'topup', 'rls test')`;
+
+  // Same shape as payment_intents (0013/0072): no INSERT/UPDATE/DELETE
+  // policy at all on either table — every write happens through
+  // debit_message_wallet()/credit_message_wallet() (service-role only,
+  // see below) or the topups table via the admin client directly.
+  assert.equal(await insertReturningCount("authenticated", ids.proprietorA, insTx), 0);
+  assert.equal(await insertReturningCount("authenticated", ids.bursar, insTx), 0);
+  assert.equal(await insertReturningCount("authenticated", ids.teacherA1, insTx), 0);
+
+  // Seed one row directly (bypassing RLS, same as the harness's own fixture
+  // data) so the update/delete boundary can be checked against a real row.
+  await db.query(
+    `insert into public.message_wallet_transactions (id, school_id, amount_kobo, type, description)
+     values ('${txId}', '${ids.schoolA}', 100000, 'topup', 'seed')`
+  );
+  assert.equal(
+    await updateAffectedRows(
+      "authenticated",
+      ids.proprietorA,
+      `update public.message_wallet_transactions set description = 'hacked' where id = '${txId}'`
+    ),
+    0
+  );
+  assert.equal(
+    await updateAffectedRows(
+      "authenticated",
+      ids.proprietorA,
+      `delete from public.message_wallet_transactions where id = '${txId}'`
+    ),
+    0
+  );
+
+  const topupId = await newUuid();
+  const insTopup = `insert into public.message_wallet_topups (id, school_id, reference, amount_kobo)
+                     values ('${topupId}', '${ids.schoolA}', 'msgwallet_rls_test', 100000)`;
+  assert.equal(await insertReturningCount("authenticated", ids.proprietorA, insTopup), 0);
+  assert.equal(await insertReturningCount("authenticated", ids.bursar, insTopup), 0);
+});
+
+test("message_wallet_transactions: select is proprietor-only, scoped to own school", async () => {
+  assert.equal(
+    await count("authenticated", ids.proprietorA, `select id from public.message_wallet_transactions where school_id = '${ids.schoolA}'`),
+    1
+  );
+  assert.equal(
+    await count("authenticated", ids.bursar, `select id from public.message_wallet_transactions where school_id = '${ids.schoolA}'`),
+    0
+  );
+  assert.equal(
+    await count("authenticated", ids.teacherA1, `select id from public.message_wallet_transactions where school_id = '${ids.schoolA}'`),
+    0
+  );
+});
+
+test("debit_message_wallet & credit_message_wallet: service-role only, not callable from a user session", async () => {
+  // Neither function is granted to `authenticated` (0082) — a staff member's
+  // own session, no matter how privileged, can't move money in or out of
+  // any school's wallet directly; only trusted server code holding the
+  // actual service-role key can reach them (src/lib/messageLog.ts,
+  // src/lib/messageWallet.ts).
+  await expectError(
+    "authenticated",
+    ids.proprietorA,
+    `select public.debit_message_wallet('${ids.schoolA}', 500, 'rls test')`,
+    /permission denied/
+  );
+  await expectError(
+    "authenticated",
+    ids.proprietorA,
+    `select public.credit_message_wallet('${ids.schoolA}', 500, 'adjustment', 'rls test')`,
+    /permission denied/
+  );
+});
+
 test("staff_salaries: payroll writes are proprietor (or school-admin) only", async () => {
   const salaryId = await newUuid();
   const ins = `insert into public.staff_salaries (id, school_id, staff_id, monthly_salary)

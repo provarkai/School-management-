@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { verifyWebhookSignature } from "@/lib/paystack";
 import { markPaymentIntentSuccess } from "@/lib/payments";
+import { markWalletTopupSuccess } from "@/lib/messageWallet";
 
 /**
  * Paystack webhook — the authoritative source of truth for a successful
@@ -30,7 +31,14 @@ export async function POST(request: Request) {
     const settledAmountNaira = Number.isFinite(koboAmount) && koboAmount > 0 ? koboAmount / 100 : undefined;
 
     const admin = createAdminClient();
-    const result = await markPaymentIntentSuccess(admin, reference, settledAmountNaira);
+
+    // Two different kinds of checkout share this one webhook — routed by
+    // reference prefix (generateReference()'s first argument) rather than a
+    // lookup-and-fall-through, so a stray reference from neither table just
+    // falls out the bottom instead of triggering two failed lookups.
+    const result = reference.startsWith("msgwallet_")
+      ? await markWalletTopupSuccess(admin, reference, settledAmountNaira)
+      : await markPaymentIntentSuccess(admin, reference, settledAmountNaira);
 
     if (!result.ok) {
       return Response.json({ error: result.error }, { status: 500 });

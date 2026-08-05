@@ -1,7 +1,7 @@
 import { fetchAllRows, fetchAllRowsByIds } from "@/lib/fetchAll";
 import { createAdminClient } from "@/lib/supabase/server";
 import { cronUnauthorizedResponse, isAuthorizedCronRequest } from "@/lib/cronAuth";
-import { feeReminderTemplate } from "@/lib/termii";
+import { feeReminderTemplate } from "@/lib/sms";
 import { sendAndLogMessage } from "@/lib/messageLog";
 import { naira } from "@/lib/format";
 import { TERM_LABELS, type Term } from "@/lib/types";

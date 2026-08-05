@@ -20,7 +20,7 @@ export type LeaveType =
 export type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
 export type LessonNoteStatus = "draft" | "submitted" | "approved" | "needs_revision";
 export type MessagePurpose = "fee_reminder" | "staff_notice" | "broadcast";
-export type MessageStatus = "sent" | "failed" | "mocked";
+export type MessageStatus = "sent" | "failed" | "mocked" | "blocked";
 export type ThreadRecipientKind = "office" | "teacher";
 export type ThreadStatus = "open" | "closed";
 

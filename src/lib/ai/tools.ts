@@ -2,7 +2,7 @@ import type { createClient } from "@/lib/supabase/server";
 import type { CurrentUser } from "@/lib/current-user";
 import type { OpenRouterTool } from "@/lib/ai/client";
 import { naira } from "@/lib/format";
-import { feeReminderTemplate } from "@/lib/termii";
+import { feeReminderTemplate } from "@/lib/sms";
 import { TERM_LABELS, type Term } from "@/lib/types";
 import { getFinancialTrend, getAcademicTrend, getAttendanceTrend } from "@/lib/analytics";
 

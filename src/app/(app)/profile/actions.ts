@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser, requireProprietor } from "@/lib/current-user";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { Term } from "@/lib/types";
 import { QUICK_LINK_CATALOG, MAX_QUICK_LINKS } from "@/lib/quickLinks";
 import { DASHBOARD_WIDGET_CATALOG } from "@/lib/dashboardWidgets";
+import { createWalletTopupIntent, TOPUP_PACKS_NAIRA } from "@/lib/messageWallet";
+import { siteOrigin } from "@/lib/siteUrl";
 
 export interface ProfileFormState {
   error?: string;
@@ -256,6 +258,48 @@ export async function updateDashboardWidgets(
   revalidatePath("/profile");
   revalidatePath("/dashboard");
   return { success: "Dashboard layout updated." };
+}
+
+export interface WalletTopupState {
+  url?: string;
+  mocked?: boolean;
+  error?: string;
+}
+
+/**
+ * Kicks off a Paystack checkout to top up this school's message wallet —
+ * the proprietor-facing equivalent of generatePaymentLink (fees/actions.ts),
+ * just crediting message_wallet_transactions instead of a fee_record. The
+ * caller navigates the browser to the returned URL; the wallet itself isn't
+ * credited until the webhook (or /profile/wallet-callback as a fast-path)
+ * confirms the charge.
+ */
+export async function initiateWalletTopup(amountNaira: number): Promise<WalletTopupState> {
+  const { authId, profile, school } = await requireProprietor();
+
+  if (!TOPUP_PACKS_NAIRA.includes(amountNaira)) {
+    return { error: "Choose one of the listed top-up amounts." };
+  }
+  if (!profile.email) {
+    return { error: "Your account needs an email on file before you can pay online." };
+  }
+
+  const origin = await siteOrigin();
+  const admin = createAdminClient();
+
+  const result = await createWalletTopupIntent(admin, {
+    schoolId: school?.id ?? profile.school_id ?? "",
+    amountNaira,
+    email: profile.email,
+    callbackUrl: `${origin}/profile/wallet-callback`,
+    initiatedBy: authId,
+  });
+
+  if (!result.ok || !result.authorizationUrl) {
+    return { error: result.error ?? "Could not start the top-up — try again." };
+  }
+
+  return { url: result.authorizationUrl, mocked: result.mocked };
 }
 
 export async function changeOwnPassword(

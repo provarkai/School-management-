@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/current-user";
+import { createClient } from "@/lib/supabase/server";
 import { AvatarUploader } from "@/components/AvatarUploader";
 import { BackLink } from "@/components/BackLink";
 import {
@@ -14,8 +15,11 @@ import {
 import { DEFAULT_QUICK_LINKS } from "@/lib/quickLinks";
 import { SchoolLogoUploader } from "./SchoolLogoUploader";
 import { SchoolExportForm } from "./SchoolExportForm";
+import { MessageWalletSection, type WalletTransactionRow } from "./MessageWalletSection";
 import { saveProfilePhoto, saveSchoolLogo } from "./actions";
 import { proprietorTitle } from "@/lib/format";
+import { getWalletBalanceKobo, nairaFromKobo } from "@/lib/messageWallet";
+import { isMockMode } from "@/lib/sms";
 
 const ROLE_LABELS: Record<string, string> = {
   teacher: "Teacher",
@@ -33,6 +37,23 @@ export default async function SettingsPage({
     profile.role === "proprietor"
       ? proprietorTitle(profile.gender)
       : `${ROLE_LABELS[profile.role] ?? profile.role}${profile.is_school_admin ? " · Admin" : ""}`;
+
+  let walletBalanceNaira = 0;
+  let walletTransactions: WalletTransactionRow[] = [];
+  if (isManager && school) {
+    const supabase = await createClient();
+    const [balanceKobo, { data: txRows }] = await Promise.all([
+      getWalletBalanceKobo(supabase, school.id),
+      supabase
+        .from("message_wallet_transactions")
+        .select("id, amount_kobo, type, description, created_at")
+        .eq("school_id", school.id)
+        .order("created_at", { ascending: false })
+        .limit(8),
+    ]);
+    walletBalanceNaira = nairaFromKobo(balanceKobo);
+    walletTransactions = (txRows ?? []) as WalletTransactionRow[];
+  }
 
   return (
     <div className="max-w-lg space-y-6">
@@ -84,6 +105,19 @@ export default async function SettingsPage({
           <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-zinc-900">Fee policy</h3>
             <FeePolicyForm withhold={school.withhold_results_when_owing ?? false} />
+          </section>
+
+          <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-1 text-sm font-semibold text-zinc-900">Message wallet</h3>
+            <p className="mb-3 text-sm text-zinc-500">
+              Every SMS reminder, notice and broadcast this school sends is billed from here — top
+              up any time, and sending stops automatically if the balance runs out.
+            </p>
+            <MessageWalletSection
+              balanceNaira={walletBalanceNaira}
+              recentTransactions={walletTransactions}
+              smsConfigured={!isMockMode()}
+            />
           </section>
 
           <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">

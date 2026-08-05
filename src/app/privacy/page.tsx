@@ -104,8 +104,8 @@ export default function PrivacyPolicyPage() {
               handled entirely by Paystack; we only receive a payment reference and status.
             </li>
             <li>
-              <strong>Termii</strong> — delivers SMS/WhatsApp reminders on a school&apos;s behalf.
-              Only the recipient&apos;s phone number and message text are shared, per message sent.
+              <strong>SMSLive247</strong> — delivers SMS reminders on a school&apos;s behalf. Only the
+              recipient&apos;s phone number and message text are shared, per message sent.
             </li>
             <li>
               <strong>An AI provider (via OpenRouter)</strong> — powers the optional AI Assistant.

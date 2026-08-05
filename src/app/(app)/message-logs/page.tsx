@@ -10,6 +10,7 @@ const STATUS_STYLES: Record<MessageStatus, string> = {
   sent: "bg-emerald-100 text-emerald-700",
   mocked: "bg-zinc-100 text-zinc-500",
   failed: "bg-red-100 text-red-700",
+  blocked: "bg-amber-100 text-amber-700",
 };
 
 export default async function MessageLogsPage({
@@ -39,29 +40,44 @@ export default async function MessageLogsPage({
   // accurate even once a school has sent more than PAGE_SIZE messages —
   // always the school's all-time figures, independent of the filters.
   const schoolId = profile.school_id ?? "";
-  const [{ data: visible }, { count: sentCount }, { count: mockedCount }, { count: failedCount }] =
-    await Promise.all([
-      rowsQuery,
-      supabase
-        .from("message_logs")
-        .select("id", { count: "exact", head: true })
-        .eq("school_id", schoolId)
-        .eq("status", "sent"),
-      supabase
-        .from("message_logs")
-        .select("id", { count: "exact", head: true })
-        .eq("school_id", schoolId)
-        .eq("status", "mocked"),
-      supabase
-        .from("message_logs")
-        .select("id", { count: "exact", head: true })
-        .eq("school_id", schoolId)
-        .eq("status", "failed"),
-    ]);
+  const [
+    { data: visible },
+    { count: sentCount },
+    { count: mockedCount },
+    { count: failedCount },
+    { count: blockedCount },
+  ] = await Promise.all([
+    rowsQuery,
+    supabase
+      .from("message_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("school_id", schoolId)
+      .eq("status", "sent"),
+    supabase
+      .from("message_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("school_id", schoolId)
+      .eq("status", "mocked"),
+    supabase
+      .from("message_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("school_id", schoolId)
+      .eq("status", "failed"),
+    supabase
+      .from("message_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("school_id", schoolId)
+      .eq("status", "blocked"),
+  ]);
 
-  const totals = { sent: sentCount ?? 0, mocked: mockedCount ?? 0, failed: failedCount ?? 0 };
+  const totals = {
+    sent: sentCount ?? 0,
+    mocked: mockedCount ?? 0,
+    failed: failedCount ?? 0,
+    blocked: blockedCount ?? 0,
+  };
   const rows = visible ?? [];
-  const grandTotal = totals.sent + totals.mocked + totals.failed;
+  const grandTotal = totals.sent + totals.mocked + totals.failed + totals.blocked;
 
   const query = (overrides: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
@@ -85,7 +101,7 @@ export default async function MessageLogsPage({
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">Sent</p>
           <p className="mt-1 text-xl font-bold text-emerald-600">{totals.sent}</p>
@@ -98,6 +114,11 @@ export default async function MessageLogsPage({
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">Failed</p>
           <p className="mt-1 text-xl font-bold text-red-600">{totals.failed}</p>
         </div>
+        <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">Blocked</p>
+          <p className="mt-1 text-xl font-bold text-amber-600">{totals.blocked}</p>
+          <p className="mt-0.5 text-[11px] text-zinc-400">Wallet balance too low</p>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -108,6 +129,7 @@ export default async function MessageLogsPage({
         <span className="mx-1 text-zinc-300">|</span>
         <FilterLink label="Sent" href={query({ status: "sent" })} active={statusFilter === "sent"} />
         <FilterLink label="Failed" href={query({ status: "failed" })} active={statusFilter === "failed"} />
+        <FilterLink label="Blocked" href={query({ status: "blocked" })} active={statusFilter === "blocked"} />
         <FilterLink label="Mocked" href={query({ status: "mocked" })} active={statusFilter === "mocked"} />
       </div>
 

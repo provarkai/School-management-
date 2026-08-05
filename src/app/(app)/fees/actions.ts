@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/current-user";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
-import { feeReminderTemplate } from "@/lib/termii";
+import { feeReminderTemplate } from "@/lib/sms";
 import { sendAndLogMessage } from "@/lib/messageLog";
 import { createPaymentIntent } from "@/lib/payments";
 import { naira } from "@/lib/format";
@@ -439,7 +439,7 @@ export async function sendFeeReminder(
 
   return {
     success: result.mocked
-      ? "Reminder logged (mock mode — set TERMII_API_KEY to send for real)."
+      ? "Reminder logged (mock mode — set SMSLIVE247_API_KEY to send for real)."
       : "Reminder sent.",
   };
 }

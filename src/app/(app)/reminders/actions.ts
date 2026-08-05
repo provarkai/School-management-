@@ -3,7 +3,7 @@
 import { fetchAllRowsByIds } from "@/lib/fetchAll";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
-import { feeReminderTemplate } from "@/lib/termii";
+import { feeReminderTemplate } from "@/lib/sms";
 import { sendAndLogMessage } from "@/lib/messageLog";
 import { naira } from "@/lib/format";
 import { TERM_LABELS, type Term } from "@/lib/types";

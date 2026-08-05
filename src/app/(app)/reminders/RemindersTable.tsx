@@ -51,7 +51,7 @@ export function RemindersTable({ students }: { students: OwingStudent[] }) {
       {result && (
         <div className="rounded-md bg-zinc-100 px-4 py-3 text-sm text-zinc-700">
           <p>
-            Sent {result.sent} reminder(s){result.mocked ? " (mock mode — set TERMII_API_KEY to send for real)" : ""}.
+            Sent {result.sent} reminder(s){result.mocked ? " (mock mode — set SMSLIVE247_API_KEY to send for real)" : ""}.
             {result.skippedNoPhone > 0 && ` ${result.skippedNoPhone} skipped (no phone on file).`}
           </p>
           {result.failed.length > 0 && (

@@ -5,7 +5,7 @@
  *
  * In "mock" mode (no PAYSTACK_SECRET_KEY set) transactions are simulated
  * instead of hitting the real API, so the payment flow is fully testable
- * before real credentials exist — same pattern as src/lib/termii.ts.
+ * before real credentials exist — same pattern as src/lib/sms.ts.
  */
 
 import { randomBytes } from "node:crypto";

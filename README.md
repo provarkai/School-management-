@@ -65,18 +65,28 @@ The full privilege model — every role, the delegated-admin contract, the
 escalation-fix chain, and the intentionally trusted surfaces (service-role
 client, platform admins) — is documented in [SECURITY.md](./SECURITY.md).
 
-## Enabling real SMS/WhatsApp sending
+## Enabling real SMS sending
 
-Reminders run in mock mode (logged to the server console) until you set:
+Reminders run in mock mode (logged to the server console, and free — nothing
+is billed against any school's message wallet) until you set:
 
 ```
-TERMII_API_KEY=...
-TERMII_SENDER_ID=...
+SMSLIVE247_API_KEY=...
+SMSLIVE247_SENDER_ID=...
 ```
 
-in your environment. See `src/lib/termii.ts` — it's a thin wrapper around the
-Termii SMS API; swap in the WhatsApp Business API endpoint there if/when you
-want WhatsApp delivery specifically rather than Termii's generic channel.
+in your environment. See `src/lib/sms.ts` — it's a thin wrapper around the
+[SMSLive247](https://smslive247api.readme.io) SMS API. SMSLive247 has no
+WhatsApp product; every send goes out as SMS.
+
+## Message wallet billing
+
+Once real sending is enabled, every message costs a school `MESSAGE_COST_KOBO`
+(`src/lib/messageWallet.ts`, ₦5 by default) from a prepaid wallet, topped up
+in Settings via the same Paystack checkout fee payments use. A school with a
+zero balance is blocked from sending — see `src/lib/messageLog.ts` for the
+atomic check-and-debit that enforces this, and `0082_message_wallets.sql` for
+the underlying ledger.
 
 ## Enabling real online payments
 

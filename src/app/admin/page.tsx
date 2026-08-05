@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requirePlatformAdmin } from "@/lib/current-admin";
 import { createClient } from "@/lib/supabase/server";
 import { naira } from "@/lib/format";
+import { nairaFromKobo } from "@/lib/messageWallet";
 import { SchoolStatusButton } from "./SchoolStatusButton";
 import { FacilitiesToggleButton } from "./FacilitiesToggleButton";
 import { TableSearch } from "@/components/TableSearch";
@@ -66,6 +67,12 @@ interface MessageFailureRow {
   created_at: string;
 }
 
+interface WalletBalanceRow {
+  school_id: string;
+  school_name: string;
+  balance_kobo: number;
+}
+
 const ACTION_LABELS: Record<string, string> = {
   school_suspended: "Suspended",
   school_reactivated: "Reactivated",
@@ -85,6 +92,7 @@ export default async function AdminDashboardPage() {
     { data: backupRuns },
     { data: stuckPayments },
     { data: messageFailures },
+    { data: walletBalances },
   ] = await Promise.all([
     supabase.rpc("platform_totals"),
     supabase
@@ -104,11 +112,15 @@ export default async function AdminDashboardPage() {
       .limit(1),
     supabase.rpc("platform_stuck_payments"),
     supabase.rpc("platform_message_failures"),
+    supabase.rpc("platform_message_wallet_balances"),
   ]);
 
   const lastBackup = ((backupRuns ?? []) as BackupRunRow[])[0] ?? null;
   const stuckPaymentRows = (stuckPayments ?? []) as StuckPaymentRow[];
   const messageFailureRows = (messageFailures ?? []) as MessageFailureRow[];
+  const walletBalanceBySchoolId = new Map(
+    ((walletBalances ?? []) as WalletBalanceRow[]).map((w) => [w.school_id, w.balance_kobo])
+  );
 
   const totals = (totalsRows?.[0] as {
     total_schools: number;
@@ -200,6 +212,7 @@ export default async function AdminDashboardPage() {
               <th className="px-4 py-2 text-right font-medium text-zinc-500">Staff</th>
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Last activity</th>
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Created</th>
+              <th className="px-4 py-2 text-right font-medium text-zinc-500">Msg balance</th>
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Status</th>
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Facilities</th>
               <th className="px-4 py-2" />
@@ -224,6 +237,16 @@ export default async function AdminDashboardPage() {
                     {stats?.last_activity ? stats.last_activity.slice(0, 10) : "—"}
                   </td>
                   <td className="px-4 py-2 text-zinc-500">{school.created_at.slice(0, 10)}</td>
+                  <td className="px-4 py-2 text-right text-zinc-500">
+                    {(() => {
+                      const balanceKobo = walletBalanceBySchoolId.get(school.id) ?? 0;
+                      return (
+                        <span className={balanceKobo <= 0 ? "font-medium text-red-600" : undefined}>
+                          {naira(nairaFromKobo(balanceKobo))}
+                        </span>
+                      );
+                    })()}
+                  </td>
                   <td className="px-4 py-2">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -260,7 +283,7 @@ export default async function AdminDashboardPage() {
             })}
             {(schools ?? []).length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-zinc-400">
+                <td colSpan={10} className="px-4 py-6 text-center text-zinc-400">
                   No schools yet.
                 </td>
               </tr>

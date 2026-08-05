@@ -127,7 +127,7 @@ export async function sendBroadcast(
 
   return {
     success: `Sent to ${sentCount} recipient(s) (${audienceParts.join(" + ")}).${
-      mocked ? " (mock mode — set TERMII_API_KEY to send for real)" : ""
+      mocked ? " (mock mode — set SMSLIVE247_API_KEY to send for real)" : ""
     }`,
   };
 }
