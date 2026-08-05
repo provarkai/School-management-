@@ -2,7 +2,7 @@
 
 import { requireParent } from "@/lib/current-parent";
 import { createClient } from "@/lib/supabase/server";
-import { callOpenRouter, isAiConfigured, type OpenRouterMessage } from "@/lib/ai/client";
+import { callOpenRouter, contentText, isAiConfigured, type OpenRouterMessage } from "@/lib/ai/client";
 import { PARENT_ASSISTANT_TOOLS, runParentAssistantTool } from "@/lib/ai/parentTools";
 
 export interface ChatTurn {
@@ -78,7 +78,7 @@ Answer questions about your child's/children's attendance, fees, and results usi
         continue;
       }
 
-      return { reply: (msg.content ?? "").trim() || "I don't have a response for that." };
+      return { reply: contentText(msg.content).trim() || "I don't have a response for that." };
     }
 
     return { reply: "That took more steps than expected — try asking a more specific question." };

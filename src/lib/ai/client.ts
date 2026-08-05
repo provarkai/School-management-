@@ -6,9 +6,16 @@ export const ASSISTANT_MODEL = process.env.OPENROUTER_MODEL || "anthropic/claude
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
+/** OpenAI-style multimodal content part — the shape OpenRouter expects for
+ * vision-capable models. Only used by the "scan a photo" one-shot calls
+ * (src/lib/ai/vision.ts); the tool-calling assistants never send images. */
+export type OpenRouterContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
 export interface OpenRouterMessage {
   role: "system" | "user" | "assistant" | "tool";
-  content: string | null;
+  content: string | OpenRouterContentPart[] | null;
   tool_calls?: {
     id: string;
     type: "function";
@@ -33,6 +40,13 @@ export interface OpenRouterResponse {
     message: OpenRouterMessage;
   }[];
   error?: { message: string };
+}
+
+/** Text-only call sites (the tool-calling assistants, draftText) never send
+ * image content themselves, so a reply's content is always a plain string —
+ * this just gives them a typed way to say so instead of each re-deriving it. */
+export function contentText(content: OpenRouterMessage["content"]): string {
+  return typeof content === "string" ? content : "";
 }
 
 export async function callOpenRouter(

@@ -24,6 +24,16 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // Default is 1MB — the "scan attendance/marks from a photo" AI actions
+    // (src/lib/imageCapture.ts resizes to ~1600px JPEG first, but that can
+    // still land past 1MB once base64-encoded) send a photo straight to a
+    // Server Action rather than through Supabase Storage, since it's a
+    // one-shot OCR read, not something that needs to be kept.
+    serverActions: {
+      bodySizeLimit: "4mb",
+    },
+  },
   async headers() {
     return [
       {

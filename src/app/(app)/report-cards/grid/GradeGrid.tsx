@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { saveClassScores, type GridSaveState } from "./actions";
+import { saveClassScores, scanScoresFromImage, type GridSaveState } from "./actions";
+import { PhotoScanButton } from "@/components/PhotoScanButton";
 
 const initialState: GridSaveState = {};
 
@@ -31,6 +32,30 @@ export function GradeGrid({
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(Object.entries(initial).map(([k, v]) => [k, String(v)]))
   );
+  const [scanNote, setScanNote] = useState<string | null>(null);
+
+  async function handleScan(imageDataUrl: string) {
+    setScanNote(null);
+    const result = await scanScoresFromImage(imageDataUrl, classId, subjectId);
+    if (result.error) {
+      setScanNote(`⚠️ ${result.error}`);
+      return;
+    }
+    if (result.values) setValues((v) => ({ ...v, ...result.values }));
+
+    const parts = [
+      `Matched ${result.matchedCount ?? 0} student${
+        result.matchedCount === 1 ? "" : "s"
+      } from the photo — review the grid below before saving.`,
+    ];
+    if (result.unmatchedNames?.length) {
+      parts.push(`Unmatched names: ${result.unmatchedNames.join(", ")}.`);
+    }
+    if (result.unmatchedColumns?.length) {
+      parts.push(`Unrecognized columns: ${result.unmatchedColumns.join(", ")}.`);
+    }
+    setScanNote(parts.join(" "));
+  }
 
   const totalOf = (studentId: string) =>
     components.reduce((sum, c) => {
@@ -50,6 +75,11 @@ export function GradeGrid({
         <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
           {state.success}
         </p>
+      )}
+
+      <PhotoScanButton label="Scan mark sheet" onScan={handleScan} />
+      {scanNote && (
+        <p className="rounded-md bg-indigo-50 px-3 py-2 text-xs text-indigo-700">{scanNote}</p>
       )}
 
       <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm">

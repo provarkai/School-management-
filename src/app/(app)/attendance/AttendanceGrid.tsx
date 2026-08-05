@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { submitAttendance } from "./actions";
+import { submitAttendance, scanAttendanceFromImage } from "./actions";
+import { PhotoScanButton } from "@/components/PhotoScanButton";
 import type { AttendanceStatus } from "@/lib/types";
 
 const OPTIONS: { value: AttendanceStatus; label: string; styles: string }[] = [
@@ -26,9 +27,31 @@ export function AttendanceGrid({
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(
     null
   );
+  const [scanNote, setScanNote] = useState<string | null>(null);
 
   function setAll(status: AttendanceStatus) {
     setMarks(Object.fromEntries(students.map((s) => [s.id, status])));
+  }
+
+  async function handleScan(imageDataUrl: string) {
+    setMessage(null);
+    setScanNote(null);
+    const result = await scanAttendanceFromImage(imageDataUrl, classId);
+    if (result.error) {
+      setMessage({ type: "error", text: result.error });
+      return;
+    }
+    if (result.marks) setMarks((m) => ({ ...m, ...result.marks }));
+
+    const parts = [
+      `Matched ${result.matchedCount ?? 0} student${
+        result.matchedCount === 1 ? "" : "s"
+      } from the photo — review below before submitting.`,
+    ];
+    if (result.unmatched?.length) {
+      parts.push(`Couldn't match: ${result.unmatched.join(", ")}.`);
+    }
+    setScanNote(parts.join(" "));
   }
 
   function handleSubmit() {
@@ -58,6 +81,11 @@ export function AttendanceGrid({
           Mark all present
         </button>
       </div>
+
+      <PhotoScanButton label="Scan attendance sheet" onScan={handleScan} />
+      {scanNote && (
+        <p className="rounded-md bg-indigo-50 px-3 py-2 text-xs text-indigo-700">{scanNote}</p>
+      )}
 
       {message && (
         <p

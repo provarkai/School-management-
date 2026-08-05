@@ -2,7 +2,7 @@
 
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
-import { callOpenRouter, isAiConfigured, type OpenRouterMessage } from "@/lib/ai/client";
+import { callOpenRouter, contentText, isAiConfigured, type OpenRouterMessage } from "@/lib/ai/client";
 import { ASSISTANT_TOOLS, runAssistantTool } from "@/lib/ai/tools";
 import { TERM_LABELS, type Term } from "@/lib/types";
 
@@ -85,7 +85,7 @@ Answer questions about students, fees, attendance, and results using the provide
         continue;
       }
 
-      return { reply: (msg.content ?? "").trim() || "I don't have a response for that." };
+      return { reply: contentText(msg.content).trim() || "I don't have a response for that." };
     }
 
     return { reply: "That took more steps than expected — try asking a more specific question." };

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { getSubjectRoster } from "@/lib/subjectRoster";
+import { extractJsonFromImage } from "@/lib/ai/vision";
+import { matchRosterName } from "@/lib/nameMatch";
 
 export interface GridSaveState {
   error?: string;
@@ -149,5 +151,116 @@ export async function saveClassScores(
     success: `Saved ${perStudent.length} student${perStudent.length === 1 ? "" : "s"} for ${
       subject.name
     }.`,
+  };
+}
+
+export interface ScanScoresResult {
+  values?: Record<string, string>;
+  matchedCount?: number;
+  unmatchedNames?: string[];
+  unmatchedColumns?: string[];
+  error?: string;
+}
+
+interface ScannedScoreEntry {
+  name: string;
+  scores: Record<string, unknown>;
+}
+
+/**
+ * Reads a photo of a handwritten or printed mark sheet and prefills the
+ * grid — the teacher still reviews every cell and hits "Save all scores"
+ * themselves, nothing here writes to `results`. Names only ever resolve
+ * against this class/subject's real roster (matchRosterName), and column
+ * headers only ever resolve against this school's real assessment
+ * components — a value that can't be pinned to both a real student and a
+ * real component is dropped, never guessed into place.
+ */
+export async function scanScoresFromImage(
+  imageDataUrl: string,
+  classId: string,
+  subjectId: string
+): Promise<ScanScoresResult> {
+  const { profile, school } = await requireUser();
+  const supabase = await createClient();
+
+  const schoolId = profile.school_id ?? "";
+  const session = school?.current_session ?? "";
+
+  const { data: subject } = await supabase
+    .from("subjects")
+    .select("id, name")
+    .eq("id", subjectId)
+    .eq("school_id", schoolId)
+    .single();
+  if (!subject) return { error: "Subject not found." };
+
+  const { data: components } = await supabase
+    .from("assessment_components")
+    .select("id, name, kind, max_score")
+    .eq("school_id", schoolId)
+    .order("position");
+  if (!components || components.length === 0) {
+    return { error: "No assessment components configured — set them up under Grading first." };
+  }
+
+  const { students } = await getSubjectRoster(supabase, schoolId, classId, subjectId, session);
+  if (students.length === 0) return { error: "No students take this subject." };
+
+  const roster = students.map((s) => s.full_name).join(", ");
+  const componentList = components.map((c) => `"${c.name}" (max ${Number(c.max_score)})`).join(", ");
+  const system = `You read a photo of a handwritten or printed mark sheet for the subject "${subject.name}". The class roster is: ${roster}. The score columns on the sheet correspond to these assessment components: ${componentList}. Match each column header you see (they may be abbreviated) to the closest component name from that list. Return ONLY JSON in this shape: {"entries":[{"name":"...","scores":{"<component name from the list above>":<number>, ...}}]}. Skip any score that's illegible or a column you can't confidently match, rather than guessing.`;
+
+  const result = await extractJsonFromImage<{ entries: ScannedScoreEntry[] }>(system, imageDataUrl);
+  if (result.error) return { error: result.error };
+
+  const entries = result.data?.entries ?? [];
+  if (entries.length === 0) {
+    return { error: "Couldn't find any names on that photo — try a clearer shot." };
+  }
+
+  const componentByName = new Map(components.map((c) => [c.name.trim().toLowerCase(), c]));
+
+  const values: Record<string, string> = {};
+  const unmatchedNames: string[] = [];
+  const unmatchedColumns = new Set<string>();
+  let matchedCount = 0;
+
+  for (const entry of entries) {
+    if (!entry?.name || typeof entry.scores !== "object" || !entry.scores) continue;
+    const student = matchRosterName(students, entry.name);
+    if (!student) {
+      unmatchedNames.push(entry.name);
+      continue;
+    }
+
+    let studentHasAny = false;
+    for (const [colName, rawScore] of Object.entries(entry.scores)) {
+      const component = componentByName.get(String(colName).trim().toLowerCase());
+      if (!component) {
+        unmatchedColumns.add(colName);
+        continue;
+      }
+      const score = Number(rawScore);
+      if (!Number.isFinite(score) || score < 0 || score > Number(component.max_score)) continue;
+      values[`${student.id}_${component.id}`] = String(score);
+      studentHasAny = true;
+    }
+    if (studentHasAny) matchedCount++;
+  }
+
+  if (matchedCount === 0) {
+    return {
+      error: "Couldn't match any names or scores on that photo to this class.",
+      unmatchedNames: unmatchedNames.length ? unmatchedNames : undefined,
+      unmatchedColumns: unmatchedColumns.size ? Array.from(unmatchedColumns) : undefined,
+    };
+  }
+
+  return {
+    values,
+    matchedCount,
+    unmatchedNames: unmatchedNames.length ? unmatchedNames : undefined,
+    unmatchedColumns: unmatchedColumns.size ? Array.from(unmatchedColumns) : undefined,
   };
 }

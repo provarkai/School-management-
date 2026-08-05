@@ -1,4 +1,4 @@
-import { callOpenRouter, isAiConfigured } from "@/lib/ai/client";
+import { callOpenRouter, contentText, isAiConfigured } from "@/lib/ai/client";
 
 export interface DraftResult {
   text?: string;
@@ -25,7 +25,7 @@ export async function draftText(systemPrompt: string, userPrompt: string): Promi
       ],
       []
     );
-    const text = response.choices[0]?.message.content?.trim();
+    const text = contentText(response.choices[0]?.message.content).trim();
     if (!text) return { error: "The AI Assistant didn't return a draft — try again." };
     return { text };
   } catch (err) {
