@@ -5,10 +5,23 @@ import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { sendAndLogMessage } from "@/lib/messageLog";
 import type { NoticeAudience } from "@/lib/types";
+import { draftText, type DraftResult } from "@/lib/ai/draft";
 
 export interface NoticeFormState {
   error?: string;
   success?: string;
+}
+
+/** Drafts a notice body from its title — the proprietor edits it before
+ * posting, nothing is saved from here. */
+export async function draftNoticeBody(title: string): Promise<DraftResult> {
+  await requireProprietor();
+  if (!title.trim()) return { error: "Enter a title first." };
+
+  const system =
+    "You draft short staff notices for a Nigerian school's internal notice board. Write 1-3 sentences, clear and professional, no greeting or sign-off.";
+
+  return draftText(system, `Draft a notice body for the title: "${title.trim()}"`);
 }
 
 export async function createNotice(

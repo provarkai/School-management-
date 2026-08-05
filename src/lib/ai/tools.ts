@@ -4,6 +4,7 @@ import type { OpenRouterTool } from "@/lib/ai/client";
 import { naira } from "@/lib/format";
 import { feeReminderTemplate } from "@/lib/termii";
 import { TERM_LABELS, type Term } from "@/lib/types";
+import { getFinancialTrend, getAcademicTrend, getAttendanceTrend } from "@/lib/analytics";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -73,6 +74,69 @@ export const ASSISTANT_TOOLS: OpenRouterTool[] = [
         },
         required: ["student_name"],
       },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "prioritize_debtors",
+      description:
+        "Rank students who owe fees this term by urgency — balance size combined with how long it's been outstanding — so you know who to follow up with first. Use for 'who should I chase first' or 'prioritized list of debtors' questions.",
+      parameters: {
+        type: "object",
+        properties: {
+          limit: { type: "integer", description: "Max number of students to return (default 10)" },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "generate_termly_report",
+      description:
+        "Generate a narrative summary of the school's fee collection, academic performance and attendance trends, comparing the current period to the previous one. Use for 'give me a report' or 'how are we trending' questions that need more than a single snapshot.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "find_at_risk_students",
+      description:
+        "Find students showing multiple warning signs at once — rising absences, repeated or severe behavior incidents, and/or a fee balance — so problems surface before they become a withdrawal. Optionally scoped to one class. Use for 'who's at risk' or 'who needs intervention' questions.",
+      parameters: {
+        type: "object",
+        properties: {
+          class_name: { type: "string", description: "Class name, e.g. JSS1 — omit to check the whole school" },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "class_attention_summary",
+      description:
+        "For one class, summarize attendance rate and which students most need attention right now — combining attendance, behavior, and (for managers) fees. If the caller is a teacher and no class is given, defaults to their own class. Use for 'how is my class doing' questions.",
+      parameters: {
+        type: "object",
+        properties: {
+          class_name: { type: "string", description: "Class name, e.g. JSS1 — a teacher may omit this to mean their own class" },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "reminder_timing_insights",
+      description:
+        "Analyze past fee reminders to see how often they're followed by a payment within a week, broken down by the day of the week they were sent. Use for questions about whether reminders are working or when the best time to send them is.",
+      parameters: { type: "object", properties: {}, required: [] },
     },
   },
 ];
@@ -261,6 +325,374 @@ export async function runAssistantTool(
       });
 
       return JSON.stringify({ draft: message });
+    }
+
+    case "prioritize_debtors": {
+      const limit = typeof input.limit === "number" && input.limit > 0 ? Math.min(input.limit, 30) : 10;
+
+      const { data: owingRows } = await supabase
+        .from("fee_summary")
+        .select("fee_record_id, student_id, balance, status")
+        .eq("session", session)
+        .eq("term", term)
+        .gt("balance", 0);
+
+      if (!owingRows || owingRows.length === 0) {
+        return JSON.stringify({ debtors: [], note: "No students are currently owing fees this term." });
+      }
+
+      const { data: feeRecords } = await supabase
+        .from("fee_records")
+        .select("id, created_at")
+        .in("id", owingRows.map((r) => r.fee_record_id));
+      const createdAtByRecord = new Map((feeRecords ?? []).map((r) => [r.id, r.created_at]));
+
+      const byStudent = new Map<string, { balance: number; oldestCreatedAt: string; status: string }>();
+      for (const row of owingRows) {
+        const createdAt = createdAtByRecord.get(row.fee_record_id) ?? new Date().toISOString();
+        const existing = byStudent.get(row.student_id);
+        if (existing) {
+          existing.balance += Number(row.balance);
+          if (new Date(createdAt) < new Date(existing.oldestCreatedAt)) existing.oldestCreatedAt = createdAt;
+          if (row.status === "owing") existing.status = "owing";
+        } else {
+          byStudent.set(row.student_id, { balance: Number(row.balance), oldestCreatedAt: createdAt, status: row.status });
+        }
+      }
+
+      const { data: students } = await supabase
+        .from("students")
+        .select("id, full_name, class_id, parent_name, parent_phone")
+        .in("id", Array.from(byStudent.keys()));
+      const { data: classes } = await supabase.from("classes").select("id, name");
+      const classNameById = new Map((classes ?? []).map((c) => [c.id, c.name]));
+
+      const now = Date.now();
+      const ranked = (students ?? [])
+        .map((s) => {
+          const info = byStudent.get(s.id)!;
+          const daysOverdue = Math.max(0, Math.floor((now - new Date(info.oldestCreatedAt).getTime()) / 86_400_000));
+          const urgencyScore = info.balance / 1000 + daysOverdue * 5;
+          return { s, info, daysOverdue, urgencyScore };
+        })
+        .sort((a, b) => b.urgencyScore - a.urgencyScore)
+        .slice(0, limit)
+        .map(({ s, info, daysOverdue }) => ({
+          name: s.full_name,
+          class: s.class_id ? classNameById.get(s.class_id) ?? null : null,
+          balance: naira(info.balance),
+          days_overdue: daysOverdue,
+          status: info.status,
+          parent_name: s.parent_name,
+          parent_phone: s.parent_phone,
+        }));
+
+      return JSON.stringify({ debtors: ranked, ranked_by: "balance size and days overdue, most urgent first" });
+    }
+
+    case "generate_termly_report": {
+      const schoolId = user.profile.school_id ?? "";
+      const [financial, academic, attendanceTrend] = await Promise.all([
+        getFinancialTrend(supabase, schoolId),
+        getAcademicTrend(supabase, schoolId),
+        getAttendanceTrend(supabase, schoolId, 6),
+      ]);
+
+      const latestFinancial = financial[financial.length - 1] ?? null;
+      const priorFinancial = financial[financial.length - 2] ?? null;
+      const latestAcademic = academic[academic.length - 1] ?? null;
+      const priorAcademic = academic[academic.length - 2] ?? null;
+
+      const result: Record<string, unknown> = {
+        session,
+        term: TERM_LABELS[term],
+        fees: latestFinancial
+          ? {
+              expected: naira(latestFinancial.expected),
+              collected: naira(latestFinancial.collected),
+              collection_rate: latestFinancial.expected
+                ? `${Math.round((latestFinancial.collected / latestFinancial.expected) * 100)}%`
+                : "n/a",
+              prior_period_collected: priorFinancial ? naira(priorFinancial.collected) : null,
+            }
+          : "no fee data yet",
+        academics: latestAcademic
+          ? {
+              average_score: latestAcademic.averageScore.toFixed(1),
+              prior_period_average: priorAcademic ? priorAcademic.averageScore.toFixed(1) : null,
+            }
+          : "no results recorded yet",
+        attendance_last_6_months: attendanceTrend.map((p) => ({ month: p.label, rate: p.rate })),
+      };
+
+      if (!user.isManager) {
+        result.note = "Full financial breakdown is only available to managers — showing what's visible to you.";
+      }
+
+      return JSON.stringify(result);
+    }
+
+    case "find_at_risk_students": {
+      const className = typeof input.class_name === "string" ? input.class_name.trim() : "";
+      let classId: string | null = null;
+      if (className) {
+        const { data: klass } = await supabase.from("classes").select("id").ilike("name", className).maybeSingle();
+        if (!klass) return JSON.stringify({ note: `No class named "${className}" found.` });
+        classId = klass.id;
+      }
+
+      let studentQuery = supabase.from("students").select("id, full_name, class_id").eq("status", "active");
+      if (classId) studentQuery = studentQuery.eq("class_id", classId);
+      const { data: students } = await studentQuery;
+      if (!students || students.length === 0) return JSON.stringify({ at_risk_students: [] });
+
+      const studentIds = students.map((s) => s.id);
+      const since30 = new Date();
+      since30.setDate(since30.getDate() - 30);
+      const since60 = new Date();
+      since60.setDate(since60.getDate() - 60);
+
+      const [{ data: attendanceRows }, { data: behaviorRows }, { data: feeRows }] = await Promise.all([
+        supabase
+          .from("attendance")
+          .select("student_id, status")
+          .in("student_id", studentIds)
+          .gte("date", since30.toISOString().slice(0, 10)),
+        supabase
+          .from("behavior_incidents")
+          .select("student_id, severity")
+          .in("student_id", studentIds)
+          .gte("incident_date", since60.toISOString().slice(0, 10)),
+        supabase
+          .from("fee_summary")
+          .select("student_id, balance")
+          .eq("session", session)
+          .eq("term", term)
+          .in("student_id", studentIds),
+      ]);
+
+      const absencesByStudent = new Map<string, number>();
+      for (const r of attendanceRows ?? []) {
+        if (r.status === "absent") absencesByStudent.set(r.student_id, (absencesByStudent.get(r.student_id) ?? 0) + 1);
+      }
+      const behaviorByStudent = new Map<string, { count: number; severe: number }>();
+      for (const r of behaviorRows ?? []) {
+        const entry = behaviorByStudent.get(r.student_id) ?? { count: 0, severe: 0 };
+        entry.count++;
+        if (r.severity === "major" || r.severity === "severe") entry.severe++;
+        behaviorByStudent.set(r.student_id, entry);
+      }
+      const balanceByStudent = new Map<string, number>();
+      for (const r of feeRows ?? []) {
+        balanceByStudent.set(r.student_id, (balanceByStudent.get(r.student_id) ?? 0) + Number(r.balance));
+      }
+
+      const classIds = Array.from(new Set(students.map((s) => s.class_id).filter((id): id is string => !!id)));
+      const { data: classRows } = classIds.length
+        ? await supabase.from("classes").select("id, name").in("id", classIds)
+        : { data: [] };
+      const classNameById = new Map((classRows ?? []).map((c) => [c.id, c.name]));
+
+      const atRisk = students
+        .map((s) => {
+          const absences = absencesByStudent.get(s.id) ?? 0;
+          const behavior = behaviorByStudent.get(s.id) ?? { count: 0, severe: 0 };
+          const balance = balanceByStudent.get(s.id) ?? 0;
+          const attendanceFlag = absences >= 3;
+          const behaviorFlag = behavior.severe > 0 || behavior.count >= 2;
+          const feeFlag = balance > 0;
+          const flagCount = [attendanceFlag, behaviorFlag, feeFlag].filter(Boolean).length;
+          if (flagCount < 2 && behavior.severe === 0) return null;
+
+          const signals: string[] = [];
+          if (attendanceFlag) signals.push(`${absences} absences in the last 30 days`);
+          if (behaviorFlag) {
+            signals.push(
+              `${behavior.count} behavior incident(s) in the last 60 days${behavior.severe ? `, ${behavior.severe} major/severe` : ""}`
+            );
+          }
+          if (feeFlag) signals.push(`owing ${naira(balance)} this term`);
+
+          return {
+            name: s.full_name,
+            class: s.class_id ? classNameById.get(s.class_id) ?? null : null,
+            signals,
+          };
+        })
+        .filter((r): r is NonNullable<typeof r> => r !== null);
+
+      return JSON.stringify({
+        at_risk_students: atRisk,
+        criteria:
+          "at least two of: 3+ absences in the last 30 days, repeated or severe behavior incidents in the last 60 days, an outstanding fee balance this term",
+      });
+    }
+
+    case "class_attention_summary": {
+      const className = typeof input.class_name === "string" ? input.class_name.trim() : "";
+      let classId: string | null = null;
+      let resolvedClassName = className;
+
+      if (className) {
+        const { data: klass } = await supabase.from("classes").select("id, name").ilike("name", className).maybeSingle();
+        if (!klass) return JSON.stringify({ note: `No class named "${className}" found.` });
+        classId = klass.id;
+        resolvedClassName = klass.name;
+      } else if (user.profile.role === "teacher") {
+        const { data: klass } = await supabase.from("classes").select("id, name").eq("teacher_id", user.authId).maybeSingle();
+        if (!klass) return JSON.stringify({ note: "You are not assigned as the teacher of any class." });
+        classId = klass.id;
+        resolvedClassName = klass.name;
+      }
+
+      if (!classId) return JSON.stringify({ note: "Specify a class name." });
+
+      const { data: students } = await supabase
+        .from("students")
+        .select("id, full_name")
+        .eq("class_id", classId)
+        .eq("status", "active");
+      if (!students || students.length === 0) {
+        return JSON.stringify({ class: resolvedClassName, students_needing_attention: [], note: "No active students in this class." });
+      }
+
+      const studentIds = students.map((s) => s.id);
+      const since14 = new Date();
+      since14.setDate(since14.getDate() - 14);
+      const since30 = new Date();
+      since30.setDate(since30.getDate() - 30);
+
+      const [{ data: attendanceRows }, { data: behaviorRows }, feeRows] = await Promise.all([
+        supabase
+          .from("attendance")
+          .select("student_id, status")
+          .eq("class_id", classId)
+          .gte("date", since14.toISOString().slice(0, 10)),
+        supabase
+          .from("behavior_incidents")
+          .select("student_id, severity")
+          .in("student_id", studentIds)
+          .gte("incident_date", since30.toISOString().slice(0, 10)),
+        user.isManager
+          ? supabase
+              .from("fee_summary")
+              .select("student_id, balance")
+              .eq("session", session)
+              .eq("term", term)
+              .in("student_id", studentIds)
+              .then((r) => r.data ?? [])
+          : Promise.resolve([] as { student_id: string; balance: number }[]),
+      ]);
+
+      let presentCount = 0;
+      let totalMarks = 0;
+      const absencesByStudent = new Map<string, number>();
+      for (const r of attendanceRows ?? []) {
+        totalMarks++;
+        if (r.status === "present") presentCount++;
+        if (r.status === "absent") absencesByStudent.set(r.student_id, (absencesByStudent.get(r.student_id) ?? 0) + 1);
+      }
+      const behaviorByStudent = new Map<string, number>();
+      for (const r of behaviorRows ?? []) {
+        behaviorByStudent.set(r.student_id, (behaviorByStudent.get(r.student_id) ?? 0) + 1);
+      }
+      const balanceByStudent = new Map<string, number>();
+      for (const r of feeRows) {
+        balanceByStudent.set(r.student_id, (balanceByStudent.get(r.student_id) ?? 0) + Number(r.balance));
+      }
+
+      const flagged = students
+        .map((s) => {
+          const absences = absencesByStudent.get(s.id) ?? 0;
+          const incidents = behaviorByStudent.get(s.id) ?? 0;
+          const balance = balanceByStudent.get(s.id) ?? 0;
+          const notes: string[] = [];
+          if (absences >= 2) notes.push(`${absences} absences in the last 2 weeks`);
+          if (incidents > 0) notes.push(`${incidents} behavior incident(s) in the last month`);
+          if (balance > 0) notes.push(`owing ${naira(balance)}`);
+          return notes.length > 0 ? { name: s.full_name, notes } : null;
+        })
+        .filter((r): r is NonNullable<typeof r> => r !== null);
+
+      return JSON.stringify({
+        class: resolvedClassName,
+        class_attendance_rate: totalMarks ? `${Math.round((presentCount / totalMarks) * 100)}%` : "not marked recently",
+        students_needing_attention: flagged,
+      });
+    }
+
+    case "reminder_timing_insights": {
+      const { data: reminders } = await supabase
+        .from("message_logs")
+        .select("student_id, created_at")
+        .eq("purpose", "fee_reminder")
+        .eq("status", "sent")
+        .not("student_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(300);
+
+      if (!reminders || reminders.length === 0) {
+        return JSON.stringify({ note: "No fee reminders have been sent yet, or this data isn't visible to you." });
+      }
+
+      const studentIds = Array.from(new Set(reminders.map((r) => r.student_id).filter((id): id is string => !!id)));
+      const { data: feeRecords } = await supabase.from("fee_records").select("id, student_id").in("student_id", studentIds);
+      const recordIdsByStudent = new Map<string, string[]>();
+      for (const fr of feeRecords ?? []) {
+        const list = recordIdsByStudent.get(fr.student_id) ?? [];
+        list.push(fr.id);
+        recordIdsByStudent.set(fr.student_id, list);
+      }
+      const allRecordIds = (feeRecords ?? []).map((fr) => fr.id);
+      const { data: payments } = allRecordIds.length
+        ? await supabase.from("fee_payments").select("fee_record_id, payment_date").in("fee_record_id", allRecordIds)
+        : { data: [] };
+      const paymentDatesByRecord = new Map<string, string[]>();
+      for (const p of payments ?? []) {
+        const list = paymentDatesByRecord.get(p.fee_record_id) ?? [];
+        list.push(p.payment_date);
+        paymentDatesByRecord.set(p.fee_record_id, list);
+      }
+
+      const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      const responseByDay = new Map<number, { sent: number; responded: number }>();
+      let totalResponded = 0;
+
+      for (const reminder of reminders) {
+        if (!reminder.student_id) continue;
+        const sentDate = new Date(reminder.created_at);
+        const dayOfWeek = sentDate.getDay();
+        const entry = responseByDay.get(dayOfWeek) ?? { sent: 0, responded: 0 };
+        entry.sent++;
+
+        const recordIds = recordIdsByStudent.get(reminder.student_id) ?? [];
+        const paidWithinWeek = recordIds.some((id) =>
+          (paymentDatesByRecord.get(id) ?? []).some((pd) => {
+            const diffDays = (new Date(pd).getTime() - sentDate.getTime()) / 86_400_000;
+            return diffDays >= 0 && diffDays <= 7;
+          })
+        );
+        if (paidWithinWeek) {
+          entry.responded++;
+          totalResponded++;
+        }
+        responseByDay.set(dayOfWeek, entry);
+      }
+
+      const byDay = Array.from(responseByDay.entries())
+        .map(([day, { sent, responded }]) => ({
+          day: DAY_NAMES[day],
+          sent,
+          response_rate: sent ? `${Math.round((responded / sent) * 100)}%` : "n/a",
+        }))
+        .sort((a, b) => b.sent - a.sent);
+
+      return JSON.stringify({
+        reminders_analyzed: reminders.length,
+        overall_response_rate_within_7_days: `${Math.round((totalResponded / reminders.length) * 100)}%`,
+        by_day_sent: byDay,
+        note: "\"Responded\" means a payment was recorded for that student within 7 days of the reminder — not necessarily caused by it.",
+      });
     }
 
     default:

@@ -1,10 +1,12 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import {
   convertProspectToStudent,
   deleteProspect,
   updateProspect,
+  summarizeProspect,
+  draftAdmissionMessage,
   type ConvertFormState,
   type ProspectFormState,
 } from "./actions";
@@ -44,6 +46,31 @@ export function ProspectCard({
 
   const enrolled = prospect.status === "enrolled" && !!prospect.converted_student_id;
 
+  const [aiOutput, setAiOutput] = useState<{ label: string; text: string } | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [summarizing, startSummarizing] = useTransition();
+  const [drafting, startDrafting] = useTransition();
+
+  function runSummarize() {
+    setAiError(null);
+    startSummarizing(async () => {
+      const result = await summarizeProspect(prospect.id);
+      if (result.error) return setAiError(result.error);
+      if (result.text) setAiOutput({ label: "Summary", text: result.text });
+    });
+  }
+
+  function runDraftMessage(decision: "accept" | "decline") {
+    setAiError(null);
+    startDrafting(async () => {
+      const result = await draftAdmissionMessage(prospect.id, decision);
+      if (result.error) return setAiError(result.error);
+      if (result.text) {
+        setAiOutput({ label: decision === "accept" ? "Draft acceptance message" : "Draft decline message", text: result.text });
+      }
+    });
+  }
+
   return (
     <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
@@ -65,6 +92,43 @@ export function ProspectCard({
           {STATUS_LABELS[prospect.status]}
         </span>
       </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+        <button
+          type="button"
+          onClick={runSummarize}
+          disabled={summarizing}
+          className="rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
+        >
+          {summarizing ? "Summarizing…" : "✨ AI summary"}
+        </button>
+        <button
+          type="button"
+          onClick={() => runDraftMessage("accept")}
+          disabled={drafting}
+          className="rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
+        >
+          {drafting ? "Drafting…" : "✨ Draft acceptance message"}
+        </button>
+        <button
+          type="button"
+          onClick={() => runDraftMessage("decline")}
+          disabled={drafting}
+          className="rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
+        >
+          {drafting ? "Drafting…" : "✨ Draft decline message"}
+        </button>
+      </div>
+
+      {aiError && (
+        <p className="mb-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">{aiError}</p>
+      )}
+      {aiOutput && (
+        <div className="mb-3 rounded-md border border-indigo-100 bg-indigo-50/50 p-3">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-indigo-700">{aiOutput.label}</p>
+          <p className="whitespace-pre-wrap text-sm text-zinc-800">{aiOutput.text}</p>
+        </div>
+      )}
 
       {updateState.error && (
         <p className="mb-2 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{updateState.error}</p>

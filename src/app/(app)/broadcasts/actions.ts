@@ -4,10 +4,24 @@ import { revalidatePath } from "next/cache";
 import { requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { sendAndLogMessage } from "@/lib/messageLog";
+import { draftText, type DraftResult } from "@/lib/ai/draft";
 
 export interface BroadcastState {
   error?: string;
   success?: string;
+}
+
+/** Drafts a broadcast message from a short description of what it's about —
+ * the proprietor edits it before sending, nothing is sent from here. */
+export async function draftBroadcastMessage(occasion: string): Promise<DraftResult> {
+  const { school } = await requireProprietor();
+  if (!occasion.trim()) return { error: "Describe what the broadcast is about first." };
+
+  const system = `You draft short, clear broadcast messages sent by SMS/WhatsApp from ${
+    school?.name ?? "a school"
+  } to parents and/or staff. Write 1-3 sentences, plain and direct, no greeting or sign-off — this is a notification, not a letter.`;
+
+  return draftText(system, `Draft a broadcast message about: ${occasion.trim()}`);
 }
 
 export async function sendBroadcast(

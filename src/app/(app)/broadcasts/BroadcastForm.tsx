@@ -1,13 +1,29 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { sendBroadcast, type BroadcastState } from "./actions";
+import { useActionState, useState, useTransition } from "react";
+import { sendBroadcast, draftBroadcastMessage, type BroadcastState } from "./actions";
 
 const initialState: BroadcastState = {};
 
 export function BroadcastForm({ classes }: { classes: { id: string; name: string }[] }) {
   const [state, action, pending] = useActionState(sendBroadcast, initialState);
   const [sendToParents, setSendToParents] = useState(true);
+  const [occasion, setOccasion] = useState("");
+  const [message, setMessage] = useState("");
+  const [drafting, startDrafting] = useTransition();
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  function draft() {
+    setDraftError(null);
+    startDrafting(async () => {
+      const result = await draftBroadcastMessage(occasion);
+      if (result.error) {
+        setDraftError(result.error);
+        return;
+      }
+      if (result.text) setMessage(result.text);
+    });
+  }
 
   return (
     <form action={action} className="space-y-4">
@@ -19,11 +35,36 @@ export function BroadcastForm({ classes }: { classes: { id: string; name: string
           {state.success}
         </p>
       )}
+      {draftError && (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">{draftError}</p>
+      )}
+
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex-1 text-sm font-medium text-zinc-700">
+          What&apos;s this about? (optional, for the AI draft)
+          <input
+            value={occasion}
+            onChange={(e) => setOccasion(e.target.value)}
+            placeholder="e.g. school closed tomorrow for flooding"
+            className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={draft}
+          disabled={drafting}
+          className="shrink-0 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
+        >
+          {drafting ? "Drafting…" : "✨ Draft with AI"}
+        </button>
+      </div>
 
       <label className="block text-sm font-medium text-zinc-700">
         Message
         <textarea
           name="message"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
           required
           rows={3}
           placeholder="e.g. School is closed today due to flooding. Classes resume tomorrow."

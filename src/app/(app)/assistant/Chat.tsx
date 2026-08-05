@@ -4,10 +4,10 @@ import { useRef, useState, useTransition } from "react";
 import { askAssistant, type ChatTurn } from "./actions";
 
 const SUGGESTIONS = [
-  "How are we doing on fees this term?",
-  "Which students in JSS1 are owing?",
-  "Any students with 3 or more absences recently?",
-  "Draft a reminder for Chidinma Okafor",
+  "Who should I follow up with about fees first?",
+  "Give me a report on how this term is going",
+  "Which students need extra attention right now?",
+  "How is my class doing?",
 ];
 
 export function Chat({ heightClassName = "h-[70vh]" }: { heightClassName?: string }) {

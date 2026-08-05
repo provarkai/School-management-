@@ -1,12 +1,28 @@
 "use client";
 
-import { useActionState } from "react";
-import { createNotice, type NoticeFormState } from "./actions";
+import { useActionState, useState, useTransition } from "react";
+import { createNotice, draftNoticeBody, type NoticeFormState } from "./actions";
 
 const initialState: NoticeFormState = {};
 
 export function NewNoticeForm() {
   const [state, action, pending] = useActionState(createNotice, initialState);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [drafting, startDrafting] = useTransition();
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  function draft() {
+    setDraftError(null);
+    startDrafting(async () => {
+      const result = await draftNoticeBody(title);
+      if (result.error) {
+        setDraftError(result.error);
+        return;
+      }
+      if (result.text) setBody(result.text);
+    });
+  }
 
   return (
     <form action={action} className="space-y-3">
@@ -18,24 +34,44 @@ export function NewNoticeForm() {
           {state.success}
         </p>
       )}
+      {draftError && (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">{draftError}</p>
+      )}
       <label className="block text-sm font-medium text-zinc-700">
         Title
         <input
           name="title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
           required
           placeholder="e.g. No school tomorrow"
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         />
       </label>
-      <label className="block text-sm font-medium text-zinc-700">
-        Message
+      <div>
+        <div className="flex items-center justify-between">
+          <label htmlFor="notice-body" className="block text-sm font-medium text-zinc-700">
+            Message
+          </label>
+          <button
+            type="button"
+            onClick={draft}
+            disabled={drafting}
+            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+          >
+            {drafting ? "Drafting…" : "✨ Draft with AI"}
+          </button>
+        </div>
         <textarea
+          id="notice-body"
           name="body"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
           required
           rows={3}
           className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         />
-      </label>
+      </div>
       <label className="block text-sm font-medium text-zinc-700">
         Audience
         <select

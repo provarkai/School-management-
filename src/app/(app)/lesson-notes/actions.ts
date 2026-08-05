@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser, requireProprietor } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
 import type { Term } from "@/lib/types";
+import { draftText, type DraftResult } from "@/lib/ai/draft";
 
 export interface LessonNoteFormState {
   error?: string;
@@ -55,6 +56,53 @@ export async function createLessonNote(
 
   revalidatePath("/lesson-notes");
   return { success: asDraft ? "Saved as draft." : "Submitted for review." };
+}
+
+/**
+ * Drafts a starter lesson note from the subject/topic/class — the teacher
+ * edits it before saving, nothing is persisted here. Pulls in the school's
+ * own curriculum description for that topic when one exists
+ * (syllabus_topics, 0046_curriculum.sql), matched by subject and a loose
+ * title match against the free-text topic the teacher typed, since
+ * lesson_notes.topic has no FK to syllabus_topics.id.
+ */
+export async function draftLessonNoteContent(
+  subject: string,
+  topic: string,
+  classId: string
+): Promise<DraftResult> {
+  const { profile, school } = await requireUser();
+  if (!subject.trim()) return { error: "Enter a subject first." };
+  if (!topic.trim()) return { error: "Enter a topic first." };
+
+  const supabase = await createClient();
+
+  const [{ data: klass }, { data: syllabusMatch }] = await Promise.all([
+    classId ? supabase.from("classes").select("name").eq("id", classId).maybeSingle() : Promise.resolve({ data: null }),
+    supabase
+      .from("syllabus_topics")
+      .select("title, description")
+      .eq("school_id", profile.school_id ?? "")
+      .eq("subject", subject.trim())
+      .eq("session", school?.current_session ?? "")
+      .eq("term", school?.current_term ?? "1")
+      .ilike("title", `%${topic.trim()}%`)
+      .maybeSingle(),
+  ]);
+
+  const context = [
+    `Subject: ${subject.trim()}`,
+    `Topic: ${topic.trim()}`,
+    klass?.name ? `Class: ${klass.name}` : null,
+    syllabusMatch?.description ? `Curriculum description for this topic: ${syllabusMatch.description}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const system =
+    "You draft concise lesson note starters for a Nigerian school teacher. Write a short structured note with these sections, each on its own line: Objectives (1-2 sentences), Materials (a short list), Method (2-3 sentences on how the lesson will run), Evaluation (how the teacher checks understanding). Keep the whole thing under 150 words. No greeting, just the note.";
+
+  return draftText(system, `Draft a lesson note for:\n${context}`);
 }
 
 /** Submits a draft (or a note sent back for revision) for review. Only

@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { createLessonNote } from "./actions";
+import { createLessonNote, draftLessonNoteContent } from "./actions";
 
 export function NewLessonNoteForm({
   schoolId,
@@ -24,8 +24,21 @@ export function NewLessonNoteForm({
   const [asDraft, setAsDraft] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [drafting, startDrafting] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  function draftContent() {
+    setError(null);
+    startDrafting(async () => {
+      const result = await draftLessonNoteContent(subject, topic, classId);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      if (result.text) setContent(result.text);
+    });
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -148,14 +161,27 @@ export function NewLessonNoteForm({
         />
       </label>
 
-      <label className="text-sm font-medium text-zinc-700 sm:col-span-2">
-        Note content (optional if attaching a file)
+      <div className="flex items-center justify-between sm:col-span-2">
+        <label htmlFor="lesson-note-content" className="text-sm font-medium text-zinc-700">
+          Note content (optional if attaching a file)
+        </label>
+        <button
+          type="button"
+          onClick={draftContent}
+          disabled={drafting}
+          className="text-xs font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+        >
+          {drafting ? "Drafting…" : "✨ Draft with AI"}
+        </button>
+      </div>
+      <label className="sm:col-span-2">
         <textarea
+          id="lesson-note-content"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={4}
           placeholder="Objectives, method, materials, evaluation…"
-          className="mt-1 block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+          className="block w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         />
       </label>
 

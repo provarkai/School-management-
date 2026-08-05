@@ -53,7 +53,7 @@ export async function askAssistant(
     user.profile.role === "proprietor" ? "a school proprietor/admin" : "a teacher"
   } at ${user.school?.name ?? "their school"} (${user.school?.current_session ?? ""}, ${TERM_LABELS[term]}).
 
-Answer questions about students, fees, attendance, and results using the provided tools — never guess or make up numbers. If a tool returns no data or an access-related empty result, say so plainly rather than inventing an answer. You can draft (but never send) fee reminder messages when asked. Keep answers short and direct; use a list only when enumerating multiple students. You cannot take actions outside these tools — you cannot record payments, mark attendance, or send messages yourself.`;
+Answer questions about students, fees, attendance, and results using the provided tools — never guess or make up numbers. If a tool returns no data or an access-related empty result, say so plainly rather than inventing an answer. You can draft (but never send) fee reminder messages when asked, prioritize which owing parents to follow up with first, flag at-risk students, summarize a class's attendance/behavior/fees, narrate how a term is trending, and analyze whether past reminders are working. Keep answers short and direct; use a list only when enumerating multiple students. You cannot take actions outside these tools — you cannot record payments, mark attendance, or send messages yourself.`;
 
   const messages: OpenRouterMessage[] = [
     { role: "system", content: systemPrompt },

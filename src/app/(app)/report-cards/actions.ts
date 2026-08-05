@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/current-user";
 import { createClient } from "@/lib/supabase/server";
+import { draftText, type DraftResult } from "@/lib/ai/draft";
+import { computeClassRanking } from "@/lib/ranking";
 
 export interface ScoreFormState {
   error?: string;
@@ -111,6 +113,72 @@ export async function saveRemarks(
 
   revalidatePath(`/report-cards/${studentId}`);
   return { success: "Remarks saved." };
+}
+
+/**
+ * Drafts a first-pass remark from the student's actual scores and class
+ * position this term — the teacher/principal reviews and edits it before
+ * saving, same as every other "Draft with AI" button in the app. Nothing is
+ * persisted here; saveRemarks (above) is still the only write path.
+ */
+export async function draftRemark(
+  studentId: string,
+  kind: "teacher" | "principal"
+): Promise<DraftResult> {
+  const { profile, school, isManager } = await requireUser();
+  if (kind === "principal" && !isManager) {
+    return { error: "Only a manager can draft the principal's remark." };
+  }
+
+  const session = school?.current_session ?? "";
+  const term = school?.current_term ?? "1";
+  const supabase = await createClient();
+
+  const { data: student } = await supabase
+    .from("students")
+    .select("full_name, class_id")
+    .eq("id", studentId)
+    .eq("school_id", profile.school_id ?? "")
+    .single();
+  if (!student) return { error: "Student not found." };
+
+  const [{ data: results }, ranking] = await Promise.all([
+    supabase
+      .from("results")
+      .select("subject, total, grade")
+      .eq("student_id", studentId)
+      .eq("session", session)
+      .eq("term", term)
+      .order("subject"),
+    student.class_id
+      ? computeClassRanking(supabase, student.class_id, session, term)
+      : Promise.resolve(new Map()),
+  ]);
+
+  if (!results || results.length === 0) {
+    return { error: "No scores recorded for this student yet — enter results before drafting a remark." };
+  }
+
+  const position = ranking.get(studentId);
+  const average = results.reduce((sum, r) => sum + Number(r.total), 0) / results.length;
+  const strongest = [...results].sort((a, b) => Number(b.total) - Number(a.total))[0];
+  const weakest = [...results].sort((a, b) => Number(a.total) - Number(b.total))[0];
+
+  const context = [
+    `Student: ${student.full_name}`,
+    `Term average: ${average.toFixed(1)}%`,
+    position ? `Class position: ${position.position} of ${position.outOf}` : null,
+    `Strongest subject: ${strongest.subject} (${strongest.total}%, grade ${strongest.grade ?? "—"})`,
+    `Subject needing the most support: ${weakest.subject} (${weakest.total}%, grade ${weakest.grade ?? "—"})`,
+    `All subjects: ${results.map((r) => `${r.subject} ${r.total}%`).join(", ")}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const audience = kind === "teacher" ? "the class teacher, writing to the parent" : "the school's principal, writing a closing remark for the report card";
+  const system = `You draft short, warm, professional report card remarks for a Nigerian school. You are writing as ${audience}. Write 1-2 sentences, encouraging but honest — name a genuine strength and one concrete area to work on, never generic filler. No greeting, no sign-off, just the remark itself.`;
+
+  return draftText(system, `Draft a report card remark based on this data:\n${context}`);
 }
 
 export async function deleteScore(resultId: string, studentId: string) {
