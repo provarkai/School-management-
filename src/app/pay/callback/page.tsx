@@ -54,8 +54,15 @@ export default async function PaymentCallbackPage({
 
   return (
     <Result title="Payment successful" ok={true}>
-      {verified.amountNaira !== undefined && (
-        <p className="font-semibold text-zinc-900">{naira(verified.amountNaira)} received.</p>
+      {result.creditedNaira !== undefined && (
+        <p className="font-semibold text-zinc-900">
+          {naira(result.creditedNaira)} paid toward the fee balance.
+          {result.chargedNaira !== undefined && result.chargedNaira !== result.creditedNaira && (
+            <span className="mt-1 block text-xs font-normal text-zinc-500">
+              ({naira(result.chargedNaira)} charged to your card, including processing.)
+            </span>
+          )}
+        </p>
       )}
       <p className="mt-1">Thank you — the school&apos;s records have been updated.</p>
       {studentId && (

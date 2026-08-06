@@ -26,9 +26,15 @@ export async function payFees(
 
   const { data: school } = await supabase
     .from("schools")
-    .select("current_session, current_term")
+    .select("current_session, current_term, paystack_subaccount_code")
     .eq("id", child.school_id)
     .single();
+
+  if (!school?.paystack_subaccount_code) {
+    return {
+      error: "Online payments aren't set up for this school yet — ask the school office to pay by cash or bank transfer instead.",
+    };
+  }
 
   // One "Pay now" for the whole term's fees — Tuition, Transport, Hostel,
   // etc. are line items on the school's one bill for this child, not
@@ -58,6 +64,7 @@ export async function payFees(
     callbackUrl,
     initiatedBy: null,
     coversAllFeeTypes: true,
+    subaccountCode: school.paystack_subaccount_code,
   });
 
   if (!result.ok || !result.authorizationUrl) {

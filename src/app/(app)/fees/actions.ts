@@ -6,6 +6,7 @@ import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { feeReminderTemplate } from "@/lib/sms";
 import { sendAndLogMessage } from "@/lib/messageLog";
 import { createPaymentIntent } from "@/lib/payments";
+import type { FeeBreakdown } from "@/lib/paystack";
 import { naira } from "@/lib/format";
 import { TERM_LABELS, type Term } from "@/lib/types";
 import { logActivity } from "@/lib/activityLog";
@@ -407,6 +408,7 @@ export async function sendFeeReminder(
     email: student.parent_email,
     initiatedBy: profile.id,
     coversAllFeeTypes: true,
+    subaccountCode: school?.paystack_subaccount_code ?? null,
   });
 
   const message =
@@ -452,7 +454,15 @@ async function buildPaymentLink(params: {
   email: string | null;
   initiatedBy: string;
   coversAllFeeTypes?: boolean;
+  subaccountCode?: string | null;
 }): Promise<string | null> {
+  // No settlement account, no online-payment link — omitted rather than
+  // falling back to pooling the charge in the platform's own account,
+  // which is exactly the thing subaccounts (0083) exist to avoid. The
+  // reminder still sends; it just reads as a balance notice without a
+  // "Pay:" link until the school finishes setup in Settings.
+  if (!params.subaccountCode) return null;
+
   const origin = await siteOrigin();
 
   const admin = createAdminClient();
@@ -465,6 +475,7 @@ async function buildPaymentLink(params: {
     callbackUrl: `${origin}/pay/callback?student=${params.studentId}`,
     initiatedBy: params.initiatedBy,
     coversAllFeeTypes: params.coversAllFeeTypes,
+    subaccountCode: params.subaccountCode,
   });
 
   return result.ok ? result.authorizationUrl ?? null : null;
@@ -474,6 +485,7 @@ export interface PaymentLinkState {
   error?: string;
   url?: string;
   mocked?: boolean;
+  breakdown?: FeeBreakdown;
 }
 
 export async function generatePaymentLink(
@@ -483,6 +495,13 @@ export async function generatePaymentLink(
   _formData: FormData
 ): Promise<PaymentLinkState> {
   const { profile, school } = await requirePermission("fees");
+
+  if (!school?.paystack_subaccount_code) {
+    return {
+      error: "Online payments aren't set up for this school yet — add settlement bank details under Settings first.",
+    };
+  }
+
   const supabase = await createClient();
 
   const { data: student } = await supabase
@@ -519,11 +538,12 @@ export async function generatePaymentLink(
     email: student?.parent_email ?? `parent+${studentId}@noemail.example`,
     callbackUrl: `${origin}/pay/callback?student=${studentId}`,
     initiatedBy: profile.id,
+    subaccountCode: school.paystack_subaccount_code,
   });
 
   if (!result.ok || !result.authorizationUrl) {
     return { error: result.error ?? "Could not create a payment link." };
   }
 
-  return { url: result.authorizationUrl, mocked: result.mocked };
+  return { url: result.authorizationUrl, mocked: result.mocked, breakdown: result.breakdown };
 }

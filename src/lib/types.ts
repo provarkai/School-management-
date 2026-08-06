@@ -48,6 +48,11 @@ export interface School {
   promotion_max_failed_subjects: number;
   admission_prefix: string;
   facilities_enabled: boolean;
+  paystack_subaccount_code: string | null;
+  settlement_bank_code: string | null;
+  settlement_bank_name: string | null;
+  settlement_account_number: string | null;
+  settlement_account_name: string | null;
   created_at: string;
 }
 

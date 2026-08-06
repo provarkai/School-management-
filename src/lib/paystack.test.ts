@@ -1,7 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import { generateReference, isMockMode, isMockPaymentBlocked, verifyWebhookSignature } from "./paystack.ts";
+import {
+  calculateGrossAmount,
+  generateReference,
+  isMockMode,
+  isMockPaymentBlocked,
+  verifyWebhookSignature,
+  PAYSTACK_FEE_CAP_NAIRA,
+  PAYSTACK_FLAT_FEE_WAIVED_UNDER_NAIRA,
+} from "./paystack.ts";
 
 const KEY = "sk_test_abc123";
 
@@ -84,4 +92,54 @@ test("payment references are unique and unguessable", () => {
   for (const ref of refs) {
     assert.match(ref, /^schfee_[0-9a-f]{24}$/);
   }
+});
+
+test("payment references can carry a caller-chosen prefix", () => {
+  // The Paystack webhook (src/app/api/paystack/webhook/route.ts) routes a
+  // fee payment vs. a message-wallet top-up by this exact prefix.
+  const ref = generateReference("msgwallet");
+  assert.match(ref, /^msgwallet_[0-9a-f]{24}$/);
+});
+
+test("calculateGrossAmount: the school always nets exactly what was asked, whatever gets added on top", () => {
+  // The core invariant a fee-inclusive charge has to hold: net + platform
+  // fee + Paystack's fee always reconstructs the gross amount that gets
+  // charged to the card — nothing here should be free-floating math that
+  // could drift and short the school a few naira.
+  for (const [net, platformFee] of [
+    [25000, 100],
+    [5000, 100],
+    [150000, 250],
+    [300000, 100], // large enough to hit the Paystack fee cap
+    [1000, 50], // small enough for the flat ₦100 to be waived
+  ]) {
+    const b = calculateGrossAmount(net, platformFee);
+    assert.equal(b.netNaira, net);
+    assert.equal(b.platformFeeNaira, platformFee);
+    assert.equal(b.netNaira + b.platformFeeNaira + b.paystackFeeNaira, b.grossNaira);
+  }
+});
+
+test("calculateGrossAmount caps Paystack's estimated fee at the published cap", () => {
+  const b = calculateGrossAmount(300000, 100);
+  assert.equal(b.paystackFeeNaira, PAYSTACK_FEE_CAP_NAIRA);
+});
+
+test("calculateGrossAmount drops the flat ₦100 once the gross would stay under the waiver threshold", () => {
+  const b = calculateGrossAmount(1000, 50);
+  assert.ok(b.grossNaira < PAYSTACK_FLAT_FEE_WAIVED_UNDER_NAIRA);
+  // Reconstructing without the flat fee should match exactly what the
+  // function produced — i.e. it actually took the waiver, not just
+  // happened to land under the threshold by coincidence.
+  const withoutFlatFee = (1000 + 50) / (1 - 0.015);
+  assert.ok(Math.abs(b.grossNaira - withoutFlatFee) < 1);
+});
+
+test("calculateGrossAmount is a no-op for a zero or negative balance", () => {
+  assert.deepEqual(calculateGrossAmount(0, 100), {
+    netNaira: 0,
+    paystackFeeNaira: 0,
+    platformFeeNaira: 0,
+    grossNaira: 0,
+  });
 });

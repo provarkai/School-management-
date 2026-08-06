@@ -16,9 +16,11 @@ import { DEFAULT_QUICK_LINKS } from "@/lib/quickLinks";
 import { SchoolLogoUploader } from "./SchoolLogoUploader";
 import { SchoolExportForm } from "./SchoolExportForm";
 import { MessageWalletSection, type WalletTransactionRow } from "./MessageWalletSection";
+import { OnlinePaymentsSection } from "./OnlinePaymentsSection";
 import { saveProfilePhoto, saveSchoolLogo } from "./actions";
 import { proprietorTitle } from "@/lib/format";
 import { getWalletBalanceKobo, nairaFromKobo } from "@/lib/messageWallet";
+import { listBanks } from "@/lib/paystack";
 import { isMockMode } from "@/lib/sms";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -40,9 +42,11 @@ export default async function SettingsPage({
 
   let walletBalanceNaira = 0;
   let walletTransactions: WalletTransactionRow[] = [];
+  let bankList: { name: string; code: string }[] = [];
+  let banksMocked = false;
   if (isManager && school) {
     const supabase = await createClient();
-    const [balanceKobo, { data: txRows }] = await Promise.all([
+    const [balanceKobo, { data: txRows }, banksResult] = await Promise.all([
       getWalletBalanceKobo(supabase, school.id),
       supabase
         .from("message_wallet_transactions")
@@ -50,10 +54,22 @@ export default async function SettingsPage({
         .eq("school_id", school.id)
         .order("created_at", { ascending: false })
         .limit(8),
+      listBanks(),
     ]);
     walletBalanceNaira = nairaFromKobo(balanceKobo);
     walletTransactions = (txRows ?? []) as WalletTransactionRow[];
+    bankList = banksResult.banks;
+    banksMocked = banksResult.mocked;
   }
+
+  const settlement =
+    school?.paystack_subaccount_code && school.settlement_bank_name && school.settlement_account_number && school.settlement_account_name
+      ? {
+          bankName: school.settlement_bank_name,
+          accountNumber: school.settlement_account_number,
+          accountName: school.settlement_account_name,
+        }
+      : null;
 
   return (
     <div className="max-w-lg space-y-6">
@@ -118,6 +134,15 @@ export default async function SettingsPage({
               recentTransactions={walletTransactions}
               smsConfigured={!isMockMode()}
             />
+          </section>
+
+          <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+            <h3 className="mb-1 text-sm font-semibold text-zinc-900">Online payments</h3>
+            <p className="mb-3 text-sm text-zinc-500">
+              Where parents&rsquo; card payments settle. Money goes straight to this account —
+              School Manager never holds it.
+            </p>
+            <OnlinePaymentsSection banks={bankList} banksMocked={banksMocked} settlement={settlement} />
           </section>
 
           <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">

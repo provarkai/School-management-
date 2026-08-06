@@ -6,6 +6,7 @@ import { naira } from "@/lib/format";
 import { CALENDAR_EVENT_TYPE_LABELS, TERM_LABELS, type Term } from "@/lib/types";
 import { PayNowButton } from "./PayNowButton";
 import { checkFeeGate } from "@/lib/feeGate";
+import { calculateGrossAmount } from "@/lib/paystack";
 
 export default async function ParentChildPage({
   params,
@@ -23,7 +24,9 @@ export default async function ParentChildPage({
   const [{ data: school }, { data: studentAssignment }] = await Promise.all([
     supabase
       .from("schools")
-      .select("name, phone, current_session, current_term, withhold_results_when_owing")
+      .select(
+        "name, phone, current_session, current_term, withhold_results_when_owing, paystack_subaccount_code"
+      )
       .eq("id", child.school_id)
       .single(),
     supabase
@@ -216,7 +219,31 @@ export default async function ParentChildPage({
                 </div>
                 {totals.balance > 0 && (
                   <div className="mt-3">
-                    <PayNowButton studentId={child.id} label={`Pay ${naira(totals.balance)} now`} />
+                    {school?.paystack_subaccount_code ? (
+                      (() => {
+                        const breakdown = calculateGrossAmount(totals.balance);
+                        return (
+                          <>
+                            <p className="mb-2 text-center text-xs text-zinc-400">
+                              Fee {naira(breakdown.netNaira)} + processing {naira(
+                                breakdown.paystackFeeNaira + breakdown.platformFeeNaira
+                              )}{" "}
+                              = <span className="font-medium text-zinc-600">{naira(breakdown.grossNaira)}</span>{" "}
+                              charged to your card
+                            </p>
+                            <PayNowButton
+                              studentId={child.id}
+                              label={`Pay ${naira(breakdown.grossNaira)} now`}
+                            />
+                          </>
+                        );
+                      })()
+                    ) : (
+                      <p className="rounded-md bg-zinc-50 px-3 py-2 text-center text-xs text-zinc-500">
+                        Online payment isn&rsquo;t available yet — please pay by cash or bank
+                        transfer at the school office.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

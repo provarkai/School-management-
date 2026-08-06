@@ -10,6 +10,7 @@ import {
   type FeeActionState,
   type PaymentLinkState,
 } from "../../actions";
+import { naira } from "@/lib/format";
 
 const initialState: FeeActionState = {};
 
@@ -211,6 +212,14 @@ export function PaymentLinkButton({
           {state.mocked && (
             <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
               Mock mode — set PAYSTACK_SECRET_KEY to accept real payments.
+            </p>
+          )}
+          {state.breakdown && (
+            <p className="text-xs text-zinc-400">
+              Fee {naira(state.breakdown.netNaira)} + processing{" "}
+              {naira(state.breakdown.paystackFeeNaira + state.breakdown.platformFeeNaira)} ={" "}
+              <span className="font-medium text-zinc-600">{naira(state.breakdown.grossNaira)}</span> charged
+              to the parent
             </p>
           )}
           <button

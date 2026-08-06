@@ -1,9 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   MOCK_PAYMENTS_BLOCKED_MESSAGE,
+  calculateGrossAmount,
   generateReference,
   initializeTransaction,
   isMockPaymentBlocked,
+  type FeeBreakdown,
 } from "./paystack";
 
 export interface CreatePaymentIntentParams {
@@ -20,6 +22,15 @@ export interface CreatePaymentIntentParams {
    * satisfy the not-null FK; markPaymentIntentSuccess() spreads the
    * settled amount across every fee type once the charge succeeds. */
   coversAllFeeTypes?: boolean;
+  /** schools.paystack_subaccount_code — when set, the payment is grossed up
+   * (calculateGrossAmount) so the payer covers Paystack's processing fee and
+   * the platform's cut on top of amountNaira, and Paystack settles the split
+   * directly to the school's own bank account. When absent, this behaves
+   * exactly as before: amountNaira is charged as-is with no split. */
+  subaccountCode?: string | null;
+  /** Overrides the default platform flat fee (PLATFORM_FLAT_FEE_NAIRA) for
+   * this payment. Only meaningful alongside subaccountCode. */
+  platformFeeNaira?: number;
 }
 
 export interface CreatePaymentIntentResult {
@@ -27,6 +38,10 @@ export interface CreatePaymentIntentResult {
   mocked: boolean;
   authorizationUrl?: string;
   reference?: string;
+  /** The fee breakdown when subaccountCode was set — lets the caller show
+   * the payer what they're actually about to be charged before redirecting
+   * to Paystack, rather than a total that only makes sense after the fact. */
+  breakdown?: FeeBreakdown;
   error?: string;
 }
 
@@ -46,11 +61,25 @@ export async function createPaymentIntent(
 
   const reference = generateReference();
 
+  const breakdown = params.subaccountCode
+    ? calculateGrossAmount(params.amountNaira, params.platformFeeNaira)
+    : null;
+
   const init = await initializeTransaction({
     email: params.email,
-    amountNaira: params.amountNaira,
+    amountNaira: breakdown ? breakdown.grossNaira : params.amountNaira,
     reference,
     callbackUrl: params.callbackUrl,
+    ...(params.subaccountCode && breakdown
+      ? {
+          subaccountCode: params.subaccountCode,
+          // Goes to the platform's main account; the subaccount (school)
+          // receives the remainder, which works out to exactly
+          // breakdown.netNaira once Paystack's own fee — bearer defaults to
+          // "account", i.e. deducted from this same portion — comes out.
+          transactionChargeNaira: breakdown.platformFeeNaira + breakdown.paystackFeeNaira,
+        }
+      : {}),
   });
 
   if (!init.ok) {
@@ -62,7 +91,13 @@ export async function createPaymentIntent(
     fee_record_id: params.feeRecordId,
     student_id: params.studentId,
     reference,
+    // Net meaning unchanged throughout the codebase — what's owed and what
+    // gets credited. charged_amount/platform_fee/paystack_fee_estimate are
+    // only ever set alongside it, never in place of it.
     amount: params.amountNaira,
+    charged_amount: breakdown?.grossNaira ?? null,
+    platform_fee: breakdown?.platformFeeNaira ?? null,
+    paystack_fee_estimate: breakdown?.paystackFeeNaira ?? null,
     authorization_url: init.authorizationUrl,
     initiated_by: params.initiatedBy ?? null,
     covers_all_fee_types: params.coversAllFeeTypes ?? false,
@@ -72,13 +107,26 @@ export async function createPaymentIntent(
     return { ok: false, mocked: init.mocked, error: error.message };
   }
 
-  return { ok: true, mocked: init.mocked, authorizationUrl: init.authorizationUrl, reference };
+  return {
+    ok: true,
+    mocked: init.mocked,
+    authorizationUrl: init.authorizationUrl,
+    reference,
+    breakdown: breakdown ?? undefined,
+  };
 }
 
 export interface MarkPaymentSuccessResult {
   ok: boolean;
   alreadyProcessed: boolean;
   error?: string;
+  /** The amount actually credited toward the fee balance — always the net
+   * figure, never the (possibly grossed-up) amount charged to the card. Lets
+   * a caller like /pay/callback show "₦X paid" without re-deriving it. */
+  creditedNaira?: number;
+  /** Set only when this payment was grossed up — what actually left the
+   * card, for display alongside creditedNaira. */
+  chargedNaira?: number;
 }
 
 /**
@@ -96,7 +144,7 @@ export async function markPaymentIntentSuccess(
 ): Promise<MarkPaymentSuccessResult> {
   const { data: intent } = await admin
     .from("payment_intents")
-    .select("id, school_id, student_id, fee_record_id, amount, status, covers_all_fee_types")
+    .select("id, school_id, student_id, fee_record_id, amount, charged_amount, status, covers_all_fee_types")
     .eq("reference", reference)
     .maybeSingle();
 
@@ -108,14 +156,32 @@ export async function markPaymentIntentSuccess(
     return { ok: true, alreadyProcessed: true };
   }
 
-  // Credit what was actually paid, not what we asked for. Paystack can
-  // settle a charge for less than the requested amount (partial payment on
-  // some channels), and crediting the requested figure would mark a fee
-  // cleared that the school was never paid in full for.
-  const amount =
-    typeof settledAmountNaira === "number" && Number.isFinite(settledAmountNaira) && settledAmountNaira > 0
-      ? settledAmountNaira
-      : Number(intent.amount);
+  const netAmount = Number(intent.amount);
+  const chargedAmount = intent.charged_amount !== null ? Number(intent.charged_amount) : null;
+
+  let amount: number;
+  if (chargedAmount !== null) {
+    // A fee-inclusive payment: the payer was charged netAmount PLUS
+    // Paystack's fee and the platform's cut, so the fee balance is only
+    // ever credited netAmount — crediting what Paystack actually reports as
+    // charged would mistake the markup for extra payment toward the fee.
+    // If Paystack genuinely only collected part of the grossed-up amount
+    // (a rare partial-settlement case on some channels), scale the credit
+    // down proportionally rather than crediting the full net for a charge
+    // that didn't fully go through.
+    const settled =
+      typeof settledAmountNaira === "number" && Number.isFinite(settledAmountNaira) ? settledAmountNaira : chargedAmount;
+    amount = settled >= chargedAmount - 1 ? netAmount : netAmount * (settled / chargedAmount);
+  } else {
+    // Credit what was actually paid, not what we asked for. Paystack can
+    // settle a charge for less than the requested amount (partial payment on
+    // some channels), and crediting the requested figure would mark a fee
+    // cleared that the school was never paid in full for.
+    amount =
+      typeof settledAmountNaira === "number" && Number.isFinite(settledAmountNaira) && settledAmountNaira > 0
+        ? settledAmountNaira
+        : netAmount;
+  }
 
   let firstPaymentId: string;
 
@@ -193,5 +259,10 @@ export async function markPaymentIntentSuccess(
     return { ok: false, alreadyProcessed: false, error: updateError.message };
   }
 
-  return { ok: true, alreadyProcessed: false };
+  return {
+    ok: true,
+    alreadyProcessed: false,
+    creditedNaira: amount,
+    chargedNaira: chargedAmount ?? undefined,
+  };
 }

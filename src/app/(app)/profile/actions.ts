@@ -8,6 +8,7 @@ import { QUICK_LINK_CATALOG, MAX_QUICK_LINKS } from "@/lib/quickLinks";
 import { DASHBOARD_WIDGET_CATALOG } from "@/lib/dashboardWidgets";
 import { createWalletTopupIntent, TOPUP_PACKS_NAIRA } from "@/lib/messageWallet";
 import { siteOrigin } from "@/lib/siteUrl";
+import { resolveBankAccount, createSubaccount } from "@/lib/paystack";
 
 export interface ProfileFormState {
   error?: string;
@@ -300,6 +301,93 @@ export async function initiateWalletTopup(amountNaira: number): Promise<WalletTo
   }
 
   return { url: result.authorizationUrl, mocked: result.mocked };
+}
+
+export interface ResolveAccountState {
+  accountName?: string;
+  error?: string;
+}
+
+/**
+ * Verifies a settlement account number before it's saved — the "confirm
+ * the name" step every Nigerian fintech app makes you do, so a mistyped
+ * digit doesn't quietly point a school's future fee income at a stranger's
+ * account. Doesn't save anything; activateOnlinePayments (below) does that
+ * once the proprietor has seen and confirmed the resolved name.
+ */
+export async function resolveSettlementAccount(
+  bankCode: string,
+  accountNumber: string
+): Promise<ResolveAccountState> {
+  await requireProprietor();
+
+  if (!bankCode) return { error: "Choose a bank." };
+  if (!/^\d{10}$/.test(accountNumber)) return { error: "Enter a 10-digit account number." };
+
+  const result = await resolveBankAccount(accountNumber, bankCode);
+  if (!result.ok || !result.accountName) {
+    return { error: result.error ?? "Could not verify that account number." };
+  }
+
+  return { accountName: result.accountName };
+}
+
+export interface ActivateOnlinePaymentsState {
+  error?: string;
+  success?: string;
+}
+
+/**
+ * Registers the school as a Paystack subaccount (src/lib/paystack.ts
+ * createSubaccount) and stores the result on schools — from this point on,
+ * createPaymentIntent (src/lib/payments.ts) grosses up every fee payment
+ * and splits it so the school's share settles directly to this account
+ * instead of pooling in the platform's own Paystack account.
+ */
+export async function activateOnlinePayments(
+  bankCode: string,
+  bankName: string,
+  accountNumber: string,
+  accountName: string
+): Promise<ActivateOnlinePaymentsState> {
+  const { profile, school } = await requireProprietor();
+
+  if (!bankCode || !bankName) return { error: "Choose a bank." };
+  if (!/^\d{10}$/.test(accountNumber)) return { error: "Enter a 10-digit account number." };
+  if (!accountName.trim()) return { error: "Verify the account number first." };
+
+  const result = await createSubaccount({
+    businessName: school?.name ?? "School",
+    bankCode,
+    accountNumber,
+  });
+
+  if (!result.ok || !result.subaccountCode) {
+    return { error: result.error ?? "Could not set up online payments — try again." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("schools")
+    .update({
+      paystack_subaccount_code: result.subaccountCode,
+      settlement_bank_code: bankCode,
+      settlement_bank_name: bankName,
+      settlement_account_number: accountNumber,
+      settlement_account_name: accountName,
+    })
+    .eq("id", profile.school_id ?? "");
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/profile");
+  return {
+    success: result.mocked
+      ? "Online payments activated (mock mode — set PAYSTACK_SECRET_KEY to go live)."
+      : "Online payments activated — parents' payments will now settle directly to this account.",
+  };
 }
 
 export async function changeOwnPassword(
